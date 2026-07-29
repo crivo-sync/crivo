@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 
 import { AppModule } from './app.module';
 
@@ -13,6 +14,12 @@ async function bootstrap() {
   const logger = app.get(Logger);
 
   app.useLogger(logger);
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
   const port = process.env.PORT ?? 3333;
 

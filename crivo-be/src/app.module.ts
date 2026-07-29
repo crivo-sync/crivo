@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PatientsModule } from './modules/patients/patients.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { PatientsModule } from './modules/patients/patients.module';
         limit: 100, // 100 requisições por minuto
       },
     ]),
+    AuthModule,
     PatientsModule,
   ],
   controllers: [],
