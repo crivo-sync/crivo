@@ -6,8 +6,8 @@ export default defineConfig({
   migrations: {
     path: 'prisma/migrations',
     // Single seed entry point — mode selected internally via SEED_TYPE
-    // (full / plans / clean / trial-test). See prisma/seed.ts.
-    seed: 'npx ts-node prisma/seed.ts',
+    // (full / clean). See prisma/seed.ts.
+    seed: 'npx tsx prisma/seed.ts',
   },
   datasource: {
     // DIRECT_URL bypasses PgBouncer for CLI operations (migrate, seed, studio)
