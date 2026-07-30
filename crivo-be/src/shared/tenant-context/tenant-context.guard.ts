@@ -10,9 +10,7 @@ import { Request } from 'express';
 export class TenantContextGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
-    const user = req.user as
-      | { userId: string; tenantId: string; role: string }
-      | undefined;
+    const { user } = req;
 
     if (!user) {
       throw new UnauthorizedException(
@@ -23,7 +21,7 @@ export class TenantContextGuard implements CanActivate {
     req.tenantContext = {
       tenantId: user.tenantId,
       userId: user.userId,
-      planType: undefined,
+      role: user.role,
     };
 
     return true;

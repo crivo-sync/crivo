@@ -2,30 +2,37 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'Clínica Sorriso', description: 'Nome da clínica' })
   @IsString()
-  @MinLength(2)
+  @MinLength(2, { message: 'O nome da clínica deve ter ao menos 2 caracteres' })
   tenantName: string;
 
-  @ApiProperty({ description: 'Identificador único do tenant (ex: clinica-x)' })
+  @ApiProperty({
+    example: 'clinica-sorriso',
+    description:
+      'Identificador único da clínica, usado no endereço de acesso (ex: clinica-sorriso.crivo.com.br)',
+  })
   @IsString()
   @Matches(/^[a-z0-9-]+$/, {
     message:
-      'subdomain must contain only lowercase letters, numbers and dashes',
+      'O identificador deve conter apenas letras minúsculas, números e hífens',
   })
   subdomain: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    example: 'Helena Prado',
+    description: 'Nome do usuário administrador',
+  })
   @IsString()
-  @MinLength(2)
+  @MinLength(2, { message: 'O nome deve ter ao menos 2 caracteres' })
   name: string;
 
-  @ApiProperty()
-  @IsEmail()
+  @ApiProperty({ example: 'admin@clinicasorriso.com.br' })
+  @IsEmail({}, { message: 'Informe um e-mail válido' })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'senha12345', minLength: 8 })
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'A senha deve ter ao menos 8 caracteres' })
   password: string;
 }

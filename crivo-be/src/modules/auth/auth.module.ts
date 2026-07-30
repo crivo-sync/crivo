@@ -10,6 +10,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
 import { USER_REPOSITORY } from './domain/repository/user.repository';
 import { RegisterUseCase } from './application/use-cases/register.use-case';
 import { LoginUseCase } from './application/use-cases/login.use-case';
+import { TokenService } from './application/services/token.service';
 
 @Module({
   imports: [
@@ -21,7 +22,9 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: config.get<number>('JWT_EXPIRES_IN_SECONDS', 86400),
+          // Number(...) é obrigatório: ConfigService devolve string, e o
+          // jsonwebtoken interpreta string sem unidade como milissegundos.
+          expiresIn: Number(config.get('JWT_EXPIRES_IN_SECONDS') ?? 900),
         },
       }),
     }),
@@ -34,6 +37,7 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
     },
     RegisterUseCase,
     LoginUseCase,
+    TokenService,
     JwtStrategy,
   ],
 })
