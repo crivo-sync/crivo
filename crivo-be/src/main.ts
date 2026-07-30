@@ -2,9 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 
 import { AppModule } from './app.module';
+import { translateValidationErrors } from './shared/validation/validation-messages';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -18,18 +19,36 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      // O produto é PT-BR: o erro de validação chega direto na tela do usuário.
+      exceptionFactory: (errors) =>
+        new BadRequestException(translateValidationErrors(errors)),
     }),
   );
 
   const port = process.env.PORT ?? 3333;
 
   const swaggerBuilder = new DocumentBuilder()
-    .setTitle('Crivo')
+    .setTitle('Crivo API')
     .setDescription(
-      'Crivo API para gerenciamento whitelabel de estética e odontologia',
+      [
+        'Plataforma de gestão para clínicas de estética e odontologia.',
+        '',
+        '**Autenticação:** faça login em `POST /auth/login`, copie o `accessToken`',
+        'e informe-o no botão **Authorize** acima. O token expira em 15 minutos —',
+        'use `POST /auth/refresh` para renovar sem refazer o login.',
+        '',
+        '**Isolamento por clínica:** todos os dados são filtrados pela clínica do',
+        'usuário autenticado. O identificador da clínica vem sempre do token,',
+        'nunca da requisição.',
+      ].join('\n'),
     )
     .setVersion('1.0')
-    .addBearerAuth();
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      description: 'Cole aqui o accessToken retornado por POST /auth/login',
+    });
 
   const config = swaggerBuilder.build();
 
