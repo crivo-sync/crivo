@@ -7,14 +7,30 @@ datasource db {
 }
 
 model Tenant {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   name      String
-  subdomain String   @unique
+  subdomain String  @unique
+  isActive  Boolean @default(true) @map("is_active")
+
+  // White-label / identidade visual
+  logoUrl        String? @map("logo_url")
+  primaryColor   String? @map("primary_color")
+  secondaryColor String? @map("secondary_color")
+
+  // Contato público da clínica
+  phone   String?
+  email   String?
+  address String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  patients Patient[]
-  users    User[]
+  patients      Patient[]
+  users         User[]
+  professionals Professional[]
+  procedures    Procedure[]
+  appointments  Appointment[]
+  messages      Message[]
 
   @@map("tenants")
 }
@@ -31,27 +47,196 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(STAFF)
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  refreshTokens RefreshToken[]
+  professional  Professional?
 
   @@index([tenantId])
   @@map("users")
 }
 
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
 model Patient {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
+  id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
   name      String
   cpf       String?
   phone     String
   email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Soft delete: agendamentos passados precisam continuar apontando para o
+  // paciente, e o histórico de faltas é a matéria-prima da predição.
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  appointments Appointment[]
 
+  @@unique([tenantId, cpf])
   @@index([tenantId])
   @@map("patients")
+}
+
+/// Quem atende. Pode ou não ter login: em muitas clínicas só a recepção usa o
+/// sistema, então `userId` é opcional.
+model Professional {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  userId      String?   @unique @map("user_id")
+  name        String
+  specialty   String?
+  /// Registro do conselho (CRO, CRM...)
+  councilCode String?   @map("council_code")
+  phone       String?
+  email       String?
+  isActive    Boolean   @default(true) @map("is_active")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+
+  @@index([tenantId])
+  @@map("professionals")
+}
+
+/// O que é feito na consulta. Define duração padrão e preço.
+model Procedure {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  name            String
+  description     String?
+  /// Duração padrão em minutos — usada para calcular endsAt do agendamento.
+  durationMinutes Int       @map("duration_minutes")
+  /// Preço em centavos: dinheiro nunca em float.
+  priceInCents    Int       @map("price_in_cents")
+  isActive        Boolean   @default(true) @map("is_active")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  appointments Appointment[]
+
+  @@index([tenantId])
+  @@map("procedures")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  patientId         String            @map("patient_id")
+  professionalId    String            @map("professional_id")
+  procedureId       String            @map("procedure_id")
+  startsAt          DateTime          @map("starts_at")
+  endsAt            DateTime          @map("ends_at")
+  status            AppointmentStatus @default(SCHEDULED)
+  notes             String?
+  /// Preço praticado no ato — copiado do procedimento, pois o preço de tabela
+  /// muda com o tempo e o histórico não pode mudar junto.
+  priceInCents      Int               @map("price_in_cents")
+  confirmedAt       DateTime?         @map("confirmed_at")
+  cancelledAt       DateTime?         @map("cancelled_at")
+  cancelReason      String?           @map("cancel_reason")
+  /// Token do link enviado ao paciente. Ele confirma sem precisar de login,
+  /// então o token é a única credencial — opaco e único.
+  confirmationToken String?           @unique @map("confirmation_token")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  professional Professional @relation(fields: [professionalId], references: [id])
+  procedure    Procedure    @relation(fields: [procedureId], references: [id])
+  messages     Message[]
+
+  // Busca da agenda: sempre por tenant + profissional + janela de tempo.
+  @@index([tenantId, professionalId, startsAt])
+  @@index([tenantId, startsAt])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
+}
+
+enum MessageType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMATION_RECEIPT
+  MANUAL
+}
+
+enum MessageStatus {
+  /// Na fila, ainda não tentada.
+  PENDING
+  SENT
+  /// Confirmado pelo provider (Meta devolve status de entrega).
+  DELIVERED
+  /// Esgotou as tentativas. É este status que alimenta a lista de
+  /// "ligar para estes pacientes" — falha nunca é silenciosa.
+  FAILED
+}
+
+/// Rastro de cada mensagem. Existe para três coisas: saber o que foi enviado,
+/// expor as falhas para a recepção agir, e contar conversas por clínica
+/// (base da franquia de cobrança).
+model Message {
+  id                String         @id @default(uuid())
+  tenantId          String         @map("tenant_id")
+  appointmentId     String?        @map("appointment_id")
+  channel           MessageChannel @default(WHATSAPP)
+  type              MessageType
+  status            MessageStatus  @default(PENDING)
+  /// Telefone destino, congelado no envio (o cadastro pode mudar depois).
+  toPhone           String         @map("to_phone")
+  body              String
+  /// Qual provider tratou o envio: fake | evolution | meta.
+  provider          String?
+  /// Id da mensagem no provider, para conciliar status de entrega.
+  providerMessageId String?        @map("provider_message_id")
+  attempts          Int            @default(0)
+  lastError         String?        @map("last_error")
+  /// Quando deve sair da fila (lembrete D-1 é agendado, não imediato).
+  scheduledFor      DateTime?      @map("scheduled_for")
+  sentAt            DateTime?      @map("sent_at")
+  failedAt          DateTime?      @map("failed_at")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([appointmentId])
+  @@map("messages")
 }
