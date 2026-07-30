@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsHexColor,
   IsOptional,
@@ -44,4 +45,13 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Reescreve as mensagens de WhatsApp com IA (DeepSeek), com tom mais natural. ' +
+      'Se a IA falhar ou omitir algum dado, o envio cai automaticamente para o texto padrão.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  aiMessagesEnabled?: boolean;
 }

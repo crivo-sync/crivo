@@ -133,7 +133,8 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Fallback visível:** esgotou as tentativas → `GET /messages/failed` lista quem precisa de ligação
    - [x] Providers plugáveis (`fake` / `evolution` / `meta`) por env var
    - [x] Rastro de cada envio em `messages` (base para contar conversas por clínica)
-   - [ ] Templates editáveis por clínica (hoje o texto é fixo no código)
+   - [x] **Mensagens com IA (DeepSeek), opcional por clínica** (30/07/2026) — reescreve o lembrete com tom natural, mantendo nome/data/hora/link validados literalmente; qualquer falha ou omissão cai no template fixo. Ver [README → Mensagens com IA](./README.md#mensagens-com-ia-opcional-por-clínica)
+   - [ ] Templates editáveis por clínica (hoje o template *fixo* — usado quando a IA está desligada ou falha — é único e fica no código)
    - [ ] Template aprovado pela Meta — texto livre só funciona dentro da janela de 24h
    - [ ] Webhook de status de entrega (`DELIVERED`) e de resposta do paciente
    - [ ] Reenvio manual a partir da lista de falhas
@@ -203,6 +204,8 @@ Quatro observações:
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
 | Tentação de usar API não oficial para baratear | **Decidido: Meta Cloud API oficial.** Banimento é permanente e sem recurso — perderíamos a agenda do cliente junto com o número |
 | Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |
+| Custo do DeepSeek por mensagem (feature de IA opcional) | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano |
+| IA alucinar ou distorcer um dado da mensagem | **Mitigado por design:** prompt restringe a redigir, nunca a decidir fato; validação pós-geração confere nome/data/hora/link literalmente antes de aceitar o texto — se algo faltar, cai no template fixo |
 
 ---
 

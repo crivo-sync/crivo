@@ -15,7 +15,7 @@ import {
   SEND_JOB_OPTIONS,
   SendMessageJob,
 } from '../../infrastructure/queue/messaging.queue';
-import { MessageTemplateService } from '../services/message-template.service';
+import { MessageComposerService } from '../services/message-composer.service';
 
 @Injectable()
 export class ScheduleAppointmentReminderUseCase {
@@ -27,7 +27,7 @@ export class ScheduleAppointmentReminderUseCase {
     @InjectQueue(MESSAGING_QUEUE)
     private readonly queue: Queue<SendMessageJob>,
     private readonly prisma: PrismaService,
-    private readonly templates: MessageTemplateService,
+    private readonly composer: MessageComposerService,
     private readonly config: ConfigService,
   ) {}
 
@@ -46,7 +46,7 @@ export class ScheduleAppointmentReminderUseCase {
         patient: { select: { name: true, phone: true } },
         professional: { select: { name: true } },
         procedure: { select: { name: true } },
-        tenant: { select: { name: true } },
+        tenant: { select: { name: true, aiMessagesEnabled: true } },
       },
     });
 
@@ -65,13 +65,14 @@ export class ScheduleAppointmentReminderUseCase {
       });
     }
 
-    const body = this.templates.appointmentReminder({
+    const body = await this.composer.composeReminder({
       patientName: appointment.patient.name,
       clinicName: appointment.tenant.name,
       professionalName: appointment.professional.name,
       procedureName: appointment.procedure.name,
       startsAt: appointment.startsAt,
       confirmationToken,
+      aiMessagesEnabled: appointment.tenant.aiMessagesEnabled,
     });
 
     const sendAt = new Date(

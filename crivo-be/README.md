@@ -256,7 +256,7 @@ Para restringir por papel, some `RolesGuard` + `@Roles(Role.ADMIN)`:
 | `POST` | `/auth/logout-all` | Autenticado — encerra todas as sessões do usuário |
 | `GET` | `/tenants/branding/:subdomain` | Público — logo/cores para o front white-label |
 | `GET` | `/tenants/me` | Autenticado |
-| `PATCH` | `/tenants/me` | **ADMIN** |
+| `PATCH` | `/tenants/me` | **ADMIN** — inclui `aiMessagesEnabled` (mensagens com IA) |
 | `GET` | `/users` | **ADMIN** |
 | `POST` | `/users` | **ADMIN** — cria recepção/profissional no tenant |
 | `PATCH` | `/users/:id` | **ADMIN** — nome, papel, ativar/desativar |
@@ -360,6 +360,33 @@ Trocados por env var, sem mudar código:
 > ⚠️ **A Evolution API não vai a produção.** A Meta não autoriza esse tipo de conexão e bane o número em definitivo, sem aviso e sem recurso — e para a clínica o número banido *é* a agenda. Ver [ROADMAP.md](./ROADMAP.md#a-dor-que-valida-o-produto).
 
 Com `fake`, um telefone terminado em `0000` falha de propósito — é como se testa o caminho de erro sem infra nenhuma.
+
+### Mensagens com IA (opcional, por clínica)
+
+Quando `Tenant.aiMessagesEnabled = true`, o texto do lembrete é reescrito pelo DeepSeek antes do envio — tom mais natural e caloroso a cada mensagem, em vez do template fixo sempre igual. Nenhum concorrente do [panorama levantado](./ROADMAP.md#panorama-de-concorrentes) oferece isso na redação da mensagem (eles usam IA para prontuário/previsão, não para o texto em si).
+
+```
+PATCH /tenants/me
+{ "aiMessagesEnabled": true }
+```
+
+**A IA só redige — nunca decide o fato.** O prompt do sistema proíbe inventar nome, data, horário ou alterar o link; e depois da geração, o `MessageComposerService` confere que os quatro aparecem *literalmente* no texto antes de aceitá-lo. Se algum faltar, se a chamada falhar, ou se ela não responder em `AI_TIMEOUT_MS` (5s por padrão), cai **automaticamente e em silêncio** para o template fixo de sempre.
+
+```
+composeReminder()
+  aiMessagesEnabled=false ────────────────────────────────► template fixo
+  aiMessagesEnabled=true
+        │
+        ▼
+  DeepSeek gera o texto (timeout 5s)
+        │
+        ├── sucesso E contém nome+data+hora+link ──► usa o texto da IA
+        └── falhou, expirou, OU omitiu um dado ────► template fixo (log de warning)
+```
+
+Isso é uma continuação do mesmo princípio do resto do módulo: **o envio nunca atrasa nem falha por causa de uma dependência externa.** A IA é only-upside — funciona, o texto fica melhor; falha, o paciente recebe a mesma mensagem confiável de sempre.
+
+Provider trocável (`AI_TEXT_GENERATOR` no `MessagingModule`) caso um dia troque de modelo — hoje só o `DeepSeekTextGenerator` existe.
 
 ### Dependência de infraestrutura
 

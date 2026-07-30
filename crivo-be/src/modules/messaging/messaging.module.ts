@@ -3,17 +3,20 @@ import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { AI_TEXT_GENERATOR } from './domain/ai/ai-text-generator';
 import { MESSAGE_PROVIDER } from './domain/provider/message-provider';
 import { MESSAGE_REPOSITORY } from './domain/repository/message.repository';
 import { PrismaMessageRepository } from './infrastructure/prisma/prisma-message.repository';
 import { FakeMessageProvider } from './infrastructure/providers/fake-message.provider';
 import { EvolutionMessageProvider } from './infrastructure/providers/evolution-message.provider';
 import { MetaMessageProvider } from './infrastructure/providers/meta-message.provider';
+import { DeepSeekTextGenerator } from './infrastructure/ai/deepseek-text-generator';
 import { MessageProcessor } from './infrastructure/queue/message.processor';
 import { MESSAGING_QUEUE } from './infrastructure/queue/messaging.queue';
 import { MessageController } from './infrastructure/http/message.controller';
 import { ConfirmationController } from './infrastructure/http/confirmation.controller';
 import { MessageTemplateService } from './application/services/message-template.service';
+import { MessageComposerService } from './application/services/message-composer.service';
 import { ScheduleAppointmentReminderUseCase } from './application/use-cases/schedule-appointment-reminder.use-case';
 import { ConfirmByTokenUseCase } from './application/use-cases/confirm-by-token.use-case';
 import { GetMessagesUseCase } from './application/use-cases/get-messages.use-case';
@@ -80,6 +83,13 @@ import { GetMessagesUseCase } from './application/use-cases/get-messages.use-cas
     },
     MessageProcessor,
     MessageTemplateService,
+    MessageComposerService,
+    {
+      // Um único generator hoje (DeepSeek), mas atrás de interface para
+      // trocar de provider de IA sem tocar no resto do módulo.
+      provide: AI_TEXT_GENERATOR,
+      useClass: DeepSeekTextGenerator,
+    },
     ScheduleAppointmentReminderUseCase,
     ConfirmByTokenUseCase,
     GetMessagesUseCase,

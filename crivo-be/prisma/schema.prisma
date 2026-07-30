@@ -22,6 +22,10 @@ model Tenant {
   email   String?
   address String?
 
+  /// Liga a reescrita das mensagens de WhatsApp por IA (DeepSeek). Desligado
+  /// por padrão: sem custo extra nem dependência externa até a clínica optar.
+  aiMessagesEnabled Boolean @default(false) @map("ai_messages_enabled")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

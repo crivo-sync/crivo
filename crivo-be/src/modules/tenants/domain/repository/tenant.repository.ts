@@ -8,6 +8,7 @@ export type UpdateTenantData = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  aiMessagesEnabled?: boolean;
 };
 
 export const TENANT_REPOSITORY = 'TenantRepository';
