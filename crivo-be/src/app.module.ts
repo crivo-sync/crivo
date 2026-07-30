@@ -4,6 +4,12 @@ import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PatientsModule } from './modules/patients/patients.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { ProfessionalsModule } from './modules/professionals/professionals.module';
+import { ProceduresModule } from './modules/procedures/procedures.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -65,7 +71,13 @@ import { AuthModule } from './modules/auth/auth.module';
       },
     ]),
     AuthModule,
+    TenantsModule,
+    UsersModule,
     PatientsModule,
+    ProfessionalsModule,
+    ProceduresModule,
+    AppointmentsModule,
+    MessagingModule,
   ],
   controllers: [],
   providers: [],
