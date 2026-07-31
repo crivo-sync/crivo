@@ -1,0 +1,30 @@
+"use client";
+
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
+import { PRICING_PLANS } from "../../_data/pricing-plans";
+import { PricingCard } from "../../_components/pricing-card";
+
+export const PricingGrid = () => {
+  return (
+    <section className="relative overflow-hidden px-6 pt-8 pb-6 text-gray-900">
+      <div className="pointer-events-none absolute right-1/4 bottom-0 h-125 w-125 rounded-full bg-indigo-600/3 blur-[120px]" />
+
+      <div className="relative z-10 mx-auto max-w-5xl">
+        <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {PRICING_PLANS.map((plan, idx) => (
+            <ScrollReveal key={plan.name} direction="up" delay={idx * 100} duration={700}>
+              <PricingCard plan={plan} />
+            </ScrollReveal>
+          ))}
+        </div>
+
+        <ScrollReveal direction="up" delay={400} duration={700}>
+          <p className="mt-8 text-center text-sm text-gray-500">
+            Valores em fase de validação com clientes reais e sujeitos a ajuste ·{" "}
+            <span className="text-gray-600">Sem fidelidade</span>
+          </p>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+};
