@@ -1,10 +1,5 @@
-import { Space_Grotesk } from "next/font/google";
-
 import { Footer } from "@/components/ui/footer";
 import { Header } from "@/components/ui/header";
-
-// Marketing usa Space Grotesk (mesma escolha do snap-fe); o app segue com Geist.
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 
 export default function WebsiteLayout({
   children,
@@ -12,7 +7,9 @@ export default function WebsiteLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className={spaceGrotesk.className}>
+    // A fonte (Space Grotesk) vem do layout raiz via `--font-sans`, a mesma
+    // que o admin consome pelo theme do MUI.
+    <div>
       <Header />
       <main
         className="min-h-screen pt-20"

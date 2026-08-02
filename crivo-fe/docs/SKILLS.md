@@ -55,60 +55,119 @@ O fluxo de dados da feature segue uma hierarquia unidirecional e em camadas bem 
 graph TD
     Component[Componente Visual UI] -->|1. Consome dados e envia ações| Hook[Custom Hook / React Query]
     Hook -->|2. Executa mutations / queries| Action[Server Action / use server]
-    Action -->|3. Faz requisição à API externa| HTTP[HTTP Client / Axios / Fetch]
+    Action -->|3. Lê a sessão e repassa o token| HTTP[HTTP Client / ky]
+    HTTP -->|4. Chama a API diretamente| Backend[(crivo-be)]
 ```
 
-### A. HTTP (`http/`)
+### A. Cliente HTTP e autenticação (`src/config/api.ts`)
 
-Realiza as chamadas de rede cruas para os microsserviços.
+Uma **única instância `ky`** apontando direto para o backend. Sem proxy, sem
+Route Handler intermediário, sem BFF.
 
-- **Tecnologia**: Deve utilizar uma instância unificada do cliente de API (ex: Axios ou Fetch com interceptores configurados).
-- **Regra**: Não deve conter gerenciamento de estado ou validações complexas. Apenas envia parâmetros e retorna a resposta mapeada.
+```typescript
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+
+export function authHeaders(accessToken: string): Record<string, string> {
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
+export const api: KyInstance = ky.extend({
+  prefix: API_URL,
+  timeout: 15_000,
+  retry: 0,
+  cache: "no-store",
+  headers: { Accept: "application/json" },
+  hooks: {
+    // Troca a mensagem crua do ky pela mensagem que a API devolve no corpo.
+    beforeError: [/* … */],
+  },
+});
+```
+
+**Regras invioláveis:**
+
+1. **Nunca criar um Route Handler proxy** (`app/api/**`) para repassar chamadas
+   à API de negócio. Isso adiciona um salto de rede inútil, duplica tratamento
+   de erro e quebra em Server Actions (`fetch` no server não tem base URL
+   implícita como no browser — um caminho relativo tipo `/api/backend` não
+   resolve). Server Actions rodam no mesmo processo Node e falam com o backend
+   diretamente.
+2. **Nunca instanciar `ky`/`fetch` avulso dentro de uma feature.** Toda chamada
+   passa pela instância de `src/config/api.ts`, para herdar timeout, tratamento
+   de erro e headers padrão.
+3. **A instância não injeta auth.** Endpoints públicos (login, register) a usam
+   direto; endpoints autenticados recebem `headers: authHeaders(accessToken)`.
+4. **O tenant nunca vai no request.** O crivo-be sempre o extrai do próprio
+   token (`TenantContextGuard`) — nunca do body, da query ou de um header.
+
+### B. HTTP (`http/`)
+
+Realiza as chamadas de rede cruas. **Camada pura**: não lê cookies, não acessa
+`next/headers`, não valida — recebe tudo por parâmetro e devolve a resposta
+tipada. É isso que a mantém testável sem mockar o runtime do Next.
+
+- **Regra**: o `accessToken` chega como **parâmetro**, nunca lido de dentro.
 - **Exemplo**:
 
   ```typescript
-  import { api } from "@/src/config/api";
-  import { ItemsListResponse, ItemsQueryParams } from "../schemas";
+  import { api, authHeaders } from "@/config/api";
+  import type { PaginatedResponse, Patient } from "../types";
+  import type { PatientsQueryParams } from "../schemas/patients-query-params";
 
-  export async function getItems(
-    params?: ItemsQueryParams,
-  ): Promise<ItemsListResponse> {
-    const response = await api.get<ItemsListResponse>("/items", {
-      params: {
-        page: params?.page,
-        size: params?.limit,
-        search: params?.search,
-      },
-    });
-    return response.data;
+  export async function getPatients(
+    params: PatientsQueryParams,
+    accessToken: string,
+  ): Promise<PaginatedResponse<Patient>> {
+    return api
+      .get("patients", {
+        headers: authHeaders(accessToken),
+        searchParams: {
+          page: params.page,
+          perPage: params.perPage,
+          ...(params.search ? { search: params.search } : {}),
+        },
+      })
+      .json<PaginatedResponse<Patient>>();
   }
   ```
 
-### B. Server Actions (`actions/`)
+### C. Server Actions (`actions/`)
 
 Funções assíncronas rodando estritamente no servidor Next.js (`"use server"`).
 
-- **Regra**: Servem de ponte segura. Tratam cookies de sessão, variáveis de ambiente seguras e manipulam autenticações sensíveis antes de chamar a camada HTTP.
+- **Regra**: são a ponte segura. É **aqui** — e só aqui — que a sessão é lida
+  (`getServerSession()`), o input é validado com Zod e o token é repassado para
+  a camada `http/`. Sempre retornam `{ success, message, data? }`, nunca lançam.
 - **Exemplo**:
 
   ```typescript
   "use server";
 
-  import { getItems } from "../http/get-items";
-  import { ItemsQueryParams } from "../schemas/items-query-params";
+  import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+  import { getPatients } from "../http/get-patients";
+  import type { PatientsQueryParams } from "../schemas/patients-query-params";
+  import type { ActionResult, PaginatedResponse, Patient } from "../types";
 
-  export async function getItemsListingAction(params?: ItemsQueryParams) {
+  export async function getPatientsAction(
+    params: PatientsQueryParams,
+  ): Promise<ActionResult<PaginatedResponse<Patient>>> {
+    const session = await getServerSession();
+    if (!session) return { success: false, message: SESSION_EXPIRED_MESSAGE };
+
     try {
-      const data = await getItems(params);
+      const data = await getPatients(params, session.accessToken);
       return { success: true, message: "Sucesso", data };
-    } catch (error: any) {
-      console.error("[Get Items Action Error]", error);
-      return { success: false, message: error.message || "Erro inesperado" };
+    } catch (error) {
+      console.error("[Get Patients Action Error]", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Erro inesperado",
+      };
     }
   }
   ```
 
-### C. Custom Hooks & React Query (`hooks/`)
+### D. Custom Hooks & React Query (`hooks/`)
 
 A camada de controle de estado e sincronização assíncrona.
 
@@ -202,7 +261,7 @@ A camada de controle de estado e sincronização assíncrona.
   }
   ```
 
-### D. Componentes (`components/`)
+### E. Componentes (`components/`)
 
 A camada estritamente visual (apresentação).
 
@@ -346,3 +405,8 @@ Ao realizar qualquer refatoração ou implementar uma nova feature, seja extrema
 5. **Testes Unitários Obrigatórios**:
    - **Proibido**: Entregar componentes, hooks ou utilitários sem testes automatizados que verifiquem o comportamento esperado e as ramificações de erro.
    - **Critério**: Todos os arquivos devem estar cobertos por testes unitários (`.test.tsx` / `.test.ts`) localizados ao lado de sua respectiva implementação, utilizando mocks limpos de dependências de rota e rede.
+
+6. **Acesso à API Sem Camadas Intermediárias**:
+   - **Proibido**: Criar Route Handler proxy em `app/api/**` para repassar chamadas à API de negócio, ou instanciar `ky`/`fetch`/`axios` avulso dentro de uma feature.
+   - **Proibido**: Ler cookies ou tocar em `next/headers` dentro da camada `http/`.
+   - **Critério**: Toda chamada usa a instância única de `src/config/api.ts` e fala com o backend diretamente. A Server Action lê a sessão e repassa o `accessToken` como parâmetro para o `http/`, que permanece puro. Ver [seção 2.A](#a-cliente-http-e-autenticação-srcconfigapits).

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-// Geist em tudo — body e headings — conforme o preset shadcn (--preset b1FSWjjrU).
-const geistSans = Geist({
+// Space Grotesk em todo o produto — site institucional e painel. Carregada
+// uma única vez aqui e consumida via `var(--font-sans)`: pelo Tailwind no
+// site e pelo theme do MUI no admin (src/config/mui-theme.ts).
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -33,7 +35,7 @@ export default function RootLayout({
       className={cn(
         "h-full",
         "antialiased",
-        geistSans.variable,
+        spaceGrotesk.variable,
         geistMono.variable,
         "font-sans",
       )}
