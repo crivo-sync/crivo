@@ -14,7 +14,7 @@ export class PaginationQueryDto {
   page: number = 1;
 
   @ApiPropertyOptional({
-    default: 20,
+    default: 10,
     minimum: 1,
     maximum: 100,
     description: 'Quantidade de registros por página',
@@ -24,7 +24,7 @@ export class PaginationQueryDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  perPage: number = 20;
+  perPage: number = 10;
 
   @ApiPropertyOptional({ description: 'Termo de busca' })
   @IsOptional()
