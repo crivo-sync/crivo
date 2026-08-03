@@ -86,18 +86,24 @@ export const TenantSettings = () => {
 
   if (isLoading || !tenant) {
     return (
-      <Card variant="outlined" sx={{ p: 3, maxWidth: 560 }}>
-        <Stack spacing={2.5}>
+      <Card variant="outlined" sx={{ p: 3 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: 2.5,
+          }}
+        >
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} height={56} />
           ))}
-        </Stack>
+        </Box>
       </Card>
     );
   }
 
   return (
-    <Card variant="outlined" sx={{ p: 3, maxWidth: 560 }}>
+    <Card variant="outlined" sx={{ p: 3 }}>
       {!canManage && (
         <Alert severity="info" sx={{ mb: 3 }}>
           Somente administradores podem editar os dados da clínica.
@@ -106,71 +112,79 @@ export const TenantSettings = () => {
 
       <form onSubmit={onSubmit}>
         <Stack spacing={2.5}>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                id="name"
-                label="Nome da clínica"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                disabled={!canManage}
-                fullWidth
-              />
-            )}
-          />
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2.5,
+            }}
+          >
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  id="name"
+                  label="Nome da clínica"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  disabled={!canManage}
+                  fullWidth
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                id="tenant-email"
-                type="email"
-                label="E-mail de contato"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                disabled={!canManage}
-                fullWidth
-              />
-            )}
-          />
+            <Controller
+              control={control}
+              name="email"
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  id="tenant-email"
+                  type="email"
+                  label="E-mail de contato"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  disabled={!canManage}
+                  fullWidth
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field, fieldState }) => (
-              <MaskedTextField
-                {...field}
-                {...PHONE_MASK}
-                id="tenant-phone"
-                label="Telefone"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                disabled={!canManage}
-                fullWidth
-              />
-            )}
-          />
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field, fieldState }) => (
+                <MaskedTextField
+                  {...field}
+                  {...PHONE_MASK}
+                  id="tenant-phone"
+                  label="Telefone"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  disabled={!canManage}
+                  fullWidth
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="address"
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                id="address"
-                label="Endereço"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                disabled={!canManage}
-                fullWidth
-              />
-            )}
-          />
+            <Controller
+              control={control}
+              name="address"
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  id="address"
+                  label="Endereço"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  disabled={!canManage}
+                  fullWidth
+                />
+              )}
+            />
+          </Box>
 
           <Controller
             control={control}
@@ -189,7 +203,13 @@ export const TenantSettings = () => {
             )}
           />
 
-          <Box sx={{ display: "flex", gap: 2.5 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2.5,
+            }}
+          >
             <Controller
               control={control}
               name="primaryColor"
