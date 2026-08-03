@@ -28,7 +28,7 @@ src/features/<FeatureName>/
 │   ├── use-post-<item>.ts
 │   ├── use-put-<item>.ts
 │   └── use-delete-<item>.ts
-├── http/                # Integrações brutas de API (Axios client)
+├── http/                # Integrações brutas de API (instância ky de src/config/api.ts)
 │   ├── get-<items>.ts
 │   ├── get-<item>.ts
 │   ├── post-<item>.ts
@@ -173,31 +173,33 @@ A camada de controle de estado e sincronização assíncrona.
 
 - **Regra**: Todos os fetches de dados assíncronos e mutations devem ser encapsulados em hooks que utilizam `@tanstack/react-query` (`useQuery`, `useMutation`).
 - **Sincronização de Filtros e URL (Debounce)**: Lógicas de filtros de busca com debounce que escrevem parâmetros na URL (`searchParams`) devem ser isoladas em um hook próprio de estado de filtros.
-- **Exemplo de Hook de React Query (`use-item-management.ts`)**:
+- **Exemplo de Hook de React Query (`use-patients.ts`, real do projeto)**:
 
   ```typescript
+  "use client";
+
   import { useQuery } from "@tanstack/react-query";
-  import { getItemsListingAction } from "../actions/get-items-listing-action";
-  import { ItemsQueryParams } from "../schemas/items-query-params";
+  import { getPatientsAction } from "../actions/get-patients-action";
+  import type { PatientsQueryParams } from "../schemas/patients-query-params";
 
-  const ITEMS_QUERY_KEY = ["items"] as const;
+  export const PATIENTS_QUERY_KEY = ["patients"] as const;
 
-  export function useItemManagement(params: ItemsQueryParams) {
+  export function usePatients(params: PatientsQueryParams) {
     const { data, isLoading, isFetching, error, refetch } = useQuery({
-      queryKey: [...ITEMS_QUERY_KEY, params],
+      queryKey: [...PATIENTS_QUERY_KEY, params],
       queryFn: async () => {
-        const response = await getItemsListingAction(params);
-        if (!response.success) {
-          throw new Error(response.message);
+        const result = await getPatientsAction(params);
+        if (!result.success) {
+          throw new Error(result.message);
         }
-        return response.data;
+        return result.data;
       },
       placeholderData: (previousData) => previousData,
     });
 
     return {
-      items: data?.data ?? [],
-      total: data?.meta?.totalElements ?? 0,
+      patients: data?.data ?? [],
+      meta: data?.meta,
       isLoading,
       isFetching,
       error,
@@ -206,26 +208,62 @@ A camada de controle de estado e sincronização assíncrona.
   }
   ```
 
-- **Exemplo de Hook de Filtros e Query Strings (`use-item-filters-state.ts`)**:
+  Mutations seguem o mesmo padrão, mas usando `useMutation` + o hook global
+  de Snackbar (ver seção 3) e invalidando a query da listagem no sucesso:
 
   ```typescript
-  import { useRouter, usePathname, useSearchParams } from "next/navigation";
-  import { useForm, useWatch } from "react-hook-form";
-  import { useEffect, useCallback } from "react";
+  "use client";
 
-  export function useItemFiltersState() {
+  import { useMutation, useQueryClient } from "@tanstack/react-query";
+  import { useSnackbar } from "@/components/providers/snackbar-provider";
+  import { postPatientAction } from "../actions/post-patient-action";
+  import { PATIENTS_QUERY_KEY } from "./use-patients";
+  import type { CreatePatientSchema } from "../schemas/patient";
+
+  export function useCreatePatient() {
+    const queryClient = useQueryClient();
+    const snackbar = useSnackbar();
+
+    return useMutation({
+      mutationFn: async (input: CreatePatientSchema) => {
+        const result = await postPatientAction(input);
+        if (!result.success) throw new Error(result.message);
+        return result.data;
+      },
+      onSuccess: () => {
+        snackbar.showSuccess("Paciente cadastrado.");
+        queryClient.invalidateQueries({ queryKey: PATIENTS_QUERY_KEY });
+      },
+      onError: (error) => snackbar.showError(error.message),
+    });
+  }
+  ```
+
+- **Exemplo de Hook de Filtros e Query Strings (`use-patients-filters-state.ts`, real do projeto)**:
+
+  > A API do crivo-be é 1-indexed (`page: 1` é a primeira página) — não
+  > 0-indexed como muitos componentes de tabela assumem por padrão. O hook
+  > de filtros usa a convenção da API; é o wrapper do DataGrid
+  > (`src/components/data-grid/`) quem converte para o índice 0 que o MUI
+  > X DataGrid espera, não o contrário.
+
+  ```typescript
+  "use client";
+
+  import { useCallback, useEffect } from "react";
+  import { usePathname, useRouter, useSearchParams } from "next/navigation";
+  import { useForm, useWatch } from "react-hook-form";
+
+  export function usePatientsFiltersState() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const page = Number(searchParams.get("page") ?? "0");
-    const pageSize = Number(searchParams.get("pageSize") ?? "10");
+    const page = Number(searchParams.get("page") ?? "1");
+    const perPage = Number(searchParams.get("perPage") ?? "10");
     const urlSearch = searchParams.get("search") ?? "";
 
-    const { control, reset } = useForm({
-      defaultValues: { search: urlSearch },
-    });
-
+    const { control, reset } = useForm({ defaultValues: { search: urlSearch } });
     const watchedSearch = useWatch({ control, name: "search" });
 
     const updateParams = useCallback(
@@ -240,23 +278,25 @@ A camada de controle de estado e sincronização assíncrona.
       [searchParams, pathname, router],
     );
 
-    // Efeito com debounce de 1 segundo para atualização automática na URL
     useEffect(() => {
       const handler = setTimeout(() => {
         if (watchedSearch !== urlSearch) {
-          updateParams({ search: watchedSearch, page: "0" });
+          updateParams({ search: watchedSearch ?? "", page: "1" });
         }
-      }, 1000);
+      }, 500);
       return () => clearTimeout(handler);
     }, [watchedSearch, urlSearch, updateParams]);
 
     return {
       control,
       page,
-      pageSize,
+      perPage,
       urlSearch,
       updateParams,
-      clearFilters: () => reset({ search: "" }),
+      clearFilters: () => {
+        reset({ search: "" });
+        updateParams({ search: null, page: "1" });
+      },
     };
   }
   ```
@@ -266,63 +306,93 @@ A camada de controle de estado e sincronização assíncrona.
 A camada estritamente visual (apresentação).
 
 - **Regra**: Devem apenas exibir informações e receber interações do usuário. Não instanciam estados do `react-hook-form` ou gerenciam chaves de query cache. Eles consomem as saídas dos hooks customizados.
+- **Biblioteca de UI**: Material UI. Componentes visuais compõem primitivas do MUI (`Box`, `Stack`, `TextField`, `Dialog`, `Alert`, o `AppDataGrid` genérico de `src/components/data-grid/`) — nunca HTML cru estilizado à mão nem Tailwind (isso é exclusivo do site institucional em `(website)`, um sistema visual separado).
 - **Componente <FeatureName>/index.tsx (Controller)**: Atua como orchestrator. Consome os hooks de estado e React Query, decide sobre renderizações globais (como telas de loading ou tratamento global de erros) e distribui as propriedades para subcomponentes menores (`dumb components`).
-- **Exemplo (`<FeatureName>/index.tsx`)**:
+- **Exemplo (`PatientManagement/index.tsx`, real do projeto — resumido)**:
 
   ```typescript
   "use client";
 
-  import { ProgressCircular } from "@/src/components/ProgressCircular";
-  import { ErrorServer } from "@/src/components/ErrorServer";
-  import { ItemFilters } from "./ItemFilters";
-  import { ItemTable } from "./ItemTable";
-  import { useItemFiltersState } from "../../hooks/use-item-filters-state";
-  import { useItemManagement } from "../../hooks/use-item-management";
+  import { useState } from "react";
+  import AddIcon from "@mui/icons-material/Add";
+  import Alert from "@mui/material/Alert";
+  import Box from "@mui/material/Box";
+  import Button from "@mui/material/Button";
+  import Paper from "@mui/material/Paper";
 
-  export const ItemManagement = () => {
-    const { control, page, pageSize, urlSearch, updateParams, clearFilters } = useItemFiltersState();
-    const { items, total, isLoading, error, refetch } = useItemManagement({
-      page: page + 1,
-      limit: pageSize,
-      search: urlSearch,
+  import { usePatientsFiltersState } from "../../hooks/use-patients-filters-state";
+  import { usePatients } from "../../hooks/use-patients";
+  import { PatientFilters } from "../PatientFilters";
+  import { PatientsTable } from "../PatientsTable";
+  import { PatientFormDialog } from "../PatientFormDialog";
+
+  export const PatientManagement = () => {
+    const { control, page, perPage, urlSearch, updateParams, clearFilters } =
+      usePatientsFiltersState();
+    const { patients, meta, isLoading, error, refetch } = usePatients({
+      page,
+      perPage,
+      search: urlSearch || undefined,
     });
 
+    const [formOpen, setFormOpen] = useState(false);
+
     if (error) {
-      return <ErrorServer error={error.message} refetch={refetch} />;
+      return (
+        <Alert
+          severity="error"
+          action={<Button color="inherit" size="small" onClick={() => refetch()}>Tentar novamente</Button>}
+        >
+          {error.message}
+        </Alert>
+      );
     }
 
     return (
-      <>
-        <ItemFilters control={control} onClear={clearFilters} />
-        {isLoading ? (
-          <ProgressCircular size={24} title="Carregando..." />
-        ) : (
-          <ItemTable
-            items={items}
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onUpdateParams={updateParams}
-          />
-        )}
-      </>
+      <Paper elevation={1} sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+          <PatientFilters control={control} onClear={clearFilters} />
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormOpen(true)}>
+            Novo paciente
+          </Button>
+        </Box>
+        <PatientsTable patients={patients} meta={meta} loading={isLoading} onUpdateParams={updateParams} />
+        <PatientFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      </Paper>
     );
   };
   ```
+
+  Tabelas de listagem usam o `AppDataGrid` genérico (`src/components/data-grid/`),
+  que já resolve a conversão de paginação 1-indexed (API) ↔ 0-indexed (DataGrid).
+  Ações de linha (editar, remover) entram como `GridActionsCellItem` com
+  `showInMenu`, não como ícones soltos na linha — ver `PatientsTable/columns.tsx`.
+  `checkboxSelection` só entra quando a feature realmente consome a seleção
+  (ação em lote, ou travar a exclusão da própria conta); não é padrão default.
 
 ---
 
 ## 3. Reuso e utilitários globais de UI
 
-- **Alertas e Notificações (Snackbar)**: Não repita múltiplos hooks de estado em cada componente para abrir, fechar ou definir severidade de toasts. Utilize o hook global de Snackbar:
+- **Alertas e Notificações (Snackbar)**: Não repita múltiplos hooks de estado em cada componente para abrir, fechar ou definir severidade de toasts. Utilize o hook global de Snackbar (`src/components/providers/snackbar-provider.tsx`, montado uma vez em `MuiProvider`):
 
   ```typescript
-  import { useAlertSnackBar } from "@/src/hooks/use-alert-snackbar";
+  import { useSnackbar } from "@/components/providers/snackbar-provider";
 
-  const snackbar = useAlertSnackBar();
+  const snackbar = useSnackbar();
   // Uso direto: snackbar.showSuccess("Operação realizada!");
   // snackbar.showError("Erro inesperado!");
+  // snackbar.showInfo("...");
   ```
+
+- **Máscaras de digitação** (telefone, CPF, etc.): use `MaskedTextField`
+  (`src/components/masked-text-field/`) + os padrões prontos em
+  `src/lib/br-masks.ts`. Nunca implemente máscara na mão com `onChange` +
+  regex — o comportamento de cursor/backspace no meio do valor é sutil o
+  bastante para já ter causado bugs reais neste projeto (ver
+  `docs/ROADMAP.md`, seção "Armadilha resolvida: máscara dinâmica do
+  react-imask", antes de criar uma máscara nova com padrões de prefixo
+  comum, tipo "10 ou 11 dígitos").
 
 ---
 
@@ -349,7 +419,7 @@ Ao encontrar uma feature legada com componentes gigantescos, lógicas misturadas
 
 - Mova as requisições brutas para a pasta `http/`.
 - Crie um arquivo por endpoint/operação (ex: `delete-item.ts`, `get-items.ts`).
-- Substitua `fetch` nativo por chamadas limpas da instância compartilhada do Axios (`api`).
+- Substitua `fetch` nativo por chamadas limpas da instância `ky` compartilhada (`api`, de `src/config/api.ts`), passando o `accessToken` como parâmetro (ver seção 2.A).
 
 ### Passo 3: Decompor Schemas e Tipos
 
