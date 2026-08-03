@@ -10,21 +10,13 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
 import { logoutAction } from "@/features/auth/actions/logout-action";
+import { getInitials } from "@/lib/initials";
 
 type UserMenuProps = {
   displayName: string;
   /** Drawer expandido: mostra nome + botão. Colapsado: só o avatar clicável. */
   open: boolean;
 };
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const initials = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : [parts[0]];
-  return initials
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 export const UserMenu = ({ displayName, open }: UserMenuProps) => {
   const router = useRouter();
