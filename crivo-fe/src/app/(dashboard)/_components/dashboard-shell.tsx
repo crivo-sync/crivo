@@ -143,6 +143,7 @@ export const DashboardShell = ({
               aria-label="Abrir menu"
               onClick={() => setOpen(true)}
               edge="start"
+              color="inherit"
               sx={[{ mr: 2 }, open && { display: "none" }]}
             >
               <MenuIcon />
@@ -177,7 +178,11 @@ export const DashboardShell = ({
               </Typography>
             </Link>
           )}
-          <IconButton aria-label="Recolher menu" onClick={() => setOpen(false)}>
+          <IconButton
+            aria-label="Recolher menu"
+            onClick={() => setOpen(false)}
+            color="inherit"
+          >
             {theme.direction === "rtl" ? <MenuIcon /> : <ChevronLeftIcon />}
           </IconButton>
         </DrawerHeaderBar>
