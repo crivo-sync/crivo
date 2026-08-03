@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getAppointmentsAction } from "../actions/get-appointments-action";
 import type { AppointmentsQueryParams } from "../schemas/appointments-query-params";
 
@@ -20,8 +19,6 @@ export function useAppointments(params: AppointmentsQueryParams) {
     },
     placeholderData: (previousData) => previousData,
   });
-
-  useSessionExpiredGuard(error);
 
   return {
     appointments: data?.data ?? [],
