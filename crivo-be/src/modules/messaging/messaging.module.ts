@@ -94,6 +94,6 @@ import { GetMessagesUseCase } from './application/use-cases/get-messages.use-cas
     ConfirmByTokenUseCase,
     GetMessagesUseCase,
   ],
-  exports: [ScheduleAppointmentReminderUseCase],
+  exports: [ScheduleAppointmentReminderUseCase, MESSAGE_REPOSITORY],
 })
 export class MessagingModule {}
