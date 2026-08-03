@@ -121,6 +121,24 @@ Recurso de outro tenant retorna **404, não 403** — confirmar que o ID existe 
 
 Rota pública é exceção e merece comentário explicando o porquê.
 
+### Ordem de registro de controllers importa quando os prefixos colidem
+
+Se dois controllers compartilham prefixo (ex.: `@Controller('users')` com
+rota `PATCH :id`, e um `@Controller('users/me')` separado com `PATCH /`), o
+Nest resolve por **ordem de registro no array `controllers: [...]` do
+módulo**, não por especificidade de path. `PATCH /users/me` bate em
+`PATCH /users/:id` (com `id = "me"`) se `UserController` estiver listado
+antes de `MeController` — o `me` nunca chega a ser tratado pelo controller
+certo, e o erro que aparece (`"uuid is expected"`) não aponta pra causa real.
+
+Isso aconteceu de verdade ao criar `MeController` (`/users/me`, sem
+`@Roles`, endpoints de "minha própria conta") ao lado de `UserController`
+(`/users`, `@Roles(ADMIN)` de classe inteira, gestão de terceiros) — o fix
+foi só inverter a ordem: `controllers: [MeController, UserController]`, com
+um comentário no módulo explicando o porquê (não é óbvio revisitando o
+arquivo sem esse contexto). Regra prática: **o controller com o path mais
+específico sempre entra primeiro** no array.
+
 ---
 
 ## 4. DTOs
