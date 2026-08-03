@@ -1,0 +1,27 @@
+import type { Metadata } from "next";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+
+import { TenantSettings } from "@/features/tenant/components/TenantSettings";
+
+export const metadata: Metadata = {
+  title: "Configurações — Crivo",
+};
+
+const ConfiguracoesPage = () => {
+  return (
+    <Stack spacing={3}>
+      <Box>
+        <Typography variant="h6">Configurações</Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          Dados e identidade visual da clínica. Leitura liberada para todos;
+          edição restrita a administradores.
+        </Typography>
+      </Box>
+      <TenantSettings />
+    </Stack>
+  );
+};
+
+export default ConfiguracoesPage;
