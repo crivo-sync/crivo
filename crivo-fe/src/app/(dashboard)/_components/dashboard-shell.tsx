@@ -7,11 +7,18 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
-import MuiAppBar, { type AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
+import MuiAppBar, {
+  type AppBarProps as MuiAppBarProps,
+} from "@mui/material/AppBar";
 import MuiDrawer from "@mui/material/Drawer";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { styled, useTheme, type CSSObject, type Theme } from "@mui/material/styles";
+import {
+  styled,
+  useTheme,
+  type CSSObject,
+  type Theme,
+} from "@mui/material/styles";
 
 import { LogoMark } from "@/components/ui/logo";
 import type { NavItem } from "../_data/nav-items";
@@ -50,6 +57,13 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   ...theme.mixins.toolbar,
 }));
 
+// Mesmo componente, mas com a borda inferior que espelha a AppBar — só faz
+// sentido no header real da sidebar, não no placeholder que empurra o
+// conteúdo de `main` para baixo da AppBar fixa.
+const DrawerHeaderBar = styled(DrawerHeader)(({ theme }) => ({
+  borderBottom: `1px solid ${theme.palette.divider}`,
+}));
+
 interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
@@ -58,6 +72,13 @@ const AppBar = styled(MuiAppBar, {
   shouldForwardProp: (prop) => prop !== "open",
 })<AppBarProps>(({ theme, open }) => ({
   zIndex: theme.zIndex.drawer + 1,
+  // Mesmo visual do header da sidebar (DrawerHeader): fundo do Paper, uma
+  // única borda inferior fina, sem sombra — os dois precisam parecer a
+  // mesma barra cortada ao meio pela sidebar, não dois blocos distintos.
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  boxShadow: "none",
   transition: theme.transitions.create(["width", "margin"], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
@@ -109,8 +130,10 @@ export const DashboardShell = ({
 
   return (
     <Box sx={{ display: "flex" }}>
-      <AppBar position="fixed" open={open} color="default" elevation={0}>
+      <AppBar position="fixed" open={open} elevation={0}>
         <Toolbar>
+          {/* A marca já vive no header da sidebar; aqui só o botão de abrir
+              quando ela está recolhida, para não duplicar "Crivo". */}
           <IconButton
             aria-label="Abrir menu"
             onClick={() => setOpen(true)}
@@ -119,14 +142,11 @@ export const DashboardShell = ({
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Crivo
-          </Typography>
         </Toolbar>
       </AppBar>
 
       <Drawer variant="permanent" open={open}>
-        <DrawerHeader>
+        <DrawerHeaderBar>
           {open && (
             <Link
               href="/painel"
@@ -147,8 +167,7 @@ export const DashboardShell = ({
           <IconButton aria-label="Recolher menu" onClick={() => setOpen(false)}>
             {theme.direction === "rtl" ? <MenuIcon /> : <ChevronLeftIcon />}
           </IconButton>
-        </DrawerHeader>
-        <Divider />
+        </DrawerHeaderBar>
 
         <SidebarNav items={navItems} open={open} />
 
