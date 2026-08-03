@@ -12,6 +12,9 @@ export type UpdateUserData = {
   name?: string;
   role?: Role;
   isActive?: boolean;
+  /** Já deve chegar com hash — nenhum use case grava senha em texto puro. */
+  password?: string;
+  avatarUrl?: string;
 };
 
 export const USER_MANAGEMENT_REPOSITORY = 'UserManagementRepository';
