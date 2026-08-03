@@ -10,6 +10,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
 import { logoutAction } from "@/features/auth/actions/logout-action";
+import { useProfile } from "@/features/profile/hooks/use-profile";
 import { getInitials } from "@/lib/initials";
 
 type UserMenuProps = {
@@ -19,6 +20,7 @@ type UserMenuProps = {
 };
 
 export const UserMenu = ({ displayName, open }: UserMenuProps) => {
+  const { profile } = useProfile();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -50,7 +52,10 @@ export const UserMenu = ({ displayName, open }: UserMenuProps) => {
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5 }}>
-      <Avatar sx={{ width: 36, height: 36, fontSize: 13 }}>
+      <Avatar
+        src={profile?.avatarUrl ?? undefined}
+        sx={{ width: 36, height: 36, fontSize: 13 }}
+      >
         {getInitials(displayName)}
       </Avatar>
 
