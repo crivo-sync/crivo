@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import ContentCutOutlinedIcon from "@mui/icons-material/ContentCutOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -20,6 +21,7 @@ import type { SvgIconComponent } from "@mui/icons-material";
 import type { NavIconName, NavItem } from "../_data/nav-items";
 
 const ICONS: Record<NavIconName, SvgIconComponent> = {
+  dashboard: DashboardOutlinedIcon,
   agenda: CalendarMonthOutlinedIcon,
   pacientes: PersonOutlineOutlinedIcon,
   profissionais: MedicalServicesOutlinedIcon,
@@ -45,8 +47,12 @@ export const SidebarNav = ({ items, open }: SidebarNavProps) => {
   return (
     <List>
       {items.map((item) => {
+        // "/painel" é prefixo de toda rota do dashboard — sem essa exceção,
+        // o item "Painel" ficaria marcado como ativo em qualquer tela.
         const isActive =
-          pathname === item.href || pathname.startsWith(`${item.href}/`);
+          item.href === "/painel"
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = ICONS[item.icon];
 
         return (
