@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getProceduresAction } from "../actions/get-procedures-action";
 import type { ProceduresQueryParams } from "../schemas/procedures-query-params";
 
@@ -20,8 +19,6 @@ export function useProcedures(params: ProceduresQueryParams) {
     },
     placeholderData: (previousData) => previousData,
   });
-
-  useSessionExpiredGuard(error);
 
   return {
     procedures: data?.data ?? [],
