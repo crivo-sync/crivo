@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getMessagesAction } from "../actions/get-messages-action";
 import type { MessagesQueryParams } from "../schemas/messages-query-params";
 
@@ -20,8 +19,6 @@ export function useMessages(params: MessagesQueryParams) {
     },
     placeholderData: (previousData) => previousData,
   });
-
-  useSessionExpiredGuard(error);
 
   return {
     messages: data?.data ?? [],
