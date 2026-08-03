@@ -9,6 +9,16 @@ export const REFRESH_COOKIE = "crivo_refresh";
 /** Não-httpOnly de propósito: só nome/e-mail para exibição na UI, nunca autenticação. */
 export const DISPLAY_NAME_COOKIE = "crivo_display_name";
 
+// Alinhado ao access token (15min) e refresh token (30 dias) do crivo-be.
+export const ACCESS_TOKEN_MAX_AGE = 15 * 60;
+export const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60;
+
+export const SESSION_COOKIE_OPTIONS = {
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+};
+
 export type SessionRole = "ADMIN" | "STAFF";
 
 type JwtPayload = {
@@ -43,6 +53,15 @@ export type Session = {
   displayName: string | null;
 };
 
+/**
+ * Lê a sessão a partir do cookie. Não tenta renovar aqui: `cookies().set()`
+ * só é permitido em Server Action/Route Handler, nunca durante o render de
+ * Server Component (que é onde `getSession` roda, ex: `layout.tsx`) — por
+ * isso a renovação proativa do access token vive no `middleware.ts` da raiz,
+ * que intercepta a navegação ANTES do render e já entrega o cookie fresco.
+ * `null` aqui significa: sem cookie, ou expirado e o middleware não
+ * conseguiu renovar (refresh token também morto) — sessão morta de vez.
+ */
 export const getSession = async (): Promise<Session | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
@@ -72,7 +91,9 @@ export type ServerSession = {
  * não há sessão — quem chama trata como "deslogado".
  *
  * Server Actions leem daqui e repassam o token para a camada `http/`, que
- * permanece pura (sem `next/headers`) e testável isoladamente.
+ * permanece pura (sem `next/headers`) e testável isoladamente. Se o access
+ * token expirar NO MEIO de uma sequência de ações (não só na navegação de
+ * página, já coberta pelo middleware), `withAuth` faz o retry via refresh.
  */
 export const getServerSession = async (): Promise<ServerSession | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
