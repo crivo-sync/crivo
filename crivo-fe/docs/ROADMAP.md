@@ -15,8 +15,8 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `auth` (login, logout, proteção de rota) | 🟢 |
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
 | `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
+| `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `agenda` (appointments) | ⚪ Não iniciado |
-| `profissionais` (professionals) | ⚪ Não iniciado |
 | `procedimentos` (procedures) | ⚪ Não iniciado |
 | `mensagens` (messaging) | ⚪ Não iniciado |
 | `usuarios` (users) | ⚪ Não iniciado |
@@ -49,6 +49,8 @@ A arquitetura está validada ponta a ponta: `pacientes` implementa todas as cama
 
 - **`src/features/auth/`** — login, logout e resolução do nome de exibição.
 - **`src/features/patients/`** — CRUD completo (listagem paginada com busca, criar, editar, remover, telefone/CPF com máscara de digitação). **É a referência de implementação**: replicar sua estrutura ao criar as próximas.
+- **`src/features/professionals/`** — CRUD completo com **escrita restrita a ADMIN**. É a referência para features com ação por papel: `useIsAdmin()` decide o que a UI mostra, `requireAdmin()` barra na Server Action, e o backend (`@Roles(ADMIN)`) é a autoridade final.
+- **`src/components/providers/session-provider.tsx`** — expõe a sessão (papel, nome) aos componentes client via `useSession()` / `useIsAdmin()`. Só para decisões de UI; não é barreira de segurança.
 - **`src/components/masked-text-field/`** + **`src/lib/br-masks.ts`** — máscara de telefone (fixo/celular) e CPF via `react-imask`, genéricos para qualquer feature que precise. Ver nota abaixo — vale ler antes de adicionar uma nova máscara com padrões de prefixo comum.
 
 ---
@@ -111,7 +113,7 @@ Criar `GET /users/me`:
 
 Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acopladas):
 
-1. **`profissionais`** (`professionals`) — CRUD com `@Roles(ADMIN)` nas mutações. Introduz um padrão novo: **esconder/desabilitar ações por role dentro da página**, não só no menu. Hoje `session.role` só é consumido pelo layout; será preciso expô-lo aos componentes de feature.
+1. ~~**`profissionais`** (`professionals`)~~ — ✅ **feito**. Estabeleceu o padrão de ação por papel: `SessionProvider` + `useIsAdmin()` na UI, `requireAdmin()` nas Server Actions de escrita.
 2. **`procedimentos`** (`procedures`) — mesmo padrão de `profissionais` (preço e duração alimentam o formulário da agenda depois).
 3. **`agenda`** (`appointments`) — a mais complexa e a que justifica o produto. Depende das três anteriores para os selects. Inclui fluxos que não existem em nenhum CRUD atual: `PATCH :id/reschedule`, `PATCH :id/status` e visualização por calendário/dia.
 4. **`mensagens`** (`messaging`) — só leitura (`GET /messages`, `GET /messages/failed`); o disparo é automático no backend. A lista de falhas é a feature de maior valor: é o "avisar a recepção quando algo falha" do ROADMAP do backend.
@@ -156,12 +158,12 @@ que ainda não foram tomadas. Não teve pedido de usuário real até agora.
 ### Fase 2 — Robustez de sessão e UX
 
 - **Refresh automático** — o access token expira em 15 min e não há renovação: o usuário é deslogado no meio do trabalho. Implementar detecção de 401 que chama `POST /auth/refresh` com o cookie `crivo_refresh` e repete a requisição antes de propagar a falha. **É o item de maior impacto percebido nesta fase.**
-- **⚠️ Proteção de rota por role (bloquear telas conforme a role) — PENDENTE, não esquecer**:
-  `(dashboard)/layout.tsx` hoje só verifica se **existe sessão** (`redirect("/login")` se não houver). Ele **não checa `session.role`** — o menu esconde o link de "Usuários" para STAFF (`src/app/(dashboard)/_data/nav-items.ts`), mas isso é só cosmético: `/painel/usuarios` continua respondendo normalmente pra um STAFF que digite a URL direto. É uma falha de autorização real, não só de UX.
-  - **Onde resolver**: cada `page.tsx` (ou um `layout.tsx` por segmento, ex: `/painel/usuarios/layout.tsx`) que representa uma tela ADMIN-only precisa chamar `getSession()` e fazer `redirect()` (ou renderizar 403) se `session.role !== "ADMIN"` — mesmo padrão que `(dashboard)/layout.tsx` já usa pra checar sessão, só que checando role também.
-  - **Não basta checar no client**: qualquer verificação só em componente `"use client"` pode ser inspecionada/burlada; a checagem que importa é no Server Component/Server Action, antes de renderizar dado nenhum.
-  - **Aplica em cada feature nova que tiver ação restrita por role** (ex: `profissionais`/`procedimentos` com mutações `@Roles(ADMIN)` no backend) — não é só a tela de Usuários. O botão "Novo profissional" pode até ficar escondido/desabilitado pra STAFF na UI, mas a Server Action correspondente (`postProfessionalAction`, etc.) também precisa checar `session.role` antes de chamar o backend — o backend já rejeita (`@Roles(ADMIN)`), mas a Server Action devolver um erro claro em vez de deixar a chamada HTTP falhar é melhor UX e uma camada a mais de defesa.
-  - **Fazer isso ANTES ou JUNTO de `profissionais`/`procedimentos`/`usuarios`** (Fase 1) — não deixar pra depois como polimento, porque cada feature nova com mutação restrita por role reproduz a mesma lacuna se a proteção de rota não existir ainda.
+- **⚠️ Bloquear TELAS inteiras por papel — ainda PENDENTE, não esquecer**:
+  A proteção de **ações** já existe desde `profissionais` (UI via `useIsAdmin()`, Server Action via `requireAdmin()`, backend via `@Roles`). O que falta é a proteção da **rota em si**.
+  - `(dashboard)/layout.tsx` só verifica se **existe sessão** (`redirect("/login")`), nunca o papel. O menu esconde "Usuários" para STAFF (`_data/nav-items.ts`), mas isso é cosmético: `/painel/usuarios` responderá normalmente para um STAFF que digite a URL direto — assim que essa tela existir.
+  - **Onde resolver**: em telas cujo conteúdo inteiro é ADMIN-only, o `page.tsx` (ou um `layout.tsx` do segmento) chama `getSession()` e faz `redirect()` se `session.role !== "ADMIN"`.
+  - **Não se aplica a `profissionais`/`procedimentos`**: neles a leitura é liberada por design (o backend não usa `@Roles` no GET), então a tela deve mesmo abrir para STAFF — só as ações somem. O caso real é `usuarios`, onde até a listagem é ADMIN-only.
+  - **Fazer junto de `usuarios`** (item 5 da Fase 1), que é a primeira tela com esse requisito.
 - **`GET /users/me`** no backend (ver seção acima).
 - **Tratamento de erro consistente** — falta um componente `<ErrorServer />` (citado no `SKILLS.md`) para os estados de falha; hoje cada feature trata por conta própria.
 - **Home do painel** — `/painel` é um placeholder. Definir o que mostra: agenda do dia, horários em risco, mensagens que falharam.

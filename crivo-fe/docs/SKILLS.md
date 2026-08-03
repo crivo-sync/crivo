@@ -167,6 +167,40 @@ Funções assíncronas rodando estritamente no servidor Next.js (`"use server"`)
   }
   ```
 
+#### Ações restritas por papel (ADMIN)
+
+Quando o endpoint no crivo-be usa `@Roles(Role.ADMIN)` (ex: escrita em
+`professionals`, `procedures`, tudo em `users`), a proteção vive em **três
+camadas** — nenhuma substitui a outra:
+
+1. **UI** (`useIsAdmin()` de `src/components/providers/session-provider.tsx`):
+   esconde botões e a coluna de ações. É conveniência visual, não segurança.
+2. **Server Action** (`requireAdmin()` de `src/lib/session.ts`): barra antes
+   de gastar a chamada HTTP e devolve mensagem em português.
+3. **Backend**: `@Roles(ADMIN)` é a autoridade final — responde 403 mesmo se
+   as duas camadas acima forem contornadas.
+
+```typescript
+"use server";
+
+import { FORBIDDEN_MESSAGE, requireAdmin, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+
+export async function postProfessionalAction(input: CreateProfessionalSchema) {
+  const auth = await requireAdmin();
+  if (!auth.ok) {
+    return {
+      success: false,
+      message: auth.reason === "forbidden" ? FORBIDDEN_MESSAGE : SESSION_EXPIRED_MESSAGE,
+    };
+  }
+  // … valida com Zod e chama a camada http/ com auth.session.accessToken
+}
+```
+
+> Leitura costuma ser liberada para qualquer papel (o backend não põe
+> `@Roles` nos `GET` de `professionals`/`procedures`). Confira o controller
+> antes de assumir: restringir demais esconde dado que o STAFF precisa ver.
+
 ### D. Custom Hooks & React Query (`hooks/`)
 
 A camada de controle de estado e sincronização assíncrona.

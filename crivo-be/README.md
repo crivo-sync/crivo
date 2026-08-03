@@ -24,12 +24,12 @@ Além disso, "eu resolvo o no-show da sua clínica de odontologia" vende melhor 
 
 ### Perfil do cliente ideal
 
-| Característica | Por quê |
-| --- | --- |
-| 2 a 15 profissionais | Abaixo disso a agenda cabe no papel; acima, já usa ERP robusto e a venda vira enterprise |
-| Procedimentos eletivos e de ticket alto | Cada falta dói de verdade — é onde a predição se paga |
-| Agenda cheia com histórico de faltas | Sem no-show recorrente, o diferencial não aparece |
-| Já usa WhatsApp para confirmar consulta | Faz na mão hoje; o produto automatiza um hábito existente em vez de criar um novo |
+| Característica                          | Por quê                                                                                  |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 2 a 15 profissionais                    | Abaixo disso a agenda cabe no papel; acima, já usa ERP robusto e a venda vira enterprise |
+| Procedimentos eletivos e de ticket alto | Cada falta dói de verdade — é onde a predição se paga                                    |
+| Agenda cheia com histórico de faltas    | Sem no-show recorrente, o diferencial não aparece                                        |
+| Já usa WhatsApp para confirmar consulta | Faz na mão hoje; o produto automatiza um hábito existente em vez de criar um novo        |
 
 ### Quem **não** é público
 
@@ -45,11 +45,11 @@ Além disso, "eu resolvo o no-show da sua clínica de odontologia" vende melhor 
 
 A cobrança é **por profissional ativo**, com assinatura mensal via Stripe. A lógica: o valor entregue cresce junto com o número de agendas gerenciadas, então o preço acompanha o tamanho da clínica em vez de punir quem está começando.
 
-| Plano | Preço (hipótese) | Profissionais | O que inclui |
-| --- | --- | --- | --- |
-| **Essencial** | R$ 149/mês | até 2 | Agenda, pacientes, lembretes automáticos de WhatsApp |
-| **Clínica** | R$ 289/mês + R$ 49 por profissional extra | a partir de 3 | Tudo do Essencial + predição de no-show e reativação inteligente |
-| **Rede** | Sob consulta | múltiplas unidades | Tudo do Clínica + multi-unidade, relatórios consolidados, suporte prioritário |
+| Plano         | Preço (hipótese)                          | Profissionais      | O que inclui                                                                  |
+| ------------- | ----------------------------------------- | ------------------ | ----------------------------------------------------------------------------- |
+| **Essencial** | R$ 149/mês                                | até 2              | Agenda, pacientes, lembretes automáticos de WhatsApp                          |
+| **Clínica**   | R$ 289/mês + R$ 49 por profissional extra | a partir de 3      | Tudo do Essencial + predição de no-show e reativação inteligente              |
+| **Rede**      | Sob consulta                              | múltiplas unidades | Tudo do Clínica + multi-unidade, relatórios consolidados, suporte prioritário |
 
 ### Decisões por trás dessa estrutura
 
@@ -69,16 +69,16 @@ A cobrança é **por profissional ativo**, com assinatura mensal via Stripe. A l
 
 ## Módulos do sistema
 
-| Módulo | Responsabilidade | É core? | Status |
-| --- | --- | --- | --- |
-| `tenants` | Cadastro de clínicas, planos, config de white-label | Suporte | 🟢 CRUD do tenant + branding público (falta planos) |
-| `auth` | Login, JWT, RBAC (dono, recepção, profissional) | Suporte | 🟢 Register, login, refresh/logout, RBAC por papel |
-| `users` | Gestão de usuários da clínica (recepção, profissionais) | Suporte | 🟢 Listar, criar e atualizar (somente ADMIN) |
-| `patients` | Cadastro, histórico, prontuário básico | Suporte | 🟢 CRUD completo, busca, paginação, soft delete (falta prontuário) |
-| `scheduling` | Agenda, profissionais, procedimentos | **Core** | 🟢 Profissionais, procedimentos e agenda com conflito de horário |
-| `prediction` | Client HTTP pro serviço Python — risco de no-show, churn, sugestão de reativação | **Core** | ⚪ Não iniciado |
-| `messaging` | Disparo de WhatsApp, lembretes, confirmação, fila (BullMQ) | **Core** | 🟢 Lembrete D-1, confirmação por link, retry e lista de falhas |
-| `billing` | Planos, assinatura Stripe, cobrança por profissional ativo | Suporte | ⚪ Não iniciado |
+| Módulo       | Responsabilidade                                                                 | É core?  | Status                                                             |
+| ------------ | -------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| `tenants`    | Cadastro de clínicas, planos, config de white-label                              | Suporte  | 🟢 CRUD do tenant + branding público (falta planos)                |
+| `auth`       | Login, JWT, RBAC (dono, recepção, profissional)                                  | Suporte  | 🟢 Register, login, refresh/logout, RBAC por papel                 |
+| `users`      | Gestão de usuários da clínica (recepção, profissionais)                          | Suporte  | 🟢 Listar, criar e atualizar (somente ADMIN)                       |
+| `patients`   | Cadastro, histórico, prontuário básico                                           | Suporte  | 🟢 CRUD completo, busca, paginação, soft delete (falta prontuário) |
+| `scheduling` | Agenda, profissionais, procedimentos                                             | **Core** | 🟢 Profissionais, procedimentos e agenda com conflito de horário   |
+| `prediction` | Client HTTP pro serviço Python — risco de no-show, churn, sugestão de reativação | **Core** | ⚪ Não iniciado                                                    |
+| `messaging`  | Disparo de WhatsApp, lembretes, confirmação, fila (BullMQ)                       | **Core** | 🟢 Lembrete D-1, confirmação por link, retry e lista de falhas     |
+| `billing`    | Planos, assinatura Stripe, cobrança por profissional ativo                       | Suporte  | ⚪ Não iniciado                                                    |
 
 ## Como eles se relacionam
 
@@ -134,10 +134,10 @@ npm run prisma:reset        # dropa o banco, reaplica migrations e roda o seed
 
 O modo `full` cria **dois tenants de propósito** — é o mínimo para conseguir testar isolamento multi-tenant de verdade (garantir que uma clínica nunca enxerga dados da outra):
 
-| Tenant | Subdomain | Usuários | Pacientes | Profissionais | Procedimentos | Agendamentos |
-| --- | --- | --- | --- | --- | --- | --- |
-| Clínica Sorriso | `clinica-sorriso` | 1 ADMIN, 2 STAFF, 1 inativo | 12 | 2 | 4 | 14 |
-| Estética Bella | `estetica-bella` | 1 ADMIN, 1 STAFF | 8 | 1 | 3 | 14 |
+| Tenant          | Subdomain         | Usuários                    | Pacientes | Profissionais | Procedimentos | Agendamentos |
+| --------------- | ----------------- | --------------------------- | --------- | ------------- | ------------- | ------------ |
+| Clínica Sorriso | `clinica-sorriso` | 1 ADMIN, 2 STAFF, 1 inativo | 12        | 2             | 4             | 14           |
+| Estética Bella  | `estetica-bella`  | 1 ADMIN, 1 STAFF            | 8         | 1             | 3             | 14           |
 
 Os agendamentos misturam passado e futuro de propósito, incluindo `NO_SHOW` e `CANCELLED` — é esse histórico que o módulo `prediction` vai consumir, então o seed já o produz.
 
@@ -145,6 +145,10 @@ Todos os usuários usam a senha **`senha12345`**. Logins de ADMIN:
 
 - `admin@clinicasorriso.com.br`
 - `admin@esteticabella.com.br`
+  recepcao@clinicasorriso.com.br — STAFF, senha senha12345 (mesma senha padrão de todos os usuários de seed)
+  paulo@clinicasorriso.com.br — STAFF
+  recepcao@esteticabella.com.br — STAFF (outro tenant)
+  inativo@clinicasorriso.com.br — STAFF inativo (serve pra testar bloqueio de login)
 
 O usuário `inativo@clinicasorriso.com.br` nasce com `isActive: false` — serve para verificar que login e access token são bloqueados. Os pacientes variam de propósito entre com/sem CPF e com/sem e-mail, cobrindo os campos opcionais.
 
@@ -152,11 +156,11 @@ O usuário `inativo@clinicasorriso.com.br` nasce com `isActive: false` — serve
 
 ## Quem é quem no sistema
 
-| Entidade | O que é | Loga no sistema? |
-| --- | --- | --- |
-| `Tenant` | A clínica. É a unidade de isolamento — todo dado pertence a um tenant | — |
-| `User` | Funcionário da clínica: dono (`ADMIN`) ou recepção/profissional (`STAFF`) | Sim |
-| `Patient` | Cliente atendido pela clínica | Não |
+| Entidade  | O que é                                                                   | Loga no sistema? |
+| --------- | ------------------------------------------------------------------------- | ---------------- |
+| `Tenant`  | A clínica. É a unidade de isolamento — todo dado pertence a um tenant     | —                |
+| `User`    | Funcionário da clínica: dono (`ADMIN`) ou recepção/profissional (`STAFF`) | Sim              |
+| `Patient` | Cliente atendido pela clínica                                             | Não              |
 
 `User` e `Patient` são modelos **separados de propósito**: têm ciclos de vida, campos e regras de acesso diferentes. Juntar os dois obrigaria metade das colunas a serem nullable e transformaria toda regra de autorização num `if`.
 
@@ -236,7 +240,7 @@ O access token é revalidado contra o banco a cada request, então **desativar u
 
 Toda rota protegida usa `@UseGuards(JwtAuthGuard, TenantContextGuard)` — nessa ordem. O `JwtAuthGuard` popula `req.user`, e o `TenantContextGuard` deriva daí o `req.tenantContext`, consumido pelo decorator `@Tenant('tenantId')`.
 
-> ⚠️ Isso **precisa** ser guard, não middleware: no Nest o middleware roda *antes* dos guards, então um middleware jamais enxergaria o `req.user` produzido pelo `JwtAuthGuard`.
+> ⚠️ Isso **precisa** ser guard, não middleware: no Nest o middleware roda _antes_ dos guards, então um middleware jamais enxergaria o `req.user` produzido pelo `JwtAuthGuard`.
 
 Para restringir por papel, some `RolesGuard` + `@Roles(Role.ADMIN)`:
 
@@ -247,37 +251,37 @@ Para restringir por papel, some `RolesGuard` + `@Roles(Role.ADMIN)`:
 
 ### Endpoints
 
-| Método | Rota | Acesso |
-| --- | --- | --- |
-| `POST` | `/auth/register` | Público — cria tenant + usuário ADMIN |
-| `POST` | `/auth/login` | Público — retorna access + refresh token |
-| `POST` | `/auth/refresh` | Público — rotaciona o par (o refresh antigo é revogado) |
-| `POST` | `/auth/logout` | Público — revoga o refresh informado |
-| `POST` | `/auth/logout-all` | Autenticado — encerra todas as sessões do usuário |
-| `GET` | `/tenants/branding/:subdomain` | Público — logo/cores para o front white-label |
-| `GET` | `/tenants/me` | Autenticado |
-| `PATCH` | `/tenants/me` | **ADMIN** — inclui `aiMessagesEnabled` (mensagens com IA) |
-| `GET` | `/users` | **ADMIN** |
-| `POST` | `/users` | **ADMIN** — cria recepção/profissional no tenant |
-| `PATCH` | `/users/:id` | **ADMIN** — nome, papel, ativar/desativar |
-| `GET` | `/patients` | Autenticado — paginado (`page`, `perPage`) e com busca (`search` por nome, CPF ou telefone) |
-| `GET` | `/patients/:id` | Autenticado |
-| `POST` | `/patients` | Autenticado — só `name` e `phone` são obrigatórios |
-| `PATCH` | `/patients/:id` | Autenticado |
-| `DELETE` | `/patients/:id` | Autenticado — soft delete |
-| `GET` | `/professionals` `/professionals/:id` | Autenticado |
-| `POST` `PATCH` `DELETE` | `/professionals` | **ADMIN** |
-| `GET` | `/procedures` `/procedures/:id` | Autenticado |
-| `POST` `PATCH` `DELETE` | `/procedures` | **ADMIN** |
-| `GET` | `/appointments` | Autenticado — filtra por `from`/`to`, `professionalId`, `patientId`, `status` |
-| `GET` | `/appointments/:id` | Autenticado |
-| `POST` | `/appointments` | Autenticado — a recepção agenda |
-| `PATCH` | `/appointments/:id/reschedule` | Autenticado |
-| `PATCH` | `/appointments/:id/status` | Autenticado — confirmar, concluir, cancelar, marcar falta |
-| `GET` | `/messages` | Autenticado — histórico de envios (filtra por `status`, `from`, `to`) |
-| `GET` | `/messages/failed` | Autenticado — **quem não recebeu; lista para a recepção ligar** |
-| `GET` | `/c/:token` | **Público** — paciente confirma a presença pelo link do WhatsApp |
-| `POST` | `/c/:token/confirm` | **Público** — mesmo efeito, para formulário |
+| Método                  | Rota                                  | Acesso                                                                                      |
+| ----------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `POST`                  | `/auth/register`                      | Público — cria tenant + usuário ADMIN                                                       |
+| `POST`                  | `/auth/login`                         | Público — retorna access + refresh token                                                    |
+| `POST`                  | `/auth/refresh`                       | Público — rotaciona o par (o refresh antigo é revogado)                                     |
+| `POST`                  | `/auth/logout`                        | Público — revoga o refresh informado                                                        |
+| `POST`                  | `/auth/logout-all`                    | Autenticado — encerra todas as sessões do usuário                                           |
+| `GET`                   | `/tenants/branding/:subdomain`        | Público — logo/cores para o front white-label                                               |
+| `GET`                   | `/tenants/me`                         | Autenticado                                                                                 |
+| `PATCH`                 | `/tenants/me`                         | **ADMIN** — inclui `aiMessagesEnabled` (mensagens com IA)                                   |
+| `GET`                   | `/users`                              | **ADMIN**                                                                                   |
+| `POST`                  | `/users`                              | **ADMIN** — cria recepção/profissional no tenant                                            |
+| `PATCH`                 | `/users/:id`                          | **ADMIN** — nome, papel, ativar/desativar                                                   |
+| `GET`                   | `/patients`                           | Autenticado — paginado (`page`, `perPage`) e com busca (`search` por nome, CPF ou telefone) |
+| `GET`                   | `/patients/:id`                       | Autenticado                                                                                 |
+| `POST`                  | `/patients`                           | Autenticado — só `name` e `phone` são obrigatórios                                          |
+| `PATCH`                 | `/patients/:id`                       | Autenticado                                                                                 |
+| `DELETE`                | `/patients/:id`                       | Autenticado — soft delete                                                                   |
+| `GET`                   | `/professionals` `/professionals/:id` | Autenticado                                                                                 |
+| `POST` `PATCH` `DELETE` | `/professionals`                      | **ADMIN**                                                                                   |
+| `GET`                   | `/procedures` `/procedures/:id`       | Autenticado                                                                                 |
+| `POST` `PATCH` `DELETE` | `/procedures`                         | **ADMIN**                                                                                   |
+| `GET`                   | `/appointments`                       | Autenticado — filtra por `from`/`to`, `professionalId`, `patientId`, `status`               |
+| `GET`                   | `/appointments/:id`                   | Autenticado                                                                                 |
+| `POST`                  | `/appointments`                       | Autenticado — a recepção agenda                                                             |
+| `PATCH`                 | `/appointments/:id/reschedule`        | Autenticado                                                                                 |
+| `PATCH`                 | `/appointments/:id/status`            | Autenticado — confirmar, concluir, cancelar, marcar falta                                   |
+| `GET`                   | `/messages`                           | Autenticado — histórico de envios (filtra por `status`, `from`, `to`)                       |
+| `GET`                   | `/messages/failed`                    | Autenticado — **quem não recebeu; lista para a recepção ligar**                             |
+| `GET`                   | `/c/:token`                           | **Público** — paciente confirma a presença pelo link do WhatsApp                            |
+| `POST`                  | `/c/:token/confirm`                   | **Público** — mesmo efeito, para formulário                                                 |
 
 ## Como funciona a agenda
 
@@ -351,13 +355,13 @@ Paciente toca no link  →  GET /c/:token  →  status vira CONFIRMED
 
 Trocados por env var, sem mudar código:
 
-| `MESSAGING_PROVIDER` | O que faz | Quando usar |
-| --- | --- | --- |
-| `fake` (padrão) | Não envia nada; grava e loga a mensagem | Desenvolvimento e testes automatizados |
-| `evolution` | Evolution API — camada **não oficial** | Só para ver a mensagem chegar no celular durante o desenvolvimento |
-| `meta` | WhatsApp Cloud API oficial | **Produção** |
+| `MESSAGING_PROVIDER` | O que faz                               | Quando usar                                                        |
+| -------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| `fake` (padrão)      | Não envia nada; grava e loga a mensagem | Desenvolvimento e testes automatizados                             |
+| `evolution`          | Evolution API — camada **não oficial**  | Só para ver a mensagem chegar no celular durante o desenvolvimento |
+| `meta`               | WhatsApp Cloud API oficial              | **Produção**                                                       |
 
-> ⚠️ **A Evolution API não vai a produção.** A Meta não autoriza esse tipo de conexão e bane o número em definitivo, sem aviso e sem recurso — e para a clínica o número banido *é* a agenda. Ver [ROADMAP.md](./ROADMAP.md#a-dor-que-valida-o-produto).
+> ⚠️ **A Evolution API não vai a produção.** A Meta não autoriza esse tipo de conexão e bane o número em definitivo, sem aviso e sem recurso — e para a clínica o número banido _é_ a agenda. Ver [ROADMAP.md](./ROADMAP.md#a-dor-que-valida-o-produto).
 
 Com `fake`, um telefone terminado em `0000` falha de propósito — é como se testa o caminho de erro sem infra nenhuma.
 
@@ -370,7 +374,7 @@ PATCH /tenants/me
 { "aiMessagesEnabled": true }
 ```
 
-**A IA só redige — nunca decide o fato.** O prompt do sistema proíbe inventar nome, data, horário ou alterar o link; e depois da geração, o `MessageComposerService` confere que os quatro aparecem *literalmente* no texto antes de aceitá-lo. Se algum faltar, se a chamada falhar, ou se ela não responder em `AI_TIMEOUT_MS` (5s por padrão), cai **automaticamente e em silêncio** para o template fixo de sempre.
+**A IA só redige — nunca decide o fato.** O prompt do sistema proíbe inventar nome, data, horário ou alterar o link; e depois da geração, o `MessageComposerService` confere que os quatro aparecem _literalmente_ no texto antes de aceitá-lo. Se algum faltar, se a chamada falhar, ou se ela não responder em `AI_TIMEOUT_MS` (5s por padrão), cai **automaticamente e em silêncio** para o template fixo de sempre.
 
 ```
 composeReminder()
@@ -408,15 +412,18 @@ As prioridades de produto — incluindo a análise competitiva que as embasa —
 O que segue abaixo são **dívidas técnicas** já mapeadas, que não competem com o roadmap de produto.
 
 ### Infraestrutura transversal
+
 - [ ] Testes automatizados (hoje o projeto não tem nenhuma suíte configurada)
 - [ ] CI (lint + typecheck + test) antes de qualquer deploy
 - [x] ~~Seed de dados de desenvolvimento~~ ✅ ver [Seed de desenvolvimento](#seed-de-desenvolvimento)
 
 ### `scheduling`
+
 - [ ] Visão de disponibilidade (`GET /professionals/:id/availability`) para o front sugerir horários livres
 - [ ] Agendamento recorrente (tratamentos com várias sessões)
 
 ### `billing` — quando o modelo de cobrança for validado
+
 - [ ] Modelar `Plan` e `Subscription` no schema, ligados a `Tenant`
 - [ ] Integrar Stripe: checkout, webhook de status da assinatura, portal do cliente
 - [ ] Guard de plano (`@RequiresPlan`) para gatear `prediction`
@@ -424,6 +431,7 @@ O que segue abaixo são **dívidas técnicas** já mapeadas, que não competem c
 - [ ] O script `stripe:sync` já existe no `package.json` apontando para `/stripe/webhook`, mas o endpoint ainda não existe
 
 ### Dívidas conhecidas de auth/tenants
+
 - [ ] **`/auth/register` é público e cria um tenant novo a cada chamada** — qualquer pessoa cria uma clínica no sistema. Antes de ir a produção precisa virar cadastro por convite, atrás de checkout pago, ou nascer `isActive: false` aguardando aprovação
 - [ ] `User.email` é `@unique` global, não por tenant — o mesmo e-mail não pode existir em duas clínicas diferentes
 - [ ] Não há reset de senha nem troca de senha pelo próprio usuário (só o ADMIN altera nome/papel/status)
