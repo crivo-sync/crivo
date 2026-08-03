@@ -46,3 +46,12 @@ export function useSession(): ClientSession {
 export function useIsAdmin(): boolean {
   return useSession().role === "ADMIN";
 }
+
+const ROLE_LABELS: Record<SessionRole, string> = {
+  ADMIN: "Administrador",
+  STAFF: "Recepção",
+};
+
+export function roleLabel(role: SessionRole): string {
+  return ROLE_LABELS[role];
+}
