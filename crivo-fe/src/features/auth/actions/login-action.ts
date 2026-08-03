@@ -11,36 +11,24 @@ import {
   SESSION_COOKIE,
   SESSION_COOKIE_OPTIONS,
 } from "@/lib/session";
-import { getUsers } from "../http/get-users";
+import { getProfile } from "@/features/profile/http/get-profile";
 import { login } from "../http/login";
 import { loginSchema, type LoginSchema } from "../schemas/login";
 import type { ActionResult } from "../types";
 
-function decodeSub(accessToken: string): string | null {
-  try {
-    const payload = accessToken.split(".")[1];
-    const { sub } = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
-    return typeof sub === "string" ? sub : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Não existe endpoint "quem sou eu" no crivo-be — `GET /users` é o único
- * jeito de descobrir o nome, e é ADMIN-only. Para STAFF (ou se a busca
- * falhar por qualquer motivo), cai no e-mail digitado no formulário.
+ * `GET /users/me` responde para qualquer papel autenticado. Antes daqui
+ * existir, o nome vinha de `GET /users` + filtro pelo `sub` do JWT — rota
+ * ADMIN-only, então todo STAFF caía no fallback e via o próprio e-mail no
+ * lugar do nome. O fallback continua só para falha de rede.
  */
 async function resolveDisplayName(
   accessToken: string,
   fallbackEmail: string,
 ): Promise<string> {
-  const userId = decodeSub(accessToken);
-  if (!userId) return fallbackEmail;
-
   try {
-    const users = await getUsers(accessToken);
-    return users.find((user) => user.id === userId)?.name ?? fallbackEmail;
+    const profile = await getProfile(accessToken);
+    return profile.name || fallbackEmail;
   } catch {
     return fallbackEmail;
   }

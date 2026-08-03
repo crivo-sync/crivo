@@ -1,8 +1,6 @@
 "use client";
 
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardHeader from "@mui/material/CardHeader";
 import Chip from "@mui/material/Chip";
@@ -12,6 +10,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { roleLabel } from "@/components/providers/session-provider";
+import { ErrorServer } from "@/components/ui/error-server";
 import { useProfile } from "../../hooks/use-profile";
 import { AvatarUpload } from "../AvatarUpload";
 import { ProfileForm } from "../ProfileForm";
@@ -21,18 +20,7 @@ export const ProfilePage = () => {
   const { profile, isLoading, error, refetch } = useProfile();
 
   if (error) {
-    return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {error.message}
-      </Alert>
-    );
+    return <ErrorServer message={error.message} onRetry={() => refetch()} />;
   }
 
   if (isLoading || !profile) {

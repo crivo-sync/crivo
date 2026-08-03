@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
+
+import { ErrorServer } from "@/components/ui/error-server";
 
 import { usePatientsFiltersState } from "../../hooks/use-patients-filters-state";
 import { usePatients } from "../../hooks/use-patients";
@@ -39,18 +40,7 @@ export const PatientManagement = () => {
   };
 
   if (error) {
-    return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {error.message}
-      </Alert>
-    );
+    return <ErrorServer message={error.message} onRetry={() => refetch()} />;
   }
 
   return (
@@ -65,16 +55,19 @@ export const PatientManagement = () => {
           justifyContent: "space-between",
           gap: 2,
           flexWrap: "wrap",
+          width: "100%",
         }}
       >
-        <PatientFilters control={control} onClear={clearFilters} />
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={openCreateForm}
-        >
-          Novo paciente
-        </Button>
+        <Box>
+          <PatientFilters control={control} onClear={clearFilters} />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreateForm}
+          >
+            Novo paciente
+          </Button>
+        </Box>
       </Box>
 
       <PatientsTable

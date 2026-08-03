@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { putPatient } from "../http/put-patient";
 import { updatePatientSchema, type UpdatePatientSchema } from "../schemas/patient";
 import type { ActionResult, Patient } from "../types";
@@ -18,8 +19,11 @@ export async function putPatientAction(
   }
 
   try {
-    const data = await putPatient(id, parsed.data, session.accessToken);
-    return { success: true, message: "Paciente atualizado.", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      putPatient(id, parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Paciente atualizado.", data: result.data };
   } catch (error) {
     console.error("[Put Patient Action Error]", error);
     return {

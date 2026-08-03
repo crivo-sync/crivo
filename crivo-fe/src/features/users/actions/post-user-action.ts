@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postUser } from "../http/post-user";
 import { createUserSchema, type CreateUserSchema } from "../schemas/user";
 import type { ActionResult, User } from "../types";
@@ -29,8 +30,11 @@ export async function postUserAction(
   }
 
   try {
-    const data = await postUser(parsed.data, auth.session.accessToken);
-    return { success: true, message: "Usuário cadastrado.", data };
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      postUser(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Usuário cadastrado.", data: result.data };
   } catch (error) {
     console.error("[Post User Action Error]", error);
     return {

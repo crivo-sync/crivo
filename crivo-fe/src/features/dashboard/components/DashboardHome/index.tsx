@@ -1,13 +1,12 @@
 "use client";
 
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardHeader from "@mui/material/CardHeader";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 
+import { ErrorServer } from "@/components/ui/error-server";
 import { useDashboardAnalytics } from "../../hooks/use-dashboard-analytics";
 import { useDashboardSummary } from "../../hooks/use-dashboard-summary";
 import { AppointmentsByDayChart } from "../AppointmentsByDayChart";
@@ -22,18 +21,7 @@ export const DashboardHome = () => {
   const { analytics, isLoading: isLoadingAnalytics } = useDashboardAnalytics();
 
   if (error) {
-    return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {error.message}
-      </Alert>
-    );
+    return <ErrorServer message={error.message} onRetry={() => refetch()} />;
   }
 
   if (isLoading || !summary) {

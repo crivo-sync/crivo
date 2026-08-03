@@ -4,10 +4,11 @@ import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+
+import { ErrorServer } from "@/components/ui/error-server";
 
 import { useFailedMessages } from "../../hooks/use-failed-messages";
 import { useMessagesFiltersState } from "../../hooks/use-messages-filters-state";
@@ -36,16 +37,10 @@ export const MessageManagement = () => {
 
   if (active.error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => active.refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {active.error.message}
-      </Alert>
+      <ErrorServer
+        message={active.error.message}
+        onRetry={() => active.refetch()}
+      />
     );
   }
 

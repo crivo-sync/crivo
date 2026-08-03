@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postProfessional } from "../http/post-professional";
 import {
   createProfessionalSchema,
@@ -33,8 +34,11 @@ export async function postProfessionalAction(
   }
 
   try {
-    const data = await postProfessional(parsed.data, auth.session.accessToken);
-    return { success: true, message: "Profissional cadastrado.", data };
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      postProfessional(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Profissional cadastrado.", data: result.data };
   } catch (error) {
     console.error("[Post Professional Action Error]", error);
     return {

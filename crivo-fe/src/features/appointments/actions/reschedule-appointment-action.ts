@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { rescheduleAppointment } from "../http/reschedule-appointment";
 import {
   rescheduleAppointmentSchema,
@@ -21,7 +22,10 @@ export async function rescheduleAppointmentAction(
   }
 
   try {
-    await rescheduleAppointment(id, parsed.data, session.accessToken);
+    const result = await withAuth(session.accessToken, (token) =>
+      rescheduleAppointment(id, parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
     return { success: true, message: "Agendamento reagendado.", data: undefined };
   } catch (error) {
     console.error("[Reschedule Appointment Action Error]", error);

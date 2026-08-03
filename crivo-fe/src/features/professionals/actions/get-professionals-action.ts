@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { getProfessionals } from "../http/get-professionals";
 import type { ProfessionalsQueryParams } from "../schemas/professionals-query-params";
 import type { ActionResult, PaginatedResponse, Professional } from "../types";
@@ -13,8 +14,11 @@ export async function getProfessionalsAction(
   if (!session) return { success: false, message: SESSION_EXPIRED_MESSAGE };
 
   try {
-    const data = await getProfessionals(params, session.accessToken);
-    return { success: true, message: "Sucesso", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      getProfessionals(params, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Sucesso", data: result.data };
   } catch (error) {
     console.error("[Get Professionals Action Error]", error);
     return {

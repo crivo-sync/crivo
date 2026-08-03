@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { changeAppointmentStatus } from "../http/change-appointment-status";
 import {
   changeAppointmentStatusSchema,
@@ -21,7 +22,10 @@ export async function changeAppointmentStatusAction(
   }
 
   try {
-    await changeAppointmentStatus(id, parsed.data, session.accessToken);
+    const result = await withAuth(session.accessToken, (token) =>
+      changeAppointmentStatus(id, parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
     return { success: true, message: "Status atualizado.", data: undefined };
   } catch (error) {
     console.error("[Change Appointment Status Action Error]", error);

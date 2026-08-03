@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postAppointment } from "../http/post-appointment";
 import {
   createAppointmentSchema,
@@ -20,7 +21,10 @@ export async function postAppointmentAction(
   }
 
   try {
-    await postAppointment(parsed.data, session.accessToken);
+    const result = await withAuth(session.accessToken, (token) =>
+      postAppointment(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
     return { success: true, message: "Agendamento criado.", data: undefined };
   } catch (error) {
     console.error("[Post Appointment Action Error]", error);

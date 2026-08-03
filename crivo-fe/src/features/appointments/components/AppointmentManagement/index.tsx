@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
+
+import { ErrorServer } from "@/components/ui/error-server";
 
 import { useAppointmentFormOptions } from "../../hooks/use-appointment-form-options";
 import { useAppointmentsFiltersState } from "../../hooks/use-appointments-filters-state";
@@ -63,16 +64,7 @@ export const AppointmentManagement = () => {
 
   if (error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {error.message}
-      </Alert>
+      <ErrorServer message={error.message} onRetry={() => refetch()} />
     );
   }
 

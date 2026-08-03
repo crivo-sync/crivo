@@ -15,6 +15,8 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
+import { ErrorServer } from "@/components/ui/error-server";
+
 import { useIsAdmin } from "@/components/providers/session-provider";
 import { MaskedTextField } from "@/components/masked-text-field";
 import { PHONE_MASK } from "@/lib/br-masks";
@@ -71,16 +73,7 @@ export const TenantSettings = () => {
 
   if (error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        }
-      >
-        {error.message}
-      </Alert>
+      <ErrorServer message={error.message} onRetry={() => refetch()} />
     );
   }
 

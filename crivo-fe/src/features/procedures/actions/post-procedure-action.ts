@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postProcedure } from "../http/post-procedure";
 import {
   createProcedureSchema,
@@ -33,8 +34,11 @@ export async function postProcedureAction(
   }
 
   try {
-    const data = await postProcedure(parsed.data, auth.session.accessToken);
-    return { success: true, message: "Procedimento cadastrado.", data };
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      postProcedure(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Procedimento cadastrado.", data: result.data };
   } catch (error) {
     console.error("[Post Procedure Action Error]", error);
     return {

@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { putProfessional } from "../http/put-professional";
 import {
   updateProfessionalSchema,
@@ -33,12 +34,11 @@ export async function putProfessionalAction(
   }
 
   try {
-    const data = await putProfessional(
-      id,
-      parsed.data,
-      auth.session.accessToken,
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      putProfessional(id, parsed.data, token),
     );
-    return { success: true, message: "Profissional atualizado.", data };
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Profissional atualizado.", data: result.data };
   } catch (error) {
     console.error("[Put Professional Action Error]", error);
     return {

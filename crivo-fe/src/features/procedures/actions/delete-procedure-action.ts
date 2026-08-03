@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { deleteProcedure } from "../http/delete-procedure";
 import type { ActionResult } from "../types";
 
@@ -21,7 +22,10 @@ export async function deleteProcedureAction(id: string): Promise<ActionResult> {
   }
 
   try {
-    await deleteProcedure(id, auth.session.accessToken);
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      deleteProcedure(id, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
     return { success: true, message: "Procedimento removido.", data: undefined };
   } catch (error) {
     console.error("[Delete Procedure Action Error]", error);

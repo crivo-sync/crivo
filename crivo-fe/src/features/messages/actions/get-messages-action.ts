@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { getMessages } from "../http/get-messages";
 import type { MessagesQueryParams } from "../schemas/messages-query-params";
 import type { ActionResult, Message, PaginatedResponse } from "../types";
@@ -13,8 +14,11 @@ export async function getMessagesAction(
   if (!session) return { success: false, message: SESSION_EXPIRED_MESSAGE };
 
   try {
-    const data = await getMessages(params, session.accessToken);
-    return { success: true, message: "Sucesso", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      getMessages(params, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Sucesso", data: result.data };
   } catch (error) {
     console.error("[Get Messages Action Error]", error);
     return {

@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { putProfile } from "../http/put-profile";
 import { updateProfileSchema, type UpdateProfileSchema } from "../schemas/profile";
 import type { ActionResult, Profile } from "../types";
@@ -17,8 +18,11 @@ export async function putProfileAction(
   }
 
   try {
-    const data = await putProfile(parsed.data, session.accessToken);
-    return { success: true, message: "Perfil atualizado.", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      putProfile(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Perfil atualizado.", data: result.data };
   } catch (error) {
     console.error("[Put Profile Action Error]", error);
     return {

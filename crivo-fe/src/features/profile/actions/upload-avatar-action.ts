@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postAvatar } from "../http/post-avatar";
 import type { ActionResult, Profile } from "../types";
 
@@ -27,8 +28,11 @@ export async function uploadAvatarAction(
   }
 
   try {
-    const data = await postAvatar(file, session.accessToken);
-    return { success: true, message: "Foto atualizada.", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      postAvatar(file, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Foto atualizada.", data: result.data };
   } catch (error) {
     console.error("[Upload Avatar Action Error]", error);
     return {

@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { putUser } from "../http/put-user";
 import { updateUserSchema, type UpdateUserSchema } from "../schemas/user";
 import type { ActionResult, User } from "../types";
@@ -30,8 +31,11 @@ export async function putUserAction(
   }
 
   try {
-    const data = await putUser(id, parsed.data, auth.session.accessToken);
-    return { success: true, message: "Usuário atualizado.", data };
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      putUser(id, parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Usuário atualizado.", data: result.data };
   } catch (error) {
     console.error("[Put User Action Error]", error);
     return {

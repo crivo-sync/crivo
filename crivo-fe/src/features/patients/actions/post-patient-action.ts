@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession, SESSION_EXPIRED_MESSAGE } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { postPatient } from "../http/post-patient";
 import { createPatientSchema, type CreatePatientSchema } from "../schemas/patient";
 import type { ActionResult, Patient } from "../types";
@@ -17,8 +18,11 @@ export async function postPatientAction(
   }
 
   try {
-    const data = await postPatient(parsed.data, session.accessToken);
-    return { success: true, message: "Paciente cadastrado.", data };
+    const result = await withAuth(session.accessToken, (token) =>
+      postPatient(parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Paciente cadastrado.", data: result.data };
   } catch (error) {
     // `beforeError` em config/api.ts já substituiu a mensagem crua do ky
     // pela mensagem que o crivo-be devolveu no corpo.
