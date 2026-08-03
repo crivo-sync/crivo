@@ -34,6 +34,11 @@ type AppDataGridProps<TRow extends GridValidRowModel> = Omit<
  *
  * Nenhuma lógica de domínio aqui — cada feature passa suas próprias
  * `columns` e `rows`.
+ *
+ * `checkboxSelection` fica de fora por padrão: só faz sentido quando a
+ * feature de fato consome a seleção (ação em lote, ou travar a exclusão da
+ * própria conta em telas como Usuários). Passe explicitamente via `props`
+ * quando houver essa necessidade real.
  */
 export function AppDataGrid<TRow extends GridValidRowModel>({
   paginationMeta,
