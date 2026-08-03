@@ -5,6 +5,7 @@ import {
   requireAdmin,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/session";
+import { withAuth } from "@/lib/with-auth";
 import { putProcedure } from "../http/put-procedure";
 import {
   updateProcedureSchema,
@@ -33,8 +34,11 @@ export async function putProcedureAction(
   }
 
   try {
-    const data = await putProcedure(id, parsed.data, auth.session.accessToken);
-    return { success: true, message: "Procedimento atualizado.", data };
+    const result = await withAuth(auth.session.accessToken, (token) =>
+      putProcedure(id, parsed.data, token),
+    );
+    if (!result.ok) return { success: false, message: result.message };
+    return { success: true, message: "Procedimento atualizado.", data: result.data };
   } catch (error) {
     console.error("[Put Procedure Action Error]", error);
     return {
