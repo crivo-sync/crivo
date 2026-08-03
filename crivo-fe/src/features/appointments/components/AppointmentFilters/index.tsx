@@ -42,8 +42,12 @@ export const AppointmentFilters = ({
     !!professionalId || !!patientId || !!from || !!to || !!status;
 
   const handleDateChange = (key: "from" | "to") => (value: Dayjs | null) => {
-    if (!value) {
-      onChange({ [key]: null, page: "1" });
+    // `value` não é `null` enquanto o usuário digita uma data parcial/
+    // inválida no picker — só limpar o filtro quando estiver de fato vazio
+    // ou completo, senão `toISOString()` lança e o filtro fica travado sem
+    // feedback nenhum (o erro cai num console.error silencioso).
+    if (!value || !value.isValid()) {
+      if (!value) onChange({ [key]: null, page: "1" });
       return;
     }
     const iso =
