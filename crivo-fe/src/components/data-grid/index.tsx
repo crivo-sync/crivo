@@ -48,12 +48,22 @@ type AppDataGridProps<TRow extends GridValidRowModel> = Omit<
  * (ordenar/filtrar/ocultar/gerir colunas) não faz parte do design atual do
  * painel. Passe `disableColumnMenu={false}` explicitamente numa feature que
  * realmente precise dessas ações.
+ *
+ * `sortingMode` vem `"client"` (padrão do MUI) só quando as `columns`
+ * passadas já vierem com `sortable: true` explícito — como a paginação é
+ * sempre server-side e nenhuma feature implementa `sortingMode="server"`,
+ * deixar o clique no header ligado ordenaria só a página atual (enganoso) e
+ * deixa aquele indicador visual de seta + coluna focada. Por isso o clique
+ * de ordenação no header fica desabilitado por padrão; passe
+ * `disableColumnSorting={false}` numa feature que implemente ordenação
+ * server-side de verdade.
  */
 export function AppDataGrid<TRow extends GridValidRowModel>({
   paginationMeta,
   onPageChange,
   onPerPageChange,
   disableColumnMenu = true,
+  disableColumnSorting = true,
   disableRowSelectionOnClick = true,
   ...props
 }: AppDataGridProps<TRow>) {
@@ -61,6 +71,7 @@ export function AppDataGrid<TRow extends GridValidRowModel>({
     <DataGrid
       {...props}
       disableColumnMenu={disableColumnMenu}
+      disableColumnSorting={disableColumnSorting}
       disableRowSelectionOnClick={disableRowSelectionOnClick}
       paginationMode="server"
       rowCount={paginationMeta?.total ?? 0}
