@@ -213,6 +213,7 @@ A camada de controle de estado e sincronização assíncrona.
   "use client";
 
   import { useQuery } from "@tanstack/react-query";
+  import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
   import { getPatientsAction } from "../actions/get-patients-action";
   import type { PatientsQueryParams } from "../schemas/patients-query-params";
 
@@ -231,6 +232,11 @@ A camada de controle de estado e sincronização assíncrona.
       placeholderData: (previousData) => previousData,
     });
 
+    // Se a Server Action falhou porque a sessão expirou (mensagem estável
+    // `SESSION_EXPIRED_MESSAGE`), desloga e redireciona pra /login sozinho —
+    // sem isso, o usuário fica preso numa tela com só um Alert de erro.
+    useSessionExpiredGuard(error);
+
     return {
       patients: data?.data ?? [],
       meta: data?.meta,
@@ -241,6 +247,13 @@ A camada de controle de estado e sincronização assíncrona.
     };
   }
   ```
+
+  Todo hook de leitura (`use-*.ts` que chama uma `get*Action`) deve incluir
+  essa linha — é o único jeito de recuperar automaticamente de uma sessão
+  que expirou enquanto o usuário já estava na página (o `layout.tsx` do
+  dashboard só barra sessão ausente em **navegações novas**; se o token
+  expira em segundo plano sem o usuário trocar de rota, só um `useQuery`
+  falhando percebe isso). Ver `src/hooks/use-session-expired-guard.ts`.
 
   Mutations seguem o mesmo padrão, mas usando `useMutation` + o hook global
   de Snackbar (ver seção 3) e invalidando a query da listagem no sucesso:
@@ -272,6 +285,35 @@ A camada de controle de estado e sincronização assíncrona.
     });
   }
   ```
+
+  **Consumindo a mutation num dialog**: `mutateAsync()` (diferente de
+  `mutate()`) **relança o erro** depois de rodar `onError` — é assim que o
+  React Query permite tratamento local além do snackbar global. Todo
+  `await xyz.mutateAsync(...)` num `onSubmit`/`handleConfirm` precisa estar
+  dentro de um `try/catch`, mesmo que o `catch` fique vazio (o snackbar já
+  cobre a mensagem via `onError` do hook). Sem isso, o primeiro erro real
+  (ex.: uma validação de negócio que o schema Zod não cobre, tipo conflito
+  de horário) relança pelo `await` desprotegido, vira uma exceção não
+  capturada, e derruba a página inteira (ver `docs/ROADMAP.md`, seção
+  "Armadilha resolvida: `mutateAsync` sem `try/catch` derrubava a página",
+  onde isso aconteceu de verdade em 9 dialogs antes de ser corrigido):
+
+  ```typescript
+  const onSubmit = handleSubmit(async (values) => {
+    try {
+      await createPatient.mutateAsync(values);
+      onOpenChange(false); // só fecha o dialog se a mutation teve sucesso
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook — dialog
+      // continua aberto para o usuário corrigir.
+    }
+  });
+  ```
+
+  Se o dialog não precisa aguardar o resultado antes de fechar (ex.: uma
+  transição de status disparada direto no menu de ações de uma tabela, sem
+  dialog de confirmação), prefira `.mutate()` (fire-and-forget) — ele nunca
+  relança, então não precisa de `try/catch`.
 
 - **Exemplo de Hook de Filtros e Query Strings (`use-patients-filters-state.ts`, real do projeto)**:
 
@@ -427,6 +469,25 @@ A camada estritamente visual (apresentação).
   `docs/ROADMAP.md`, seção "Armadilha resolvida: máscara dinâmica do
   react-imask", antes de criar uma máscara nova com padrões de prefixo
   comum, tipo "10 ou 11 dígitos").
+
+- **Select de entidade** (paciente, profissional, procedimento, etc. — uma
+  lista que só cresce): nunca use `TextField select` + `MenuItem` para isso.
+  Use `EntityAutocomplete` (`src/components/entity-autocomplete/`), que
+  envolve o MUI `Autocomplete` já ligado a `id`/`getOptionLabel`/loading —
+  `TextField select` não filtra por digitação e, em listas maiores, o valor
+  escolhido nem aparece bem refletido no label. Reserve `TextField select`
+  para listas curtas e fixas com uma opção "Todos" (ex.: filtro de status),
+  onde a feature real é "resetar para tudo", não busca.
+
+- **Campo de data/hora**: use os componentes do `@mui/x-date-pickers`
+  (`DatePicker`, `DateTimePicker`) com `dayjs`, nunca
+  `<TextField type="date">`/`type="datetime-local">` — o input nativo do
+  browser não tem estilo consistente com o resto do MUI e some
+  (`dd/mm/yyyy, --:--`) quando vazio. `LocalizationProvider` (locale
+  `pt-br`) já está montado uma vez em `MuiProvider`, então basta importar o
+  componente e usar `dayjs(isoString)`/`date.toISOString()` na fronteira com
+  o form (schema Zod continua guardando a data como string ISO, igual
+  antes).
 
 ---
 

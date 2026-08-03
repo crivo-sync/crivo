@@ -16,7 +16,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
 | `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `agenda` (appointments) | ⚪ Não iniciado |
+| `agenda` (appointments) | 🟢 Tabela + criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | ⚪ Não iniciado |
 | `usuarios` (users) | ⚪ Não iniciado |
@@ -115,7 +115,10 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
 
 1. ~~**`profissionais`** (`professionals`)~~ — ✅ **feito**. Estabeleceu o padrão de ação por papel: `SessionProvider` + `useIsAdmin()` na UI, `requireAdmin()` nas Server Actions de escrita.
 2. ~~**`procedimentos`** (`procedures`)~~ — ✅ **feito**. Mesmo padrão de `profissionais` 1:1 (RBAC, paginação, dialogs). Formulário guarda preço em reais na UI e converte para centavos (`src/lib/currency.ts`) antes de enviar ao backend — o preço/duração já ficam prontos para alimentar o formulário da agenda.
-3. **`agenda`** (`appointments`) — a mais complexa e a que justifica o produto. Depende das três anteriores para os selects. Inclui fluxos que não existem em nenhum CRUD atual: `PATCH :id/reschedule`, `PATCH :id/status` e visualização por calendário/dia.
+3. ~~**`agenda`** (`appointments`)~~ — ✅ **feito** (versão tabela, não calendário — ver nota abaixo). Tabela paginada com filtro por profissional/status, dialog de criação (selects de paciente/profissional/procedimento via `useAppointmentFormOptions`, que reaproveita as três Server Actions `get*Action` já existentes com `perPage: 100`), reagendamento (`PATCH :id/reschedule`) e menu de transição de status (`PATCH :id/status`) — confirmar/concluir/marcar falta disparam direto, cancelar abre dialog pedindo motivo. Sem `@Roles` no backend: ADMIN e STAFF têm acesso igual (leitura e escrita), diferente de `profissionais`/`procedimentos`.
+   - **Detalhe de API que importa manter em mente**: `POST`/`PATCH :id/reschedule`/`PATCH :id/status` devolvem só IDs nas relações (`AppointmentResponseDto.fromPlain`), não os nomes de paciente/profissional/procedimento — só o `GET` de listagem popula isso (`fromEntity`). Por isso as mutations em `src/features/appointments/hooks/` tipam como `void` e sempre disparam `invalidateQueries` para re-buscar a lista, em vez de tentar usar a resposta da mutation para atualizar a UI otimisticamente.
+   - **Pendente para uma v2**: visualização por calendário/dia (grade de horários, drag-to-reschedule) — a v1 ficou como tabela, mesma UX das demais features, por ser mais rápida de entregar. Fica registrado aqui caso vire prioridade depois.
+   - **Refatoração de campos de formulário** (motivada pelos selects de paciente/profissional/procedimento do dialog de criação, que ficavam com o valor mal legível no `TextField select` nativo): novo componente genérico `EntityAutocomplete` (`src/components/entity-autocomplete/`), usado nos 3 selects de entidade do form de criação e no select de profissional do reagendamento; e adoção de `@mui/x-date-pickers` (`DateTimePicker` + `dayjs`, locale `pt-br` via `LocalizationProvider` em `MuiProvider`) no lugar do `<TextField type="datetime-local">`, que renderizava feio e inconsistente quando vazio (`dd/mm/yyyy, --:--`). Ambos os padrões documentados no `SKILLS.md` para as próximas features (`mensagens`, `usuarios`) reaproveitarem.
 4. **`mensagens`** (`messaging`) — só leitura (`GET /messages`, `GET /messages/failed`); o disparo é automático no backend. A lista de falhas é a feature de maior valor: é o "avisar a recepção quando algo falha" do ROADMAP do backend.
 5. **`usuarios`** (`users`) — CRUD restrito a ADMIN. Referência de **página inteira** protegida por role (hoje só escondemos o item de menu; a rota em si continua acessível por URL direta).
 6. **`configuracoes`** (`tenants/me`) — leitura para todos, edição restrita a ADMIN.
@@ -165,6 +168,7 @@ que ainda não foram tomadas. Não teve pedido de usuário real até agora.
 ### Fase 2 — Robustez de sessão e UX
 
 - **Refresh automático** — o access token expira em 15 min e não há renovação: o usuário é deslogado no meio do trabalho. Implementar detecção de 401 que chama `POST /auth/refresh` com o cookie `crivo_refresh` e repete a requisição antes de propagar a falha. **É o item de maior impacto percebido nesta fase.**
+  - **Parcialmente coberto**: quando a sessão já expirou (sem refresh), o usuário não fica mais preso numa tela morta com só um Alert e um botão "Tentar novamente" — `useSessionExpiredGuard` (`src/hooks/use-session-expired-guard.ts`) detecta a mensagem estável `SESSION_EXPIRED_MESSAGE` (agora em `src/lib/session-messages.ts`, sem `server-only`, para poder ser importada em Client Components) no `error` de qualquer `useQuery` de leitura, chama `logoutAction()` e redireciona para `/login` automaticamente, sem exigir refresh manual da página. Plugado em `useAppointments`/`usePatients`/`useProfessionals`/`useProcedures`. Isso NÃO é o refresh automático em si (não renova o token antes de expirar) — só evita a tela travada depois que ele já expirou. O refresh de verdade continua pendente.
 - **⚠️ Bloquear TELAS inteiras por papel — ainda PENDENTE, não esquecer**:
   A proteção de **ações** já existe desde `profissionais` (UI via `useIsAdmin()`, Server Action via `requireAdmin()`, backend via `@Roles`). O que falta é a proteção da **rota em si**.
   - `(dashboard)/layout.tsx` só verifica se **existe sessão** (`redirect("/login")`), nunca o papel. O menu esconde "Usuários" para STAFF (`_data/nav-items.ts`), mas isso é cosmético: `/painel/usuarios` responderá normalmente para um STAFF que digite a URL direto — assim que essa tela existir.
@@ -186,3 +190,24 @@ que ainda não foram tomadas. Não teve pedido de usuário real até agora.
 ## Débitos técnicos conhecidos
 
 - **`src/components/ui/`** mistura componentes do site (`header`, `footer`, `logo`, `scroll-reveal`) com o que sobrou da fase shadcn. Como o admin não usa mais nada dali, faria sentido renomear para algo como `src/components/website/`.
+
+## Armadilha resolvida: `mutateAsync` sem `try/catch` derrubava a página
+
+`useMutation().mutateAsync()` (diferente de `.mutate()`) **relança o erro**
+depois de rodar `onError` — é assim que o React Query permite tratamento
+local além do `onError` do hook. Os 9 dialogs de formulário/exclusão do
+projeto (Patients, Professionals, Procedures, Appointments) chamavam
+`await xyz.mutateAsync(...)` direto no `onSubmit`/`handleConfirm`, sem
+`try/catch`. Enquanto os testes só cobriam o caminho feliz, isso nunca
+apareceu — o primeiro erro de regra de negócio real (409 de conflito de
+horário na Agenda) relançou pelo `await` desprotegido e virou uma exceção
+não capturada, que o Next.js mostra como tela cheia de "Runtime Error" em
+dev (e provavelmente uma tela crashada/branca em produção, sem o overlay).
+
+**Fix**: todo `await xyz.mutateAsync(...)` nesses 9 arquivos agora está
+dentro de um `try { ...; onOpenChange(false); } catch { /* snackbar via
+onError já cobre */ }` — o dialog fica aberto e o usuário vê o erro no
+snackbar, em vez da página crashar. Ao criar uma nova feature com dialogs
+de formulário, sempre envolver `mutateAsync` em `try/catch` (ou preferir
+`.mutate()` quando não precisar aguardar o resultado antes de fechar o
+dialog).
