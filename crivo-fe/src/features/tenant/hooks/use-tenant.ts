@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getTenantAction } from "../actions/get-tenant-action";
 
 export const TENANT_QUERY_KEY = ["tenant"] as const;
@@ -18,8 +17,6 @@ export function useTenant() {
       return result.data;
     },
   });
-
-  useSessionExpiredGuard(error);
 
   return { tenant: data, isLoading, isFetching, error, refetch };
 }
