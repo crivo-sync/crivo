@@ -13,6 +13,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 
+import { MaskedTextField } from "@/components/masked-text-field";
+import { CPF_MASK, PHONE_MASK } from "@/lib/br-masks";
 import { useCreatePatient } from "../../hooks/use-create-patient";
 import { useUpdatePatient } from "../../hooks/use-update-patient";
 import { createPatientSchema, type CreatePatientSchema } from "../../schemas/patient";
@@ -115,11 +117,12 @@ export const PatientFormDialog = ({
               control={control}
               name="phone"
               render={({ field, fieldState }) => (
-                <TextField
+                <MaskedTextField
                   {...field}
+                  {...PHONE_MASK}
                   id="phone"
-                  label="Telefone (com DDD, só números)"
-                  placeholder="11987654321"
+                  label="Telefone (com DDD)"
+                  placeholder="(11) 98765-4321"
                   error={!!fieldState.error}
                   helperText={fieldState.error?.message}
                   fullWidth
@@ -132,11 +135,12 @@ export const PatientFormDialog = ({
                 control={control}
                 name="cpf"
                 render={({ field, fieldState }) => (
-                  <TextField
+                  <MaskedTextField
                     {...field}
                     id="cpf"
                     label="CPF (opcional)"
-                    placeholder="Só números"
+                    placeholder="000.000.000-00"
+                    mask={CPF_MASK}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                     fullWidth
