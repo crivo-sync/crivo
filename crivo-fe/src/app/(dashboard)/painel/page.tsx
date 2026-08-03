@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import Card from "@mui/material/Card";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+
+import { DashboardHome } from "@/features/dashboard/components/DashboardHome";
 
 export const metadata: Metadata = {
   title: "Painel — Crivo",
@@ -8,19 +11,15 @@ export const metadata: Metadata = {
 
 const DashboardPage = () => {
   return (
-    <Card variant="outlined" sx={{ p: 4 }}>
-      <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        Esqueleto do painel. As features (Agenda, Pacientes, Predição,
-        Mensageria…) entram aqui seguindo a arquitetura descrita em{" "}
-        <Typography
-          component="code"
-          sx={{ fontFamily: "monospace", color: "text.primary" }}
-        >
-          docs/SKILLS.md
+    <Stack spacing={3}>
+      <Box>
+        <Typography variant="h6">Painel</Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          Visão geral do dia na clínica.
         </Typography>
-        .
-      </Typography>
-    </Card>
+      </Box>
+      <DashboardHome />
+    </Stack>
   );
 };
 
