@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
+import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import Avatar from "@mui/material/Avatar";
@@ -16,6 +17,7 @@ import ButtonBase from "@mui/material/ButtonBase";
 
 import { useSession, roleLabel } from "@/components/providers/session-provider";
 import { logoutAction } from "@/features/auth/actions/logout-action";
+import { useProfile } from "@/features/profile/hooks/use-profile";
 import { getInitials } from "@/lib/initials";
 
 /**
@@ -25,6 +27,9 @@ import { getInitials } from "@/lib/initials";
  */
 export const TopBarUserMenu = () => {
   const session = useSession();
+  // Sessão (JWT) não carrega avatar — busca via React Query, invalidada pela
+  // própria página de perfil quando a foto troca, então reflete sem reload.
+  const { profile } = useProfile();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -63,7 +68,10 @@ export const TopBarUserMenu = () => {
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
       >
-        <Avatar sx={{ width: 32, height: 32, fontSize: 13 }}>
+        <Avatar
+          src={profile?.avatarUrl ?? undefined}
+          sx={{ width: 32, height: 32, fontSize: 13 }}
+        >
           {getInitials(displayName)}
         </Avatar>
         <Box sx={{ textAlign: "left", display: { xs: "none", sm: "block" } }}>
@@ -77,6 +85,14 @@ export const TopBarUserMenu = () => {
             {roleLabel(session.role)}
           </Typography>
         </Box>
+        <KeyboardArrowDownOutlinedIcon
+          fontSize="small"
+          sx={{
+            color: "text.secondary",
+            transition: "transform 0.2s",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
       </ButtonBase>
 
       <Menu
