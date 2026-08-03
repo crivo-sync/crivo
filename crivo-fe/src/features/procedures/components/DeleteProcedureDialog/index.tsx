@@ -26,8 +26,12 @@ export const DeleteProcedureDialog = ({
 
   const handleConfirm = async () => {
     if (!procedure) return;
-    await deleteProcedure.mutateAsync(procedure.id);
-    onOpenChange(false);
+    try {
+      await deleteProcedure.mutateAsync(procedure.id);
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
+    }
   };
 
   return (
