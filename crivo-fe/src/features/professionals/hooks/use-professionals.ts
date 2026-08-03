@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getProfessionalsAction } from "../actions/get-professionals-action";
 import type { ProfessionalsQueryParams } from "../schemas/professionals-query-params";
 
@@ -19,6 +20,8 @@ export function useProfessionals(params: ProfessionalsQueryParams) {
     },
     placeholderData: (previousData) => previousData,
   });
+
+  useSessionExpiredGuard(error);
 
   return {
     professionals: data?.data ?? [],
