@@ -35,23 +35,22 @@ export const api: KyInstance = ky.extend({
   hooks: {
     // Troca a mensagem crua do ky ("Request failed with status code 400 …")
     // pela mensagem amigável que o crivo-be devolve no corpo — é ela que
-    // chega na UI (validação de campo, limite de plano, etc.).
+    // chega na UI (validação de campo, limite de plano, colisão de horário…).
     beforeError: [
-      async ({ error }) => {
+      ({ error }) => {
         const httpError = error as HTTPError;
         if (!httpError.response) return error;
 
-        try {
-          const body = (await httpError.response.clone().json()) as {
-            message?: string | string[];
-          };
-          const message = Array.isArray(body?.message)
-            ? body.message.join(", ")
-            : body?.message;
-          if (message) httpError.message = message;
-        } catch {
-          /* corpo não-JSON — mantém a mensagem padrão do ky */
-        }
+        // No ky v2 o corpo já chega pré-parsed em `error.data` — e o
+        // `response` é consumido ao populá-lo, então `response.json()` não
+        // funciona aqui. Sem `error.data` mantemos a mensagem padrão do ky.
+        const body = httpError.data as
+          | { message?: string | string[] }
+          | undefined;
+        const message = Array.isArray(body?.message)
+          ? body.message.join(", ")
+          : body?.message;
+        if (message) httpError.message = message;
         return httpError;
       },
     ],
