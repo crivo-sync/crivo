@@ -5,7 +5,7 @@ import AddIcon from "@mui/icons-material/Add";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
+import Paper from "@mui/material/Paper";
 
 import { usePatientsFiltersState } from "../../hooks/use-patients-filters-state";
 import { usePatients } from "../../hooks/use-patients";
@@ -14,7 +14,6 @@ import { PatientFilters } from "../PatientFilters";
 import { PatientsTable } from "../PatientsTable";
 import { PatientFormDialog } from "../PatientFormDialog";
 import { DeletePatientDialog } from "../DeletePatientDialog";
-import Paper from "@mui/material/Paper";
 
 export const PatientManagement = () => {
   const { control, page, perPage, urlSearch, updateParams, clearFilters } =
