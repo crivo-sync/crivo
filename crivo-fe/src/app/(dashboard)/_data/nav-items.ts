@@ -1,6 +1,7 @@
 import type { SessionRole } from "@/lib/session";
 
 export type NavIconName =
+  | "dashboard"
   | "agenda"
   | "pacientes"
   | "profissionais"
@@ -27,6 +28,7 @@ export type NavItem = {
  * prop. O `SidebarNav` (client) resolve o nome pro ícone real.
  */
 export const NAV_ITEMS: NavItem[] = [
+  { label: "Painel", href: "/painel", icon: "dashboard" },
   { label: "Agenda", href: "/painel/agenda", icon: "agenda" },
   { label: "Pacientes", href: "/painel/pacientes", icon: "pacientes" },
   {
