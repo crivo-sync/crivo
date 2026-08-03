@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getPatientsAction } from "../actions/get-patients-action";
 import type { PatientsQueryParams } from "../schemas/patients-query-params";
 
@@ -19,6 +20,8 @@ export function usePatients(params: PatientsQueryParams) {
     },
     placeholderData: (previousData) => previousData,
   });
+
+  useSessionExpiredGuard(error);
 
   return {
     patients: data?.data ?? [],
