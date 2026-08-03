@@ -83,16 +83,20 @@ export const ProfessionalFormDialog = ({
       email: values.email || undefined,
     };
 
-    if (isEditing) {
-      // `isActive` só existe no UpdateProfessionalDto, não no cadastro.
-      await updateProfessional.mutateAsync({
-        id: professional.id,
-        input: { ...base, isActive },
-      });
-    } else {
-      await createProfessional.mutateAsync(base);
+    try {
+      if (isEditing) {
+        // `isActive` só existe no UpdateProfessionalDto, não no cadastro.
+        await updateProfessional.mutateAsync({
+          id: professional.id,
+          input: { ...base, isActive },
+        });
+      } else {
+        await createProfessional.mutateAsync(base);
+      }
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
     }
-    onOpenChange(false);
   });
 
   return (
