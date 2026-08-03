@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getUsersAction } from "../actions/get-users-action";
 
 export const USERS_QUERY_KEY = ["users"] as const;
@@ -18,8 +17,6 @@ export function useUsers() {
       return result.data;
     },
   });
-
-  useSessionExpiredGuard(error);
 
   return {
     users: data ?? [],
