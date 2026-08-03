@@ -33,8 +33,6 @@ export const PatientsTable = ({
       rows={patients}
       columns={columns}
       loading={loading}
-      checkboxSelection
-      disableRowSelectionOnClick
       paginationMeta={meta}
       onPageChange={(page) => onUpdateParams({ page: String(page) })}
       onPerPageChange={(perPage) =>
