@@ -1,8 +1,13 @@
 "use client";
 
+import "dayjs/locale/pt-br";
+
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
+import { ptBR as datePickersPtBR } from "@mui/x-date-pickers/locales";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import { muiTheme } from "@/config/mui-theme";
 import { SnackbarProvider } from "./snackbar-provider";
@@ -24,7 +29,16 @@ export const MuiProvider = ({ children }: MuiProviderProps) => {
     <AppRouterCacheProvider options={{ key: "mui", enableCssLayer: true }}>
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
-        <SnackbarProvider>{children}</SnackbarProvider>
+        <LocalizationProvider
+          dateAdapter={AdapterDayjs}
+          adapterLocale="pt-br"
+          localeText={
+            datePickersPtBR.components.MuiLocalizationProvider.defaultProps
+              .localeText
+          }
+        >
+          <SnackbarProvider>{children}</SnackbarProvider>
+        </LocalizationProvider>
       </ThemeProvider>
     </AppRouterCacheProvider>
   );
