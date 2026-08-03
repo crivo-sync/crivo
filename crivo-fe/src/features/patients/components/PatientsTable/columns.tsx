@@ -4,15 +4,8 @@ import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { GridActionsCellItem, type GridColDef } from "@mui/x-data-grid";
 
+import { formatCpf, formatPhone } from "@/lib/br-masks";
 import type { Patient } from "../../types";
-
-function formatPhone(phone: string): string {
-  const ddd = phone.slice(0, 2);
-  const rest = phone.slice(2);
-  const middle = rest.length === 9 ? rest.slice(0, 5) : rest.slice(0, 4);
-  const end = rest.length === 9 ? rest.slice(5) : rest.slice(4);
-  return `(${ddd}) ${middle}-${end}`;
-}
 
 type BuildColumnsArgs = {
   onEdit: (patient: Patient) => void;
@@ -42,7 +35,7 @@ export function buildPatientColumns({
       headerName: "CPF",
       flex: 1,
       minWidth: 140,
-      valueFormatter: (value: string | null) => value ?? "—",
+      valueFormatter: (value: string | null) => (value ? formatCpf(value) : "—"),
     },
     {
       field: "email",
