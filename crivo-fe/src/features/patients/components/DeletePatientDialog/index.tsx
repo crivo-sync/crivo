@@ -26,8 +26,12 @@ export const DeletePatientDialog = ({
 
   const handleConfirm = async () => {
     if (!patient) return;
-    await deletePatient.mutateAsync(patient.id);
-    onOpenChange(false);
+    try {
+      await deletePatient.mutateAsync(patient.id);
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
+    }
   };
 
   return (
