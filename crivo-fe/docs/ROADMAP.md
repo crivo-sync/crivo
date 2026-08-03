@@ -20,7 +20,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | 🟢 Histórico + aba de falhas. Só leitura, aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
-| `configuracoes` (tenants/me) | ⚪ Não iniciado |
+| `configuracoes` (tenants/me) | 🟢 Leitura para todos, edição restrita a ADMIN |
 | Perfil do usuário (leitura no header + `/painel/perfil`) | 🟡 Somente leitura — edição depende de endpoints novos no backend |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
@@ -128,7 +128,10 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
    - **Auto-proteção espelhada no frontend**: o backend recusa (`400`) o admin logado tentando rebaixar ou desativar a própria conta (`UpdateUserUseCase`, `isSelf` check — evita ficar trancado fora do tenant). A UI (`buildUserColumns`, comparando `row.id` com `session.userId` de `useSession()`) já nem oferece a ação "Desativar" na própria linha, só "Editar".
    - **`GET /users` não é paginado** — devolve o array inteiro da clínica (lista pequena por natureza). `AppDataGrid` usa `hideFooter` em vez do fluxo de paginação server-side das outras tabelas.
    - **Form único para criar/editar**: `email`/`password` só existem em `CreateUserDto` (o backend não aceita trocar e-mail nem senha de terceiro via `PATCH`), então `userFormSchema` os deixa opcionais e o componente valida manualmente no `onSubmit` quando `!isEditing` — evita bifurcar o resolver do react-hook-form em runtime (frágil, o tipo do form nunca bate exatamente com um schema trocado dinamicamente).
-6. **`configuracoes`** (`tenants/me`) — leitura para todos, edição restrita a ADMIN.
+6. ~~**`configuracoes`** (`tenants/me`)~~ — ✅ **feito**. Completa a feature `src/features/tenant/`, que já existia parcialmente (só leitura, usada no header e em `/painel/perfil`). Um form único sempre visível (sem tabela — não é uma lista, é o registro único do tenant): `GET /tenants/me` é aberto a ADMIN e STAFF, `PATCH /tenants/me` é `@Roles(ADMIN)`. Para STAFF, os campos aparecem preenchidos e `disabled`, sem o botão "Salvar" (padrão diferente de `usuarios`: aqui a leitura fica visível mesmo sem poder editar, porque o backend também trata GET e PATCH com guards distintos). Detalhes:
+   - **Preview de cor**: `ColorField` (`src/features/tenant/components/TenantSettings/color-field.tsx`), um `TextField` com um círculo mostrando a cor renderizada quando o hex digitado é válido — extraído como componente local (não global) porque só as duas cores da identidade visual do tenant usam isso hoje.
+   - **Telefone com máscara**: reaproveita `MaskedTextField` + `PHONE_MASK` de `src/lib/br-masks.ts`, mesmo padrão de `pacientes`/`profissionais`.
+   - **Bug corrigido nesta feature**: `defaultValues: {}` no `useForm` fazia os `TextField` controlados nascerem com `value={undefined}` e só ganharem valor real depois que `useTenant()` resolvia e o `useEffect` chamava `reset()` — React acusa isso como "a component is changing an uncontrolled input to be controlled". Fix: `defaultValues` com strings vazias explícitas (`EMPTY_VALUES`), mesmo padrão já usado nos outros formulários do projeto — só não tinha sido aplicado aqui porque o form não tem um "modo criação" com valores vazios óbvios (é sempre edição de um registro que já existe).
 7. **Perfil do usuário logado** (trocar senha, avatar, dados próprios) — ver seção dedicada abaixo. Backend não tem nada disso hoje; é o item com maior trabalho de API novo antes de qualquer UI.
 
 ### Perfil do usuário logado (trocar senha, avatar, etc.)
