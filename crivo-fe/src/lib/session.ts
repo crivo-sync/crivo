@@ -2,14 +2,12 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
+export { SESSION_EXPIRED_MESSAGE, FORBIDDEN_MESSAGE } from "./session-messages";
+
 export const SESSION_COOKIE = "crivo_session";
 export const REFRESH_COOKIE = "crivo_refresh";
 /** Não-httpOnly de propósito: só nome/e-mail para exibição na UI, nunca autenticação. */
 export const DISPLAY_NAME_COOKIE = "crivo_display_name";
-
-/** Mensagem estável para "a sessão morreu", independente do texto do backend. */
-export const SESSION_EXPIRED_MESSAGE =
-  "Sua sessão expirou. Faça login novamente.";
 
 export type SessionRole = "ADMIN" | "STAFF";
 
@@ -81,10 +79,6 @@ export const getServerSession = async (): Promise<ServerSession | null> => {
   if (!token) return null;
   return { accessToken: token };
 };
-
-/** Mensagem única para ação bloqueada por papel insuficiente. */
-export const FORBIDDEN_MESSAGE =
-  "Você não tem permissão para executar esta ação.";
 
 export type AdminSession = ServerSession & { role: SessionRole };
 
