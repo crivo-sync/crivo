@@ -26,8 +26,12 @@ export const DeleteProfessionalDialog = ({
 
   const handleConfirm = async () => {
     if (!professional) return;
-    await deleteProfessional.mutateAsync(professional.id);
-    onOpenChange(false);
+    try {
+      await deleteProfessional.mutateAsync(professional.id);
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
+    }
   };
 
   return (
