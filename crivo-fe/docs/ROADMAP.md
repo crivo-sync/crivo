@@ -17,11 +17,11 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `agenda` (appointments) | ⚪ Não iniciado |
-| `procedimentos` (procedures) | ⚪ Não iniciado |
+| `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | ⚪ Não iniciado |
 | `usuarios` (users) | ⚪ Não iniciado |
 | `configuracoes` (tenants/me) | ⚪ Não iniciado |
-| Perfil do usuário (senha, avatar) | ⚪ Não iniciado — backend não tem os endpoints |
+| Perfil do usuário (leitura no header + `/painel/perfil`) | 🟡 Somente leitura — edição depende de endpoints novos no backend |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` (home do admin) ainda é um placeholder.
@@ -114,7 +114,7 @@ Criar `GET /users/me`:
 Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acopladas):
 
 1. ~~**`profissionais`** (`professionals`)~~ — ✅ **feito**. Estabeleceu o padrão de ação por papel: `SessionProvider` + `useIsAdmin()` na UI, `requireAdmin()` nas Server Actions de escrita.
-2. **`procedimentos`** (`procedures`) — mesmo padrão de `profissionais` (preço e duração alimentam o formulário da agenda depois).
+2. ~~**`procedimentos`** (`procedures`)~~ — ✅ **feito**. Mesmo padrão de `profissionais` 1:1 (RBAC, paginação, dialogs). Formulário guarda preço em reais na UI e converte para centavos (`src/lib/currency.ts`) antes de enviar ao backend — o preço/duração já ficam prontos para alimentar o formulário da agenda.
 3. **`agenda`** (`appointments`) — a mais complexa e a que justifica o produto. Depende das três anteriores para os selects. Inclui fluxos que não existem em nenhum CRUD atual: `PATCH :id/reschedule`, `PATCH :id/status` e visualização por calendário/dia.
 4. **`mensagens`** (`messaging`) — só leitura (`GET /messages`, `GET /messages/failed`); o disparo é automático no backend. A lista de falhas é a feature de maior valor: é o "avisar a recepção quando algo falha" do ROADMAP do backend.
 5. **`usuarios`** (`users`) — CRUD restrito a ADMIN. Referência de **página inteira** protegida por role (hoje só escondemos o item de menu; a rota em si continua acessível por URL direta).
@@ -123,8 +123,15 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
 
 ### Perfil do usuário logado (trocar senha, avatar, etc.)
 
-Hoje o `UserMenu` na sidebar só mostra nome + botão de sair — não existe
-nenhuma tela de "meu perfil". Levantamento do que falta, por trás:
+**Feito**: o header (`TopBarUserMenu`) mostra nome da clínica (`GET
+/tenants/me`, nova feature `src/features/tenant/`), nome do usuário e papel
+(`roleLabel()` em `session-provider.tsx`), com dropdown ("Meu perfil" /
+"Sair"). `/painel/perfil` existe e mostra nome, papel e clínica em modo
+somente-leitura — sem formulário de edição, porque o backend ainda não
+oferece nada editável (ver lacunas abaixo). O `UserMenu` da sidebar continua
+como estava (nome + sair), sem duplicar o dropdown novo.
+
+Levantamento do que falta, por trás, para a tela de perfil virar editável:
 
 **Backend (nada disso existe hoje):**
 
@@ -144,12 +151,12 @@ nenhuma tela de "meu perfil". Levantamento do que falta, por trás:
 
 **Frontend (a fazer depois que o backend acima existir):**
 
-- Nova feature `src/features/profile/` (ou uma seção dentro de `auth/`,
-  a decidir) com: form de dados básicos, form de troca de senha (senha
-  atual + nova + confirmação, validado com Zod), upload de avatar.
-- `UserMenu` ganha um item "Meu perfil" linkando pra essa página/dialog.
-- Se avatar existir, o `getInitials()` de `UserMenu` vira fallback (mostra
-  a foto quando houver, iniciais quando não houver).
+- `/painel/perfil` ganha form de dados básicos, form de troca de senha
+  (senha atual + nova + confirmação, validado com Zod) e upload de avatar —
+  hoje a página só lê e exibe, não tem nenhum form.
+- Se avatar existir, `getInitials()` (`src/lib/initials.ts`, compartilhado
+  por `UserMenu` e `TopBarUserMenu`) vira fallback (mostra a foto quando
+  houver, iniciais quando não houver).
 
 **Prioridade**: baixa — depende de decisões de produto (onde fica o avatar,
 se STAFF pode trocar a própria senha ou se isso é sempre via convite/reset)
