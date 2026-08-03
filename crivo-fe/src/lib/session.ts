@@ -81,3 +81,31 @@ export const getServerSession = async (): Promise<ServerSession | null> => {
   if (!token) return null;
   return { accessToken: token };
 };
+
+/** Mensagem única para ação bloqueada por papel insuficiente. */
+export const FORBIDDEN_MESSAGE =
+  "Você não tem permissão para executar esta ação.";
+
+export type AdminSession = ServerSession & { role: SessionRole };
+
+/**
+ * Resolve token + papel de uma vez para Server Actions de escrita restritas
+ * a ADMIN, devolvendo qual erro ocorreu para a action traduzir na resposta.
+ *
+ * O crivo-be continua sendo a autoridade final (`@Roles(Role.ADMIN)`) — esta
+ * checagem existe para falhar cedo, com mensagem em português, em vez de
+ * gastar uma chamada HTTP que voltaria 403 com texto genérico.
+ */
+export const requireAdmin = async (): Promise<
+  | { ok: true; session: AdminSession }
+  | { ok: false; reason: "unauthenticated" | "forbidden" }
+> => {
+  const session = await getSession();
+  if (!session) return { ok: false, reason: "unauthenticated" };
+  if (session.role !== "ADMIN") return { ok: false, reason: "forbidden" };
+
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return { ok: false, reason: "unauthenticated" };
+
+  return { ok: true, session: { accessToken: token, role: session.role } };
+};
