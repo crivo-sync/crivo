@@ -10,6 +10,7 @@ import { ProfessionalsModule } from './modules/professionals/professionals.modul
 import { ProceduresModule } from './modules/procedures/procedures.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
     ProceduresModule,
     AppointmentsModule,
     MessagingModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [],
