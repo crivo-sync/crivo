@@ -23,6 +23,7 @@ import {
 import { LogoMark } from "@/components/ui/logo";
 import type { NavItem } from "../_data/nav-items";
 import { SidebarNav } from "./sidebar-nav";
+import { TopBarUserMenu } from "./top-bar-user-menu";
 import { UserMenu } from "./user-menu";
 
 const drawerWidth = 260;
@@ -113,6 +114,8 @@ const Drawer = styled(MuiDrawer, {
 type DashboardShellProps = {
   navItems: NavItem[];
   displayName: string;
+  /** `null` quando a busca da clínica falha — o header some sem quebrar a página. */
+  tenantName: string | null;
   children: React.ReactNode;
 };
 
@@ -123,6 +126,7 @@ type DashboardShellProps = {
 export const DashboardShell = ({
   navItems,
   displayName,
+  tenantName,
   children,
 }: DashboardShellProps) => {
   const theme = useTheme();
@@ -131,17 +135,26 @@ export const DashboardShell = ({
   return (
     <Box sx={{ display: "flex" }}>
       <AppBar position="fixed" open={open} elevation={0}>
-        <Toolbar>
-          {/* A marca já vive no header da sidebar; aqui só o botão de abrir
-              quando ela está recolhida, para não duplicar "Crivo". */}
-          <IconButton
-            aria-label="Abrir menu"
-            onClick={() => setOpen(true)}
-            edge="start"
-            sx={[{ mr: 2 }, open && { display: "none" }]}
-          >
-            <MenuIcon />
-          </IconButton>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {/* A marca já vive no header da sidebar; aqui só o botão de abrir
+                quando ela está recolhida, para não duplicar "Crivo". */}
+            <IconButton
+              aria-label="Abrir menu"
+              onClick={() => setOpen(true)}
+              edge="start"
+              sx={[{ mr: 2 }, open && { display: "none" }]}
+            >
+              <MenuIcon />
+            </IconButton>
+            {tenantName && (
+              <Typography variant="subtitle1" noWrap>
+                {tenantName}
+              </Typography>
+            )}
+          </Box>
+
+          <TopBarUserMenu />
         </Toolbar>
       </AppBar>
 
