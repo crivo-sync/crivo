@@ -489,6 +489,26 @@ A camada estritamente visual (apresentação).
   o form (schema Zod continua guardando a data como string ISO, igual
   antes).
 
+  **Armadilha real (já aconteceu em `MessageFilters`/`AppointmentFilters`)**:
+  o `onChange` do `DatePicker`/`DateTimePicker` dispara a cada segmento
+  digitado (dia, mês, ano), não só quando a data fica completa — e o `value`
+  recebido não é `null` enquanto ela está parcial/inválida, é um `Dayjs`
+  **inválido**. Chamar `.toISOString()` direto nesse `value` lança
+  `RangeError: Invalid time value`, que cai num `console.error` silencioso
+  (sem crashar a página, mas sem aplicar o filtro também) — o usuário digita
+  a data e nada acontece, sem explicação. Sempre checar `value.isValid()`
+  antes de converter:
+
+  ```typescript
+  const handleDateChange = (value: Dayjs | null) => {
+    if (!value || !value.isValid()) {
+      if (!value) onChange(null); // só limpa no null explícito
+      return; // ainda digitando — não faz nada
+    }
+    onChange(value.toISOString());
+  };
+  ```
+
 ---
 
 ## 4. Padrões de Nomenclatura e Organização
