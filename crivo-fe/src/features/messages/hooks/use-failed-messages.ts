@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
 import { getFailedMessagesAction } from "../actions/get-failed-messages-action";
 
 export const FAILED_MESSAGES_QUERY_KEY = ["messages", "failed"] as const;
@@ -19,8 +18,6 @@ export function useFailedMessages(params: { page: number; perPage: number }) {
     },
     placeholderData: (previousData) => previousData,
   });
-
-  useSessionExpiredGuard(error);
 
   return {
     messages: data?.data ?? [],
