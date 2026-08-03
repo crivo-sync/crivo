@@ -78,16 +78,20 @@ export const ProcedureFormDialog = ({
       priceInCents: values.priceInCents,
     };
 
-    if (isEditing) {
-      // `isActive` só existe no UpdateProcedureDto, não no cadastro.
-      await updateProcedure.mutateAsync({
-        id: procedure.id,
-        input: { ...base, isActive },
-      });
-    } else {
-      await createProcedure.mutateAsync(base);
+    try {
+      if (isEditing) {
+        // `isActive` só existe no UpdateProcedureDto, não no cadastro.
+        await updateProcedure.mutateAsync({
+          id: procedure.id,
+          input: { ...base, isActive },
+        });
+      } else {
+        await createProcedure.mutateAsync(base);
+      }
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
     }
-    onOpenChange(false);
   });
 
   return (
