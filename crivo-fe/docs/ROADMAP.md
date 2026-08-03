@@ -21,7 +21,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `mensagens` (messaging) | 🟢 Histórico + aba de falhas. Só leitura, aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
 | `configuracoes` (tenants/me) | 🟢 Leitura para todos, edição restrita a ADMIN |
-| Perfil do usuário (leitura no header + `/painel/perfil`) | 🟡 Somente leitura — edição depende de endpoints novos no backend |
+| Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` (home do admin) ainda é um placeholder.
@@ -85,25 +85,9 @@ partir desse molde, não da API "ingênua" do imask.
 
 ---
 
-## Lacuna conhecida: não existe "quem sou eu" no backend
+## ~~Lacuna conhecida: não existe "quem sou eu" no backend~~ — ✅ resolvida
 
-O JWT carrega só `{ sub, tenantId, role }` — sem nome nem e-mail. `POST /auth/login` também só devolve `{ accessToken, refreshToken }`. Para mostrar o nome do usuário logado na sidebar, `loginAction` hoje:
-
-1. Decodifica o `sub` do access token recém-emitido.
-2. Chama `GET /users` (que é **`@Roles(Role.ADMIN)`**) e procura o próprio id na lista.
-3. Se a busca falhar (usuário é STAFF, ou qualquer erro de rede) — cai no e-mail digitado no formulário como fallback.
-
-**Isso funciona para o usuário ADMIN de teste, mas é uma solução de contorno**: todo usuário `STAFF` vê o próprio e-mail em vez do nome, silenciosamente, porque não tem permissão de chamar `GET /users`.
-
-### Proposta para o crivo-be
-
-Criar `GET /users/me`:
-
-- Autenticado (`JwtAuthGuard` + `TenantContextGuard`), **sem** `@Roles(...)` — qualquer usuário autenticado pode ver os próprios dados, independente do role.
-- Retorna o mesmo formato de `UserResponseDto` (`id`, `name`, `email`, `role`, `isActive`, `createdAt`), usando `@Tenant('userId')` para buscar o próprio registro (nunca um `:id` de rota, para não abrir a possibilidade de consultar outro usuário).
-- No frontend, troca `getUsers(accessToken).find(...)` em `login-action.ts` por uma chamada direta a `GET /users/me` — remove o filtro client-side e o fallback deixa de ser necessário no caminho feliz (continua existindo para falhas de rede).
-
-**Prioridade**: sobe para alta assim que houver um fluxo real de convite/login de `STAFF` a testar.
+`GET /users/me` existe agora (`MeController`, ver seção "Perfil do usuário logado" abaixo). `loginAction` ainda usa o fallback antigo (`GET /users` + filtro client-side) para resolver o nome no login inicial — **não foi migrado para `GET /users/me` nesta rodada**, porque o cookie `crivo_display_name` só precisa ser escrito uma vez no login, e o fallback de e-mail já não é o problema real desde que `useProfile()` (React Query, com cache compartilhada) alimenta `TopBarUserMenu`/`UserMenu` com o nome atualizado depois do login. Trocar `login-action.ts` para usar `GET /users/me` é só uma limpeza pendente, não um bloqueio funcional.
 
 ---
 
@@ -132,57 +116,46 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
    - **Preview de cor**: `ColorField` (`src/features/tenant/components/TenantSettings/color-field.tsx`), um `TextField` com um círculo mostrando a cor renderizada quando o hex digitado é válido — extraído como componente local (não global) porque só as duas cores da identidade visual do tenant usam isso hoje.
    - **Telefone com máscara**: reaproveita `MaskedTextField` + `PHONE_MASK` de `src/lib/br-masks.ts`, mesmo padrão de `pacientes`/`profissionais`.
    - **Bug corrigido nesta feature**: `defaultValues: {}` no `useForm` fazia os `TextField` controlados nascerem com `value={undefined}` e só ganharem valor real depois que `useTenant()` resolvia e o `useEffect` chamava `reset()` — React acusa isso como "a component is changing an uncontrolled input to be controlled". Fix: `defaultValues` com strings vazias explícitas (`EMPTY_VALUES`), mesmo padrão já usado nos outros formulários do projeto — só não tinha sido aplicado aqui porque o form não tem um "modo criação" com valores vazios óbvios (é sempre edição de um registro que já existe).
-7. **Perfil do usuário logado** (trocar senha, avatar, dados próprios) — ver seção dedicada abaixo. Backend não tem nada disso hoje; é o item com maior trabalho de API novo antes de qualquer UI.
+7. ~~**Perfil do usuário logado**~~ — ✅ **feito**, backend e frontend. `/painel/perfil` virou form de verdade (editar nome, trocar senha, trocar foto), não mais somente-leitura.
 
 ### Perfil do usuário logado (trocar senha, avatar, etc.)
 
-**Feito**: o header (`TopBarUserMenu`) mostra nome da clínica (`GET
-/tenants/me`, nova feature `src/features/tenant/`), nome do usuário e papel
-(`roleLabel()` em `session-provider.tsx`), com dropdown ("Meu perfil" /
-"Sair"). `/painel/perfil` existe e mostra nome, papel e clínica em modo
-somente-leitura — sem formulário de edição, porque o backend ainda não
-oferece nada editável (ver lacunas abaixo). O `UserMenu` da sidebar continua
-como estava (nome + sair), sem duplicar o dropdown novo.
+**Backend — endpoints novos, todos em `MeController` (`src/modules/users/infrastructure/http/me.controller.ts`)**:
 
-Levantamento do que falta, por trás, para a tela de perfil virar editável:
+- `@Controller('users/me')`, guards `JwtAuthGuard` + `TenantContextGuard`, **sem `@Roles()`** — qualquer papel autenticado acessa os próprios dados. Controller **separado** de `UserController` (que é `@Controller('users')` + `@Roles(ADMIN)` de classe inteira), por dois motivos: (1) não depender de sobrescrever `@Roles()` vazio por método numa classe cujo padrão é ADMIN-only; (2) `/users/me` colidiria com `/users/:id` se estivesse no mesmo controller.
+  - **Armadilha real encontrada**: registrar `UserController` antes de `MeController` no array `controllers: [...]` de `UsersModule` fazia `PATCH /users/me` casar com a rota `PATCH /users/:id` (`id = "me"`) primeiro — o Nest resolve por **ordem de registro**, não por especificidade de path. Corrigido invertendo a ordem: `controllers: [MeController, UserController]`, com comentário no código explicando por quê (não é óbvio revisitando o arquivo sem esse contexto).
+- `GET /users/me` — dados do próprio usuário (`GetMeUseCase`, busca por `findByIdAndTenant(userId, tenantId)`).
+- `PATCH /users/me` — troca só o nome (`UpdateMeUseCase`). Sem email/role/isActive — aqueles continuam exclusivos de `UserController` (gestão por ADMIN).
+- `PATCH /users/me/password` — troca a própria senha (`ChangePasswordUseCase`): exige `currentPassword` + `newPassword`, compara o hash com `bcrypt.compare` (400 se não bater), grava novo hash com `bcrypt.hash(..., 10)` — mesmo `SALT_ROUNDS` usado em `create-user`/`register`. `@HttpCode(204)`, sem corpo de resposta.
+- `POST /users/me/avatar` — upload multipart (`FileInterceptor('file')` do `@nestjs/platform-express`; precisou instalar `@types/multer` que não estava no projeto). Valida MIME (`image/jpeg|png|webp`) e tamanho (5MB) no controller antes de chamar o use case. `UpdateAvatarUseCase` sobe pro Cloudinary via `CloudinaryService` novo (`src/shared/infrastructure/cloudinary/`, módulo `@Global()` registrado em `UsersModule`) e salva a URL retornada.
+- **Schema**: `User.avatarUrl String? @map("avatar_url")` — migration `20260803204104_add_user_avatar_url`, gerada com `prisma migrate diff` + `migrate deploy` (processo documentado no `SKILLS.md` do backend, `migrate dev` não funciona neste ambiente).
+- **`UserManagementRepository.update`** (domain type) estendido para aceitar `password?`/`avatarUrl?` — a implementação Prisma (`this.prisma.user.update({ data })`) já aceitava qualquer campo do tipo sem precisar editar código, só o tipo.
 
-**Backend (nada disso existe hoje):**
+**Cloudinary (`src/shared/infrastructure/cloudinary/`)**:
 
-- `User` no Prisma (`crivo-be/prisma/schema.prisma`) não tem campo de
-  avatar/foto. Precisa de uma coluna (`avatarUrl`, provavelmente apontando
-  pra um bucket de storage — decidir qual antes de modelar) e de um
-  endpoint de upload, já que a API hoje só troca JSON, não multipart.
-- **Trocar a própria senha**: não existe endpoint. `PATCH /users/:id`
-  (`UpdateUserDto`) só aceita `name`, `role`, `isActive` — sem `password` —
-  e além disso é `@Roles(ADMIN)`, então nem um STAFF trocando a própria
-  senha passaria no guard hoje. Precisa de uma rota nova, tipo
-  `PATCH /users/me/password`, autenticada mas sem `@Roles`, pedindo a senha
-  atual + a nova (confirmar contra o hash antes de trocar).
-- **Ver/editar os próprios dados** (nome, e-mail): mesma lacuna do
-  `GET /users/me` já registrada acima — sem esse endpoint, não dá nem para
-  a tela carregar os dados do próprio usuário sem ser ADMIN.
+- `CloudinaryService.uploadImage(buffer, folder, publicId)` — `cloudinary.uploader.upload_stream` promisificado, salva em `crivo/avatars/<userId>` com `public_id` fixo por usuário (`overwrite: true`) para não acumular avatares antigos órfãos a cada troca, e uma transformação `{ width: 512, height: 512, crop: 'fill', gravity: 'face' }` (recorte quadrado, foco no rosto quando detectável).
+- Config lida via `ConfigService.getOrThrow` (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) — mesmo padrão de `DeepSeekTextGenerator`. `CLOUDINARY_API_KEY`/`_SECRET` já estavam no `.env`/`.env.example` como placeholder vazio de um trabalho futuro; faltava só `CLOUDINARY_CLOUD_NAME` (visível na URL do dashboard Cloudinary) e o SDK (`npm install cloudinary`).
+- Testado via curl com um PNG gerado localmente: upload real, URL `https://res.cloudinary.com/<cloud_name>/image/upload/.../crivo/avatars/<userId>.png` acessível publicamente (200), rejeição de arquivo não-imagem confirmada (400).
 
-**Frontend (a fazer depois que o backend acima existir):**
+**Frontend — nova feature `src/features/profile/`**:
 
-- `/painel/perfil` ganha form de dados básicos, form de troca de senha
-  (senha atual + nova + confirmação, validado com Zod) e upload de avatar —
-  hoje a página só lê e exibe, não tem nenhum form.
-- Se avatar existir, `getInitials()` (`src/lib/initials.ts`, compartilhado
-  por `UserMenu` e `TopBarUserMenu`) vira fallback (mostra a foto quando
-  houver, iniciais quando não houver).
+- `useProfile()` (query), `useUpdateProfile()`, `useChangePassword()`, `useUploadAvatar()` (mutations) — todos com `useSessionExpiredGuard`/snackbar/`invalidateQueries` no padrão já estabelecido.
+- `/painel/perfil` (`ProfilePage`, agora Client Component) — card com `AvatarUpload` (avatar clicável com ícone de câmera sobreposto, `<input type="file" hidden>`, preview via `Avatar src`), `ProfileForm` (nome editável, e-mail `disabled` com nota "trocar e-mail ainda não está disponível") e `ChangePasswordForm` (senha atual + nova + confirmação, validação client-side de "senhas não coincidem" via `zod.refine`, além do 400 real do backend se a senha atual estiver errada).
+- `AvatarUpload` valida tipo/tamanho no client **antes** de subir (mesmos limites do backend — MIME e 5MB), pra feedback imediato sem round-trip.
+- `TopBarUserMenu` e `UserMenu` (sidebar) agora chamam `useProfile()` e passam `src={profile?.avatarUrl}` pro `Avatar` — como os dois já eram Client Components e `useProfile()` usa a mesma `PROFILE_QUERY_KEY` que `ProfilePage` invalida ao trocar nome/foto, a troca de avatar aparece em tempo real no header e na sidebar sem reload.
+- Upload via Server Action: `uploadAvatarAction(file: File)` — Next.js serializa `File` nativamente como argumento de Server Action; a camada `http/post-avatar.ts` empacota num `FormData` e o `ky` detecta e define `multipart/form-data` com boundary sozinho (sem precisar setar `Content-Type` manual, que quebraria o boundary).
 
-**Prioridade**: baixa — depende de decisões de produto (onde fica o avatar,
-se STAFF pode trocar a própria senha ou se isso é sempre via convite/reset)
-que ainda não foram tomadas. Não teve pedido de usuário real até agora.
+**Testado**: ADMIN e STAFF, ambos os papéis — editar nome (propaga pro header), trocar senha (senha errada → 400 exibido, senhas não coincidem → validação client-side, fluxo correto → 204 + snackbar + login com a senha nova funciona), upload de avatar (arquivo real, aparece em `/painel/perfil` e no header, arquivo de tipo inválido rejeitado antes do upload). Zero regressão nas telas de Usuários/Configurações que dependiam do mesmo `UserResponseDto`.
 
 ### Fase 2 — Robustez de sessão e UX
 
-- **Refresh automático** — o access token expira em 15 min e não há renovação: o usuário é deslogado no meio do trabalho. Implementar detecção de 401 que chama `POST /auth/refresh` com o cookie `crivo_refresh` e repete a requisição antes de propagar a falha. **É o item de maior impacto percebido nesta fase.**
-  - **Parcialmente coberto**: quando a sessão já expirou (sem refresh), o usuário não fica mais preso numa tela morta com só um Alert e um botão "Tentar novamente" — `useSessionExpiredGuard` (`src/hooks/use-session-expired-guard.ts`) detecta a mensagem estável `SESSION_EXPIRED_MESSAGE` (agora em `src/lib/session-messages.ts`, sem `server-only`, para poder ser importada em Client Components) no `error` de qualquer `useQuery` de leitura, chama `logoutAction()` e redireciona para `/login` automaticamente, sem exigir refresh manual da página. Plugado em `useAppointments`/`usePatients`/`useProfessionals`/`useProcedures`. Isso NÃO é o refresh automático em si (não renova o token antes de expirar) — só evita a tela travada depois que ele já expirou. O refresh de verdade continua pendente.
+- **Refresh automático** — o access token expira em 15 min e não há renovação de verdade (ainda não implementamos detecção de 401 que chama `POST /auth/refresh` e repete a requisição). O que existe hoje cobre o sintoma mais grave (usuário preso numa tela morta), não a causa.
+  - ~~**Deslogar automaticamente quando a sessão expira**~~ — ✅ **feito**, e centralizado. Tentativa anterior (`useSessionExpiredGuard` chamado manualmente em cada hook de `useQuery`) tinha um buraco real: só cobria **leituras**, nunca **mutations** — uma sessão morta numa ação de escrita (editar perfil, trocar senha, criar paciente) só mostrava o snackbar de erro genérico e nunca deslogava, porque nenhuma das ~20 mutations do projeto tinha a checagem. Fix: `queryCache`/`mutationCache` globais no `QueryClient` (`src/components/providers/query-provider.tsx`), com `onError` detectando `SESSION_EXPIRED_MESSAGE` (`src/lib/session-messages.ts`) em **qualquer** query ou mutation do app — nenhum hook novo precisa lembrar de adicionar isso. O hook `useSessionExpiredGuard` e seus 8 usos manuais foram removidos (redundantes agora). Continua NÃO sendo o refresh automático em si — só evita a tela travada depois que a sessão já expirou.
 - ~~**Bloquear TELAS inteiras por papel**~~ — ✅ **feito** junto de `usuarios` (Fase 1, item 5). A proteção de **ações** já existia desde `profissionais` (UI via `useIsAdmin()`, Server Action via `requireAdmin()`, backend via `@Roles`); o que faltava era a proteção da **rota em si**. `usuarios/page.tsx` chama `getSession()` e faz `redirect("/painel")` se `role !== "ADMIN"`, testado com um STAFF real digitando a URL direto. `(dashboard)/layout.tsx` continua só checando "existe sessão" (correto — ele é compartilhado por todas as rotas, a checagem de role é responsabilidade de cada `page.tsx` que precisa dela). Esse padrão só se aplica a telas ADMIN-only na leitura; `profissionais`/`procedimentos` continuam abertos a STAFF por design (o backend não usa `@Roles` no GET deles).
-- **`GET /users/me`** no backend (ver seção acima).
 - **Tratamento de erro consistente** — falta um componente `<ErrorServer />` (citado no `SKILLS.md`) para os estados de falha; hoje cada feature trata por conta própria.
-- **Home do painel** — `/painel` é um placeholder. Definir o que mostra: agenda do dia, horários em risco, mensagens que falharam.
+- ~~**Home do painel**~~ — ✅ **feito**. `/painel` mostra: 4 cards de contagem (agendamentos hoje, pacientes, profissionais ativos, procedimentos), alerta de mensagens que falharam (sucesso "nenhuma falha" quando vazio, senão lista quem ligar), lista de agendamentos de hoje, lista de "a confirmar" (`SCHEDULED` nas próximas 48h). Endpoint novo no backend: `GET /dashboard/summary` (`src/modules/dashboard/`, sem repository/Prisma próprio — só agrega dados de `AppointmentRepository`/`PatientRepository`/`ProfessionalRepository`/`ProcedureRepository`/`MessageRepository` já existentes, importando os módulos de origem em vez de duplicar acesso a dados; `MessagingModule` precisou passar a exportar `MESSAGE_REPOSITORY`, que antes só ficava interno). Sem `@Roles`: ADMIN e STAFF veem a mesma home.
+  - **Achado ao implementar**: existia uma rota órfã `/painel/dashboard` com um componente stub vazio (`<>Dashboard</>`) e um item de menu "Dashboard" apontando pra ela — resquício de uma tentativa anterior interrompida, nunca ligada a nada real. Removidos os dois; o item de menu agora se chama "Painel" e aponta para a home de verdade (`/painel`). `SidebarNav` precisou de uma exceção na lógica de rota ativa (`item.href === "/painel" ? pathname === item.href : ...`), já que `/painel` é prefixo de toda rota do dashboard e ficaria sempre marcado como ativo sem isso.
+  - **Gráficos** (`@mui/x-charts`, já instalado na mesma versão major de `x-data-grid`/`x-date-pickers`, 9.10.1): `GET /dashboard/analytics` novo (`GetDashboardAnalyticsUseCase`), separado de `summary` de propósito — `summary` é "o que fazer agora" (listas acionáveis), `analytics` é "tendência dos últimos 7 dias" (agregados para gráfico, sem paginação). Sem SQL raw: busca os agendamentos do período via `AppointmentRepository.findMany` (`perPage` alto, teto de segurança 1000) e agrega em memória no use case — mantém a regra do projeto de nenhuma query fora da camada de infra, e o volume de uma clínica em 7 dias não justifica `groupBy`/`$queryRaw` no banco. Três gráficos na home: `AppointmentsByDayChart` (BarChart, agendamentos por dia — todos os 7 dias aparecem no eixo mesmo com `count: 0`, um dia vazio é informação, não deveria "sumir"), `StatusPieChart` (PieChart/donut, distribuição de status — precisou de um mapa de hex próprio, `STATUS_HEX_COLORS`, porque `STATUS_COLORS` de `appointments/status.ts` usa nomes semânticos do MUI tipo `"info"`/`"success"` para `<Chip color="...">`, que um `PieChart` não aceita como cor de série), `RevenueByProcedureChart` (BarChart horizontal, soma de `priceInCents` só de agendamentos `COMPLETED`, formatado com `formatCentsToBRL` já existente). Sem `@Roles`: ADMIN e STAFF veem os mesmos gráficos.
 
 ### Fase 3 — Qualidade
 

@@ -213,7 +213,6 @@ A camada de controle de estado e sincronização assíncrona.
   "use client";
 
   import { useQuery } from "@tanstack/react-query";
-  import { useSessionExpiredGuard } from "@/hooks/use-session-expired-guard";
   import { getPatientsAction } from "../actions/get-patients-action";
   import type { PatientsQueryParams } from "../schemas/patients-query-params";
 
@@ -232,11 +231,6 @@ A camada de controle de estado e sincronização assíncrona.
       placeholderData: (previousData) => previousData,
     });
 
-    // Se a Server Action falhou porque a sessão expirou (mensagem estável
-    // `SESSION_EXPIRED_MESSAGE`), desloga e redireciona pra /login sozinho —
-    // sem isso, o usuário fica preso numa tela com só um Alert de erro.
-    useSessionExpiredGuard(error);
-
     return {
       patients: data?.data ?? [],
       meta: data?.meta,
@@ -248,12 +242,19 @@ A camada de controle de estado e sincronização assíncrona.
   }
   ```
 
-  Todo hook de leitura (`use-*.ts` que chama uma `get*Action`) deve incluir
-  essa linha — é o único jeito de recuperar automaticamente de uma sessão
-  que expirou enquanto o usuário já estava na página (o `layout.tsx` do
-  dashboard só barra sessão ausente em **navegações novas**; se o token
-  expira em segundo plano sem o usuário trocar de rota, só um `useQuery`
-  falhando percebe isso). Ver `src/hooks/use-session-expired-guard.ts`.
+  **Sessão expirada não precisa de tratamento manual em cada hook.** Uma
+  tentativa anterior chamava `useSessionExpiredGuard(error)` em todo hook de
+  `useQuery` — cobria leituras, mas nenhuma das ~20 mutations do projeto
+  tinha a mesma checagem, então uma sessão morta numa ação de escrita (criar
+  paciente, trocar senha) só mostrava o snackbar de erro genérico e nunca
+  deslogava. Isso está resolvido de forma centralizada: `QueryProvider`
+  (`src/components/providers/query-provider.tsx`) configura `queryCache` e
+  `mutationCache` com um `onError` que detecta a mensagem estável
+  `SESSION_EXPIRED_MESSAGE` (`src/lib/session-messages.ts`) em **qualquer**
+  query ou mutation do app, chama `logoutAction()` e redireciona pra
+  `/login` sozinho. Não precisa (e não deve) adicionar nada disso em hooks
+  novos — o `error` do exemplo acima já é observado automaticamente pelo
+  `QueryClient` global.
 
   Mutations seguem o mesmo padrão, mas usando `useMutation` + o hook global
   de Snackbar (ver seção 3) e invalidando a query da listagem no sucesso:
