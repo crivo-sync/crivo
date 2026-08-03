@@ -70,12 +70,16 @@ export const PatientFormDialog = ({
       email: values.email || undefined,
     };
 
-    if (isEditing) {
-      await updatePatient.mutateAsync({ id: patient.id, input });
-    } else {
-      await createPatient.mutateAsync(input);
+    try {
+      if (isEditing) {
+        await updatePatient.mutateAsync({ id: patient.id, input });
+      } else {
+        await createPatient.mutateAsync(input);
+      }
+      onOpenChange(false);
+    } catch {
+      // Erro já exibido pelo snackbar via onError do hook.
     }
-    onOpenChange(false);
   });
 
   return (
