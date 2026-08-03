@@ -3,15 +3,18 @@
 import { cookies } from "next/headers";
 import { HTTPError } from "ky";
 
-import { DISPLAY_NAME_COOKIE, REFRESH_COOKIE, SESSION_COOKIE } from "@/lib/session";
+import {
+  ACCESS_TOKEN_MAX_AGE,
+  DISPLAY_NAME_COOKIE,
+  REFRESH_COOKIE,
+  REFRESH_TOKEN_MAX_AGE,
+  SESSION_COOKIE,
+  SESSION_COOKIE_OPTIONS,
+} from "@/lib/session";
 import { getUsers } from "../http/get-users";
 import { login } from "../http/login";
 import { loginSchema, type LoginSchema } from "../schemas/login";
 import type { ActionResult } from "../types";
-
-// Alinhado ao access token (15min) e refresh token (30 dias) do crivo-be.
-const ACCESS_TOKEN_MAX_AGE = 15 * 60;
-const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60;
 
 function decodeSub(accessToken: string): string | null {
   try {
@@ -56,24 +59,18 @@ export async function loginAction(
     const displayName = await resolveDisplayName(accessToken, parsed.data.email);
     const cookieStore = await cookies();
 
-    const baseCookie = {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-    };
-
     cookieStore.set(SESSION_COOKIE, accessToken, {
-      ...baseCookie,
+      ...SESSION_COOKIE_OPTIONS,
       httpOnly: true,
       maxAge: ACCESS_TOKEN_MAX_AGE,
     });
     cookieStore.set(REFRESH_COOKIE, refreshToken, {
-      ...baseCookie,
+      ...SESSION_COOKIE_OPTIONS,
       httpOnly: true,
       maxAge: REFRESH_TOKEN_MAX_AGE,
     });
     cookieStore.set(DISPLAY_NAME_COOKIE, displayName, {
-      ...baseCookie,
+      ...SESSION_COOKIE_OPTIONS,
       httpOnly: false,
       maxAge: ACCESS_TOKEN_MAX_AGE,
     });
