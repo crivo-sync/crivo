@@ -110,6 +110,10 @@ export const RescheduleAppointmentDialog = ({
                     excludeAppointmentId={appointment?.id}
                     errorMessage={fieldState.error?.message}
                     businessDays={tenant?.businessDays}
+                    businessHoursEnd={tenant?.businessHoursEnd}
+                    procedureDurationMinutes={
+                      appointment?.procedure.durationMinutes
+                    }
                   />
                 )}
               />
