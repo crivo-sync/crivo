@@ -10,6 +10,12 @@ export type Tenant = {
   email: string | null;
   address: string | null;
   aiMessagesEnabled: boolean;
+  /** Abertura da clínica em minutos desde a meia-noite (480 = 08:00). */
+  businessHoursStart: number;
+  /** Fechamento da clínica em minutos desde a meia-noite (1080 = 18:00). */
+  businessHoursEnd: number;
+  /** Dias de funcionamento na convenção `Date.getDay()` (0 = domingo). */
+  businessDays: number[];
   createdAt: string;
   updatedAt: string;
 };
