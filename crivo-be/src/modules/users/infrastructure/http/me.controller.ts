@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -24,6 +23,7 @@ import {
 import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { assertValidImageUpload } from 'src/shared/validation/image-upload';
 import { ChangePasswordDto } from '../dtos/change-password.dto';
 import { UpdateMeDto } from '../dtos/update-me.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
@@ -31,9 +31,6 @@ import { GetMeUseCase } from '../../application/use-cases/get-me.use-case';
 import { UpdateMeUseCase } from '../../application/use-cases/update-me.use-case';
 import { ChangePasswordUseCase } from '../../application/use-cases/change-password.use-case';
 import { UpdateAvatarUseCase } from '../../application/use-cases/update-avatar.use-case';
-
-const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * Endpoints de "minha própria conta" — acessíveis por QUALQUER papel
@@ -109,17 +106,7 @@ export class MeController {
     @Tenant('tenantId') tenantId: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded.');
-    }
-    if (!ALLOWED_AVATAR_MIME_TYPES.includes(file.mimetype)) {
-      throw new BadRequestException(
-        'Only JPEG, PNG or WebP images are allowed.',
-      );
-    }
-    if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      throw new BadRequestException('File must be at most 5MB.');
-    }
+    assertValidImageUpload(file);
 
     const user = await this.updateAvatar.execute({
       userId,
