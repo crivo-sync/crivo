@@ -19,7 +19,7 @@ export const SESSION_COOKIE_OPTIONS = {
   path: "/",
 };
 
-export type SessionRole = "ADMIN" | "STAFF";
+export type SessionRole = "ADMIN" | "PROFESSIONAL" | "STAFF";
 
 type JwtPayload = {
   sub: string;
@@ -118,6 +118,33 @@ export const requireAdmin = async (): Promise<
   const session = await getSession();
   if (!session) return { ok: false, reason: "unauthenticated" };
   if (session.role !== "ADMIN") return { ok: false, reason: "forbidden" };
+
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return { ok: false, reason: "unauthenticated" };
+
+  return { ok: true, session: { accessToken: token, role: session.role } };
+};
+
+/** Papéis com necessidade clínica. A recepção (STAFF) fica de fora. */
+const CLINICAL_ROLES: SessionRole[] = ["ADMIN", "PROFESSIONAL"];
+
+/**
+ * Mesmo contrato do `requireAdmin`, para as Server Actions do prontuário.
+ *
+ * Prontuário é dado sensível de saúde: a recepção não lê. Como sempre, o
+ * crivo-be é a autoridade final (`@Roles(ADMIN, PROFESSIONAL)` no
+ * `MedicalRecordController`) — isto aqui só evita gastar uma chamada HTTP
+ * para receber 403 com texto genérico.
+ */
+export const requireClinical = async (): Promise<
+  | { ok: true; session: AdminSession }
+  | { ok: false; reason: "unauthenticated" | "forbidden" }
+> => {
+  const session = await getSession();
+  if (!session) return { ok: false, reason: "unauthenticated" };
+  if (!CLINICAL_ROLES.includes(session.role)) {
+    return { ok: false, reason: "forbidden" };
+  }
 
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return { ok: false, reason: "unauthenticated" };

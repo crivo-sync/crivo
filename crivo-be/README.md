@@ -74,7 +74,8 @@ A cobrança é **por profissional ativo**, com assinatura mensal via Stripe. A l
 | `tenants`    | Cadastro de clínicas, planos, config de white-label                              | Suporte  | 🟢 CRUD do tenant + branding público (falta planos)                |
 | `auth`       | Login, JWT, RBAC (dono, recepção, profissional)                                  | Suporte  | 🟢 Register, login, refresh/logout, RBAC por papel                 |
 | `users`      | Gestão de usuários da clínica (recepção, profissionais)                          | Suporte  | 🟢 Listar, criar e atualizar (somente ADMIN)                       |
-| `patients`   | Cadastro, histórico, prontuário básico                                           | Suporte  | 🟢 CRUD completo, busca, paginação, soft delete (falta prontuário) |
+| `patients`   | Cadastro e histórico do paciente                                                 | Suporte  | 🟢 CRUD completo, busca, paginação, soft delete                    |
+| `medical-records` | Prontuário: anamnese e evolução clínica                                     | **Core** | 🟢 Anamnese + evolução append-only (ADMIN/PROFESSIONAL); falta anexo |
 | `scheduling` | Agenda, profissionais, procedimentos                                             | **Core** | 🟢 Profissionais, procedimentos e agenda com conflito de horário   |
 | `prediction` | Client HTTP pro serviço Python — risco de no-show, churn, sugestão de reativação | **Core** | ⚪ Não iniciado                                                    |
 | `messaging`  | Disparo de WhatsApp, lembretes, confirmação, fila (BullMQ)                       | **Core** | 🟢 Lembrete D-1, confirmação por link, retry e lista de falhas     |
@@ -159,7 +160,7 @@ O usuário `inativo@clinicasorriso.com.br` nasce com `isActive: false` — serve
 | Entidade  | O que é                                                                   | Loga no sistema? |
 | --------- | ------------------------------------------------------------------------- | ---------------- |
 | `Tenant`  | A clínica. É a unidade de isolamento — todo dado pertence a um tenant     | —                |
-| `User`    | Funcionário da clínica: dono (`ADMIN`) ou recepção/profissional (`STAFF`) | Sim              |
+| `User`    | Funcionário da clínica: dono (`ADMIN`), quem atende (`PROFESSIONAL`) ou recepção (`STAFF`) | Sim |
 | `Patient` | Cliente atendido pela clínica                                             | Não              |
 
 `User` e `Patient` são modelos **separados de propósito**: têm ciclos de vida, campos e regras de acesso diferentes. Juntar os dois obrigaria metade das colunas a serem nullable e transformaria toda regra de autorização num `if`.
@@ -321,6 +322,48 @@ SCHEDULED ──> CONFIRMED ──> COMPLETED
 
 > A distinção entre `CANCELLED` e `NO_SHOW` é o dado mais importante do sistema: são comportamentos diferentes, e é sobre eles que o módulo `prediction` vai treinar. Por isso `NO_SHOW` não pode ser marcado em agendamento futuro.
 
+## Prontuário
+
+Anamnese (ficha de saúde) e evolução clínica por paciente.
+
+### Quem enxerga
+
+Prontuário é **dado sensível de saúde** (LGPD Art. 11). Por isso existe o
+papel `PROFESSIONAL`, separado de `STAFF`:
+
+| Papel          | Prontuário | Por quê |
+| -------------- | ---------- | ------- |
+| `ADMIN`        | ✅ | Dono da clínica, normalmente também atende |
+| `PROFESSIONAL` | ✅ | Quem atende — precisa saber alergia e medicação antes do procedimento |
+| `STAFF`        | ❌ | Recepção: agenda e cadastra, não tem necessidade clínica |
+
+O `@Roles(ADMIN, PROFESSIONAL)` está no **controller inteiro**, não rota a
+rota — assim uma rota nova nasce restrita por padrão em vez de aberta por
+esquecimento.
+
+### Evolução é append-only
+
+`ClinicalNote` **não tem** `updatedAt` nem `deletedAt`, e não existe rota de
+`PUT` nem `DELETE`. Registro clínico não se reescreve: para corrigir algo,
+registra-se uma nova evolução. A ausência dos campos é o que garante isso —
+sem precisar construir versionamento.
+
+A anamnese, ao contrário, é documento vivo: pode ser editada, e guarda quem
+alterou por último (`updatedByUserId`).
+
+### Endpoints
+
+| Método | Rota | O que faz |
+| ------ | ---- | --------- |
+| `GET`  | `/patients/:id/anamnesis`      | Ficha de saúde (`null` se nunca preenchida — não é erro) |
+| `PUT`  | `/patients/:id/anamnesis`      | Cria ou atualiza a ficha |
+| `GET`  | `/patients/:id/clinical-notes` | Histórico paginado, mais recente primeiro |
+| `POST` | `/patients/:id/clinical-notes` | Adiciona uma evolução |
+
+Todas validam que o paciente pertence ao tenant do token
+(`PatientGuardService`) — sem isso, um uuid chutado leria prontuário de outra
+clínica.
+
 ## Mensageria
 
 Lembrete automático de consulta por WhatsApp, com confirmação pelo próprio paciente.
@@ -439,7 +482,7 @@ As prioridades de produto — incluindo a análise competitiva que as embasa —
 
 1. **`messaging`** (WhatsApp + confirmação automática) — sem isso o produto não é comparável à concorrência
 2. **Prontuário/anamnese** — requisito obrigatório para odonto e dermato
-3. **Horário de trabalho e bloqueio de agenda** — hoje aceitamos agendar 3h da manhã de domingo
+3. **Horário por profissional e bloqueio de agenda** — o horário da clínica já é respeitado; falta o horário de cada profissional e a indisponibilidade pontual (férias, almoço)
 4. **`prediction`** — o diferencial, mas só depois da paridade mínima
 
 O que segue abaixo são **dívidas técnicas** já mapeadas, que não competem com o roadmap de produto.

@@ -47,8 +47,19 @@ export function useIsAdmin(): boolean {
   return useSession().role === "ADMIN";
 }
 
+/**
+ * Quem tem necessidade clínica — usado para esconder as abas de prontuário
+ * da recepção. Espelha `requireClinical()` em `lib/session.ts`, e ambos são
+ * só conveniência: a autoridade é o `@Roles` do crivo-be.
+ */
+export function useIsClinical(): boolean {
+  const { role } = useSession();
+  return role === "ADMIN" || role === "PROFESSIONAL";
+}
+
 const ROLE_LABELS: Record<SessionRole, string> = {
   ADMIN: "Administrador",
+  PROFESSIONAL: "Profissional",
   STAFF: "Recepção",
 };
 

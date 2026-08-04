@@ -10,6 +10,7 @@ import { ProfessionalsModule } from './modules/professionals/professionals.modul
 import { ProceduresModule } from './modules/procedures/procedures.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
@@ -79,6 +80,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     ProceduresModule,
     AppointmentsModule,
     MessagingModule,
+    MedicalRecordsModule,
     DashboardModule,
   ],
   controllers: [],

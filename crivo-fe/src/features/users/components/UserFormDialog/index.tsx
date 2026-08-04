@@ -184,6 +184,7 @@ export const UserFormDialog = ({
                     fullWidth
                   >
                     <MenuItem value="STAFF">Recepção</MenuItem>
+                    <MenuItem value="PROFESSIONAL">Profissional</MenuItem>
                     <MenuItem value="ADMIN">Administrador</MenuItem>
                   </TextField>
                 )}

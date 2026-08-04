@@ -47,12 +47,18 @@ model Tenant {
   procedures    Procedure[]
   appointments  Appointment[]
   messages      Message[]
+  anamneses     Anamnesis[]
+  clinicalNotes ClinicalNote[]
 
   @@map("tenants")
 }
 
 enum Role {
   ADMIN
+  /// Quem atende: enxerga prontuário (dado sensível de saúde). A recepção
+  /// (STAFF) fica de fora de propósito — não tem necessidade clínica de ler
+  /// alergia/medicação, e a LGPD trata isso como dado sensível.
+  PROFESSIONAL
   STAFF
 }
 
@@ -68,9 +74,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  refreshTokens RefreshToken[]
-  professional  Professional?
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  refreshTokens    RefreshToken[]
+  professional     Professional?
+  clinicalNotes    ClinicalNote[]
+  anamnesesUpdated Anamnesis[]
 
   @@index([tenantId])
   @@map("users")
@@ -103,12 +111,70 @@ model Patient {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  appointments Appointment[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  appointments  Appointment[]
+  anamnesis     Anamnesis?
+  clinicalNotes ClinicalNote[]
 
   @@unique([tenantId, cpf])
   @@index([tenantId])
   @@map("patients")
+}
+
+/// Ficha de saúde do paciente — uma por paciente, atualizada ao longo do
+/// tempo. Separada de `Patient` porque cadastro é dado comum e isto é dado
+/// sensível de saúde: leitura restrita a ADMIN/PROFESSIONAL.
+model Anamnesis {
+  id        String @id @default(uuid())
+  tenantId  String @map("tenant_id")
+  patientId String @unique @map("patient_id")
+
+  /// Campos clínicos como texto livre: cada clínica pergunta de um jeito, e
+  /// engessar em colunas agora obrigaria migration a cada especialidade nova.
+  allergies    String?
+  medications  String?
+  conditions   String?
+  observations String?
+
+  /// Rastreabilidade do registro: quem preencheu por último.
+  updatedByUserId String?  @map("updated_by_user_id")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant  @relation(fields: [tenantId], references: [id])
+  patient       Patient @relation(fields: [patientId], references: [id])
+  updatedByUser User?   @relation(fields: [updatedByUserId], references: [id])
+
+  @@index([tenantId])
+  @@map("anamneses")
+}
+
+/// Nota de evolução clínica.
+///
+/// **Append-only de propósito**: não tem `updatedAt` nem `deletedAt`, e não
+/// existe rota de PUT/DELETE. Registro clínico não se reescreve — errou,
+/// adiciona uma nota nova corrigindo. A ausência dos campos é o que impede
+/// alterar histórico por engano, sem precisar construir versionamento.
+model ClinicalNote {
+  id        String @id @default(uuid())
+  tenantId  String @map("tenant_id")
+  patientId String @map("patient_id")
+
+  /// Opcional: a nota pode existir sem agendamento (retorno espontâneo,
+  /// registro feito depois).
+  appointmentId String? @map("appointment_id")
+  authorUserId  String  @map("author_user_id")
+
+  content   String
+  createdAt DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  author      User         @relation(fields: [authorUserId], references: [id])
+
+  @@index([tenantId, patientId, createdAt])
+  @@map("clinical_notes")
 }
 
 /// Quem atende. Pode ou não ter login: em muitas clínicas só a recepção usa o
@@ -193,11 +259,12 @@ model Appointment {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  patient      Patient      @relation(fields: [patientId], references: [id])
-  professional Professional @relation(fields: [professionalId], references: [id])
-  procedure    Procedure    @relation(fields: [procedureId], references: [id])
-  messages     Message[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  professional  Professional   @relation(fields: [professionalId], references: [id])
+  procedure     Procedure      @relation(fields: [procedureId], references: [id])
+  messages      Message[]
+  clinicalNotes ClinicalNote[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
   @@index([tenantId, professionalId, startsAt])

@@ -1,0 +1,28 @@
+import { Module } from '@nestjs/common';
+
+import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { MEDICAL_RECORD_REPOSITORY } from './domain/repository/medical-record.repository';
+import { PrismaMedicalRecordRepository } from './infrastructure/prisma/prisma-medical-record.repository';
+import { MedicalRecordController } from './infrastructure/http/medical-record.controller';
+import { PatientGuardService } from './application/services/patient-guard.service';
+import { GetAnamnesisUseCase } from './application/use-cases/get-anamnesis.use-case';
+import { UpsertAnamnesisUseCase } from './application/use-cases/upsert-anamnesis.use-case';
+import { GetClinicalNotesUseCase } from './application/use-cases/get-clinical-notes.use-case';
+import { CreateClinicalNoteUseCase } from './application/use-cases/create-clinical-note.use-case';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [MedicalRecordController],
+  providers: [
+    {
+      provide: MEDICAL_RECORD_REPOSITORY,
+      useClass: PrismaMedicalRecordRepository,
+    },
+    PatientGuardService,
+    GetAnamnesisUseCase,
+    UpsertAnamnesisUseCase,
+    GetClinicalNotesUseCase,
+    CreateClinicalNoteUseCase,
+  ],
+})
+export class MedicalRecordsModule {}

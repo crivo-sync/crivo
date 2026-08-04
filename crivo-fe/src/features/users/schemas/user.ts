@@ -5,7 +5,7 @@ export const createUserSchema = z.object({
   name: z.string().trim().min(2, "Informe ao menos 2 caracteres"),
   email: z.email("E-mail inválido"),
   password: z.string().min(8, "A senha precisa ter ao menos 8 caracteres"),
-  role: z.enum(["ADMIN", "STAFF"]).default("STAFF"),
+  role: z.enum(["ADMIN", "PROFESSIONAL", "STAFF"]).default("STAFF"),
 });
 
 export type CreateUserSchema = z.infer<typeof createUserSchema>;
@@ -14,7 +14,7 @@ export type CreateUserSchema = z.infer<typeof createUserSchema>;
 // endpoint de troca de senha por terceiros — ver docs/ROADMAP.md).
 export const updateUserSchema = z.object({
   name: z.string().trim().min(2, "Informe ao menos 2 caracteres").optional(),
-  role: z.enum(["ADMIN", "STAFF"]).optional(),
+  role: z.enum(["ADMIN", "PROFESSIONAL", "STAFF"]).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -37,7 +37,7 @@ export const userFormSchema = z.object({
     .min(8, "A senha precisa ter ao menos 8 caracteres")
     .optional()
     .or(z.literal("")),
-  role: z.enum(["ADMIN", "STAFF"]),
+  role: z.enum(["ADMIN", "PROFESSIONAL", "STAFF"]),
 });
 
 export type UserFormSchema = z.infer<typeof userFormSchema>;

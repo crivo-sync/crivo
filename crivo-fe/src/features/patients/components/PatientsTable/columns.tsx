@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import MuiLink from "@mui/material/Link";
 import { GridActionsCellItem, type GridColDef } from "@mui/x-data-grid";
 
 import { formatCpf, formatPhone } from "@/lib/br-masks";
@@ -22,6 +24,23 @@ export function buildPatientColumns({
       headerName: "Nome",
       flex: 1.4,
       minWidth: 180,
+      // O nome é o caminho para o prontuário — as ações da linha continuam
+      // sendo editar/remover o cadastro, que é outra coisa.
+      renderCell: ({ row }) => (
+        <MuiLink
+          component={Link}
+          href={`/painel/pacientes/${row.id}`}
+          underline="hover"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            height: "100%",
+            fontWeight: 500,
+          }}
+        >
+          {row.name}
+        </MuiLink>
+      ),
     },
     {
       field: "phone",

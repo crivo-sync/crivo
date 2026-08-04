@@ -17,7 +17,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário e ciclo de status |
 | `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
 | `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
-| `prontuário` | ⚪ **Não iniciado — zero linha de código.** Requisito obrigatório para odonto/dermato |
+| `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
 | `billing` | ⚪ Não iniciado |
 
 Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação pelo paciente) funcionando em dev. **O que diferencia o produto — a predição — segue em zero.** A tríade agenda + comunicação + predição está em dois terços.
@@ -81,7 +81,7 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | --- | --- | --- | --- |
 | Lembrete de consulta por WhatsApp | ✅ Meta API oficial | ⚠️ funcionando em dev (Evolution); falta credencial Meta | 🔴 Crítica |
 | Confirmação de consulta pelo paciente | ✅ | ✅ página pública `/c/:token` + botão (04/08/2026) | — |
-| Prontuário eletrônico / anamnese | ✅ Ficha digital | ❌ | 🔴 Crítica |
+| Prontuário eletrônico / anamnese | ✅ Ficha digital | ✅ anamnese + evolução (04/08/2026); sem anexos | — |
 | Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
 | Agendamento online pelo paciente | ✅ 24h, sem app | ❌ | 🟠 Alta |
 | Lista de espera / preenchimento de lacunas | ✅ | ❌ | 🟠 Alta |
@@ -151,8 +151,15 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [ ] Webhook de status de entrega (`DELIVERED`) e de resposta do paciente
    - [ ] Reenvio manual a partir da lista de falhas (o Bull Board já permite retry manual, mas é ferramenta de dev — a recepção precisa de um botão na tela de Mensagens)
    - [ ] Segundo lembrete (D-3) e escalonamento por risco (depende de `prediction`)
-2. **Prontuário básico** — anamnese, evolução, anexos por paciente
-3. **Horário de trabalho e bloqueio de agenda** — hoje aceitamos agendar 3h da manhã de domingo (ver README)
+2. **Prontuário básico** — 🟢 **entregue em 04/08/2026** (anamnese + evolução)
+   - [x] Novo papel `PROFESSIONAL`: prontuário é dado sensível de saúde (LGPD Art. 11) e a recepção (`STAFF`) não tem necessidade clínica de lê-lo. `@Roles(ADMIN, PROFESSIONAL)` no controller inteiro, para que rota nova nasça restrita
+   - [x] **Anamnese** — ficha de saúde por paciente (alergias, medicações, condições, observações), com registro de quem preencheu por último
+   - [x] **Evolução append-only** — `ClinicalNote` não tem `updatedAt` nem `deletedAt`, e não existe rota de PUT/DELETE. Corrigir é escrever nota nova. A ausência dos campos é o que impede alterar histórico, sem custo de versionamento
+   - [x] Tela de detalhe do paciente com abas (Dados / Anamnese / Evolução) — as clínicas só aparecem para quem pode vê-las
+   - [ ] **Anexos (fotos, exames)** — ver "Fora de escopo" abaixo
+3. **Horário por profissional e bloqueio de agenda** — ⚠️ *parcialmente resolvido*. O horário da **clínica** já existe e é aplicado (`businessHoursStart/End/Days` + `assertWithinBusinessHours`): agendar domingo 3h da manhã já é recusado. O que falta:
+   - **Horário por profissional** — hoje qualquer profissional pode ser agendado em qualquer horário aberto da clínica. Dr. Paulo que só atende de manhã é agendável às 17h
+   - **Bloqueio pontual** — férias, almoço, congresso. Não existe nenhum conceito de indisponibilidade
 4. **Importador de pacientes via CSV** — sem isso, migrar de concorrente é inviável na prática
 
 ### Fase 2 — Diferencial
@@ -174,6 +181,21 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 ### Fase 4 — Escala
 
 13. **Gestão multi-unidade** — uma rede com várias unidades sob o mesmo dono. **Não é o mesmo que multi-tenant**: hoje cada clínica é um `Tenant` isolado, sem nenhum conceito de "grupo de unidades", agenda consolidada ou usuário que enxerga mais de uma. Exige modelar hierarquia (`Organization` → `Tenant`) e rever todo o `TenantContextGuard`, que hoje assume **um** tenant por token. É o item de maior impacto estrutural da lista
+
+### Fora de escopo do prontuário v1
+
+- **Anexos (fotos clínicas, exames)** — o bloqueio não é de UI, é de
+  armazenamento: `CloudinaryService.uploadImage` grava `secure_url` sem
+  `type: 'authenticated'`, ou seja **URL pública**. Serve para avatar e logo;
+  foto clínica em URL pública é exposição de dado sensível. Quando entrar,
+  precisa de entrega autenticada + URL assinada com expiração + aceitar PDF +
+  não aplicar o recorte de rosto (`AVATAR_TRANSFORMATION`)
+- **Versionamento da anamnese** — hoje guarda só o último estado + quem
+  editou. Histórico de alterações exigiria tabela própria
+- **Assinatura digital / carimbo CRO** — necessário para valor legal pleno do
+  documento; é projeto próprio
+- **Escopo por profissional** ("só vejo meus pacientes") — hoje ADMIN e
+  PROFESSIONAL enxergam todo o prontuário do tenant
 
 ### Fora de escopo por ora
 

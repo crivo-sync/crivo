@@ -10,7 +10,15 @@ import type { User } from "../../types";
 
 const ROLE_LABELS: Record<User["role"], string> = {
   ADMIN: "Administrador",
+  PROFESSIONAL: "Profissional",
   STAFF: "Recepção",
+};
+
+/** Só ADMIN se destaca: é o papel que pode mexer em cadastro e configuração. */
+const ROLE_COLORS: Record<User["role"], "primary" | "info" | "default"> = {
+  ADMIN: "primary",
+  PROFESSIONAL: "info",
+  STAFF: "default",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -51,7 +59,7 @@ export function buildUserColumns({
         <Chip
           size="small"
           label={ROLE_LABELS[row.role]}
-          color={row.role === "ADMIN" ? "primary" : "default"}
+          color={ROLE_COLORS[row.role]}
         />
       ),
     },
