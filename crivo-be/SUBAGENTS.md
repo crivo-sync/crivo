@@ -67,6 +67,7 @@ Por padrão eu **não** uso subagentes: só quando você pede, ou quando a taref
 
 | Tipo | Serve para |
 | --- | --- |
+| `claude` | Catch-all para o que não se encaixa nos outros. É o padrão quando nenhum tipo é informado |
 | `Explore` | Busca rápida e leitura de trechos. Bom para "onde está X". **Não** serve para revisão de código — lê recortes e perde contexto |
 | `Plan` | Desenhar estratégia de implementação antes de codar |
 | `general-purpose` | Tarefas de várias etapas, pesquisa aberta, uso de ferramentas |
@@ -83,6 +84,18 @@ Por padrão eu **não** uso subagentes: só quando você pede, ou quando a taref
 **Assumir que o relatório está certo.** Subagente erra e às vezes relata sucesso sem ter validado. Quando o resultado importa, eu confiro — especialmente typecheck, lint e comportamento real.
 
 **Vários agentes no mesmo arquivo.** Rodando em paralelo, um sobrescreve o outro. Trabalho paralelo só em áreas separadas.
+
+### O caso concreto: dois agentes no mesmo arquivo
+
+Aconteceu aqui. Dois agentes mexiam no mesmo componente de Configurações ao mesmo tempo e um deles rodou `git stash` no meio da tarefa, só para testar uma hipótese. O stash levou junto as edições do outro agente, que ainda estavam na árvore de trabalho e não commitadas. Ele restaurou depois e nada se perdeu — mas por sorte, não por garantia: qualquer erro no caminho de volta teria apagado trabalho alheio sem deixar rastro.
+
+Três regras que saíram disso:
+
+- **Conjuntos de arquivos disjuntos.** Cada agente recebe os seus arquivos e nenhum outro agente toca neles.
+- **Dizer explicitamente o que é proibido.** Não basta descrever a tarefa; vale listar os caminhos que estão fora dos limites ("não mexa em `src/lib/**`, tem outro agente lá"). O subagente não sabe que existe trabalho em voo.
+- **Nada de comando git destrutivo.** `git stash`, `git checkout`, `git reset` — qualquer coisa que descarte alterações não commitadas fica proibida enquanto houver trabalho paralelo. O agente enxerga só a própria tarefa, mas a árvore de trabalho é compartilhada.
+
+Quando dois agentes precisam mesmo do mesmo arquivo, a saída é serializar: um termina, depois o outro começa.
 
 ---
 
@@ -108,3 +121,9 @@ Pesquisa um concorrente e devolve preço, features e posicionamento no formato d
 ## Onde isso já foi usado
 
 A pesquisa de concorrentes do [ROADMAP.md](./ROADMAP.md) é o exemplo real: várias buscas independentes rodando em paralelo, cada uma trazendo preço e features de um sistema diferente. Feito em sequência, seria muito mais lento e encheria o contexto de conteúdo que só precisava virar uma linha de tabela.
+
+**Migração dos Server Actions para o `withAuth`.** Cerca de 26 arquivos precisavam passar a usar o wrapper novo de refresh de token. Mudança mecânica, bem especificada e repetitiva, espalhada por muitos arquivos de uma vez — exatamente o perfil que compensa delegar. O trabalho não dependia de decisão nenhuma no meio do caminho: a regra era clara e só precisava ser aplicada muitas vezes.
+
+**Guard de "alterações não salvas" em 5 diálogos de formulário.** O hook foi aplicado à mão em um diálogo primeiro; os outros quatro foram para um subagente, com o primeiro servindo de referência. Vale destacar o padrão, porque foi ele que fez dar certo: **faz um à mão, depois delega a repetição.** A implementação manual resolve as dúvidas de design e vira um exemplo concreto para copiar — sem ela, o subagente inventa a própria convenção e o resultado sai inconsistente.
+
+**UI de horário de funcionamento em paralelo com o backend.** Enquanto a thread principal trabalhava na validação do backend, um agente construía a interface em Configurações (TimePickers + toggles de dia da semana). Frontend e backend são fronteiras naturais para dividir entre agentes: arquivos separados, pouco risco de colisão, e o contrato entre os dois já estava definido antes de começar.

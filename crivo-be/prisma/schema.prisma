@@ -26,6 +26,18 @@ model Tenant {
   /// por padrão: sem custo extra nem dependência externa até a clínica optar.
   aiMessagesEnabled Boolean @default(false) @map("ai_messages_enabled")
 
+  /// Horário de funcionamento, em minutos desde a meia-noite (480 = 08:00).
+  /// Inteiro em vez de String("08:00") de propósito: comparar agendamento com
+  /// o expediente vira aritmética simples, sem parsing nem fuso no meio.
+  /// O agendamento precisa CABER inteiro na janela — um procedimento de 90min
+  /// às 17:00 com fechamento às 18:00 é recusado (terminaria 18:30).
+  businessHoursStart Int @default(480) @map("business_hours_start")
+  businessHoursEnd   Int @default(1080) @map("business_hours_end")
+
+  /// Dias de funcionamento no padrão de `Date.getDay()`: 0=domingo … 6=sábado.
+  /// Default seg–sex.
+  businessDays Int[] @default([1, 2, 3, 4, 5]) @map("business_days")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -119,6 +131,10 @@ model Professional {
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   user         User?         @relation(fields: [userId], references: [id])
   appointments Appointment[]
+  /// Procedimentos que este profissional realiza. Lista vazia = faz todos
+  /// (sem restrição) — só passa a filtrar o agendamento quando o admin
+  /// marca especialidades específicas.
+  procedures   Procedure[]   @relation("ProfessionalProcedures")
 
   @@index([tenantId])
   @@map("professionals")
@@ -139,8 +155,9 @@ model Procedure {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  appointments Appointment[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  appointments  Appointment[]
+  professionals Professional[] @relation("ProfessionalProcedures")
 
   @@index([tenantId])
   @@map("procedures")

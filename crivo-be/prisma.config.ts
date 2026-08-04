@@ -15,5 +15,10 @@ export default defineConfig({
       process.env['DIRECT_URL'] ??
       process.env['DATABASE_URL'] ??
       'postgresql://postgres:postgres@localhost:5432/crivo',
+    // Usado só por `migrate diff`/`migrate dev` para computar o estado das
+    // migrations — precisa de um banco vazio separado do dev/prod.
+    shadowDatabaseUrl:
+      process.env['SHADOW_DATABASE_URL'] ??
+      'postgresql://admin:admin@localhost:5432/crivo_shadow?schema=public',
   },
 });
