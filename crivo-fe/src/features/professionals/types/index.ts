@@ -8,6 +8,8 @@ export type Professional = {
   email: string | null;
   isActive: boolean;
   createdAt: string;
+  /** Procedimentos que este profissional realiza. Vazio = realiza todos. */
+  procedures: { id: string; name: string }[];
 };
 
 export type PaginationMeta = {
