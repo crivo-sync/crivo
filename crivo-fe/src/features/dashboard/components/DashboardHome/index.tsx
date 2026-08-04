@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardHeader from "@mui/material/CardHeader";
@@ -16,9 +17,17 @@ import { RevenueByProcedureChart } from "../RevenueByProcedureChart";
 import { StatusPieChart } from "../StatusPieChart";
 import { SummaryCards } from "../SummaryCards";
 
+/** Default alinhado ao backend — ver `DEFAULT_REVENUE_WINDOW_DAYS` no crivo-be. */
+const DEFAULT_REVENUE_DAYS = 30;
+
 export const DashboardHome = () => {
+  const [revenueDays, setRevenueDays] = useState<number>(DEFAULT_REVENUE_DAYS);
   const { summary, isLoading, error, refetch } = useDashboardSummary();
-  const { analytics, isLoading: isLoadingAnalytics } = useDashboardAnalytics();
+  const {
+    analytics,
+    isLoading: isLoadingAnalytics,
+    isFetching: isFetchingAnalytics,
+  } = useDashboardAnalytics(revenueDays);
 
   if (error) {
     return <ErrorServer message={error.message} onRetry={() => refetch()} />;
@@ -71,7 +80,15 @@ export const DashboardHome = () => {
       </Box>
 
       {!isLoadingAnalytics && analytics && (
-        <RevenueByProcedureChart data={analytics.revenueByProcedure} />
+        <RevenueByProcedureChart
+          data={analytics.revenueByProcedure}
+          // A janela vem da resposta, não do estado local: é o backend que
+          // decide o default, então o seletor reflete o que foi de fato
+          // aplicado em vez de assumir.
+          periodDays={analytics.revenueDays}
+          onPeriodChange={setRevenueDays}
+          isRefreshing={isFetchingAnalytics}
+        />
       )}
 
       <Card variant="outlined">
