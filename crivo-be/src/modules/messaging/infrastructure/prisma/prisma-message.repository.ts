@@ -7,6 +7,7 @@ import {
   FindManyMessagesParams,
   MarkSentData,
   MessageRepository,
+  MessageWithPatient,
   PaginatedMessages,
 } from '../../domain/repository/message.repository';
 
@@ -28,8 +29,11 @@ export class PrismaMessageRepository implements MessageRepository {
     return this.prisma.message.create({ data });
   }
 
-  findById(id: string): Promise<Message | null> {
-    return this.prisma.message.findUnique({ where: { id } });
+  findById(id: string): Promise<MessageWithPatient | null> {
+    return this.prisma.message.findUnique({
+      where: { id },
+      include: WITH_PATIENT,
+    });
   }
 
   async findMany({
