@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MessageType } from '@prisma/client';
+import { MessageStatus, MessageType } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomBytes } from 'node:crypto';
 
@@ -16,6 +16,7 @@ import {
   SendMessageJob,
 } from '../../infrastructure/queue/messaging.queue';
 import { MessageComposerService } from '../services/message-composer.service';
+import { MessageTemplateService } from '../services/message-template.service';
 
 @Injectable()
 export class ScheduleAppointmentReminderUseCase {
@@ -28,6 +29,7 @@ export class ScheduleAppointmentReminderUseCase {
     private readonly queue: Queue<SendMessageJob>,
     private readonly prisma: PrismaService,
     private readonly composer: MessageComposerService,
+    private readonly templates: MessageTemplateService,
     private readonly config: ConfigService,
   ) {}
 
@@ -39,7 +41,7 @@ export class ScheduleAppointmentReminderUseCase {
    * Agenda o lembrete de um atendimento. Chamado na criação e no reagendamento.
    * Se a consulta for antes da antecedência configurada, envia na hora.
    */
-  async execute(appointmentId: string): Promise<void> {
+  async execute(appointmentId: string, rescheduled = false): Promise<void> {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
@@ -89,14 +91,129 @@ export class ScheduleAppointmentReminderUseCase {
       scheduledFor: delay > 0 ? sendAt : new Date(),
     });
 
+    // `jobId` = id da mensagem: torna o job endereçável para cancelar
+    // quando o agendamento é remarcado (ver `cancelPending`).
     await this.queue.add(
       'send',
       { messageId: message.id },
-      { ...SEND_JOB_OPTIONS, delay },
+      { ...SEND_JOB_OPTIONS, delay, jobId: message.id },
     );
 
     this.logger.log(
       `Lembrete agendado para ${sendAt.toISOString()} (mensagem ${message.id})`,
+    );
+
+    // Só faz sentido avisar agora se o lembrete ainda está longe. Quando a
+    // consulta é em menos de `REMINDER_HOURS_BEFORE`, o lembrete acima já
+    // sai imediatamente (delay = 0) — mandar os dois seria duas mensagens
+    // quase idênticas com segundos de diferença.
+    if (delay > 0) {
+      await this.sendBookedNotice(appointment, confirmationToken, rescheduled);
+    }
+  }
+
+  /**
+   * Aviso imediato de "sua consulta foi marcada". Existe porque quem agenda
+   * com dias de antecedência ficava sem nenhum contato até o D-1 — e sem
+   * poder confirmar, já que o link só chegava com o lembrete.
+   *
+   * Usa o template fixo de propósito, sem passar pela IA: o texto promete
+   * "enviaremos um lembrete um dia antes", e essa é uma afirmação sobre o
+   * comportamento do sistema que a IA não deve reescrever nem omitir.
+   */
+  private async sendBookedNotice(
+    appointment: {
+      id: string;
+      tenantId: string;
+      startsAt: Date;
+      patient: { name: string; phone: string };
+      professional: { name: string };
+      procedure: { name: string };
+      tenant: { name: string };
+    },
+    confirmationToken: string,
+    rescheduled: boolean,
+  ): Promise<void> {
+    const body = this.templates.appointmentBooked(
+      {
+        patientName: appointment.patient.name,
+        clinicName: appointment.tenant.name,
+        professionalName: appointment.professional.name,
+        procedureName: appointment.procedure.name,
+        startsAt: appointment.startsAt,
+        confirmationToken,
+      },
+      { rescheduled },
+    );
+
+    const message = await this.messageRepository.create({
+      tenantId: appointment.tenantId,
+      appointmentId: appointment.id,
+      type: MessageType.APPOINTMENT_BOOKED,
+      toPhone: appointment.patient.phone,
+      body,
+      scheduledFor: new Date(),
+    });
+
+    await this.queue.add(
+      'send',
+      { messageId: message.id },
+      {
+        ...SEND_JOB_OPTIONS,
+        jobId: message.id,
+      },
+    );
+
+    this.logger.log(
+      `Aviso de agendamento enviado na hora (mensagem ${message.id})`,
+    );
+  }
+
+  /**
+   * Chamado quando o agendamento é remarcado.
+   *
+   * Sem isso, o lembrete antigo continuava na fila **com a data velha no
+   * texto** — o paciente recebia a informação errada na véspera da data
+   * original. Descarta o que ainda não saiu e reagenda do zero com os dados
+   * atuais (data, hora e profissional podem ter mudado).
+   */
+  async reschedule(appointmentId: string): Promise<void> {
+    await this.cancelPending(appointmentId);
+    await this.execute(appointmentId, true);
+  }
+
+  /**
+   * Tira da fila e marca como `CANCELLED` toda mensagem que ainda não saiu.
+   * O que já foi enviado é histórico e não se toca.
+   */
+  private async cancelPending(appointmentId: string): Promise<void> {
+    const pending = await this.prisma.message.findMany({
+      where: { appointmentId, status: MessageStatus.PENDING },
+      select: { id: true },
+    });
+
+    for (const message of pending) {
+      // O job pode já ter saído da fila (executando, ou de antes de existir
+      // `jobId` fixo). Não conseguir remover não é erro: o guard de
+      // idempotência do worker impede envio duplicado de qualquer forma.
+      try {
+        await this.queue.remove(message.id);
+      } catch {
+        this.logger.warn(
+          `Job da mensagem ${message.id} não pôde ser removido da fila — seguirá ignorado no worker.`,
+        );
+      }
+    }
+
+    if (pending.length === 0) return;
+
+    await this.prisma.message.updateMany({
+      where: { id: { in: pending.map((message) => message.id) } },
+      data: { status: MessageStatus.CANCELLED },
+    });
+
+    this.logger.log(
+      `${pending.length} mensagem(ns) pendente(s) cancelada(s) por reagendamento do atendimento ${appointmentId}`,
     );
   }
 }
