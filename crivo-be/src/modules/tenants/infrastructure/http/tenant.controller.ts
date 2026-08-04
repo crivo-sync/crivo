@@ -1,8 +1,26 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { Roles } from 'src/shared/decorators/roles.decorator';
+import { assertValidImageUpload } from 'src/shared/validation/image-upload';
 import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
@@ -11,6 +29,7 @@ import { UpdateTenantDto } from '../dtos/update-tenant.dto';
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
 import { GetTenantBrandingUseCase } from '../../application/use-cases/get-tenant-branding.use-case';
+import { UpdateTenantLogoUseCase } from '../../application/use-cases/update-tenant-logo.use-case';
 
 @ApiTags('Clínicas')
 @Controller('tenants')
@@ -19,6 +38,7 @@ export class TenantController {
     private readonly getTenant: GetTenantUseCase,
     private readonly updateTenant: UpdateTenantUseCase,
     private readonly getTenantBranding: GetTenantBrandingUseCase,
+    private readonly updateTenantLogo: UpdateTenantLogoUseCase,
   ) {}
 
   @Get('branding/:subdomain')
@@ -50,5 +70,32 @@ export class TenantController {
     @Body() dto: UpdateTenantDto,
   ) {
     return this.updateTenant.execute(tenantId, dto);
+  }
+
+  @Post('me/logo')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({
+    summary: 'Envia/troca o logo da clínica (JPEG, PNG ou WebP, até 5MB)',
+  })
+  async uploadLogo(
+    @Tenant('tenantId') tenantId: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    assertValidImageUpload(file);
+
+    return this.updateTenantLogo.execute({
+      tenantId,
+      fileBuffer: file.buffer,
+    });
   }
 }
