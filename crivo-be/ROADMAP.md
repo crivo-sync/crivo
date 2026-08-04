@@ -16,7 +16,8 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `patients` | 🟢 CRUD, busca, paginação, soft delete |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário e ciclo de status |
 | `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
-| `prediction` | ⚪ Não iniciado |
+| `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
+| `prontuário` | ⚪ **Não iniciado — zero linha de código.** Requisito obrigatório para odonto/dermato |
 | `billing` | ⚪ Não iniciado |
 
 Temos uma base sólida de cadastro e agenda. **Ainda não temos nada do que diferencia o produto** — a tríade agenda + comunicação + predição existe só no primeiro terço.
