@@ -1,11 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsHexColor,
+  IsInt,
   IsOptional,
   IsString,
   IsUrl,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
 
@@ -54,4 +59,39 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsBoolean()
   aiMessagesEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    example: 480,
+    description:
+      'Abertura da clínica em minutos desde a meia-noite (480 = 08:00).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  businessHoursStart?: number;
+
+  @ApiPropertyOptional({
+    example: 1080,
+    description:
+      'Fechamento da clínica em minutos desde a meia-noite (1080 = 18:00).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  businessHoursEnd?: number;
+
+  @ApiPropertyOptional({
+    example: [1, 2, 3, 4, 5],
+    description:
+      'Dias de atendimento no padrão getDay(): 0=domingo … 6=sábado.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  businessDays?: number[];
 }
