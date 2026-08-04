@@ -21,10 +21,9 @@ export const PatientFilters = ({ control, onClear }: PatientFiltersProps) => {
         name="search"
         render={({ field }) => (
           <TextField
-            fullWidth
             {...field}
             placeholder="Buscar por nome, telefone, CPF ou e-mail"
-            // sx={{ width: 500, maxWidth: "100%" }}
+            sx={{ width: 1000, maxWidth: "100%" }}
             slotProps={{
               input: {
                 startAdornment: (
