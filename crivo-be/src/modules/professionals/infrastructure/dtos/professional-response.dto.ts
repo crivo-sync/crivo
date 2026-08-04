@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Professional } from '@prisma/client';
+import { type ProfessionalWithProcedures } from '../../domain/repository/professional.repository';
+
+export class ProfessionalProcedureDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+}
 
 export class ProfessionalResponseDto {
   @ApiProperty()
@@ -29,7 +37,15 @@ export class ProfessionalResponseDto {
   @ApiProperty()
   createdAt!: Date;
 
-  static fromEntity(professional: Professional): ProfessionalResponseDto {
+  @ApiProperty({
+    type: [ProfessionalProcedureDto],
+    description: 'Vazio = realiza todos os procedimentos.',
+  })
+  procedures!: ProfessionalProcedureDto[];
+
+  static fromEntity(
+    professional: ProfessionalWithProcedures,
+  ): ProfessionalResponseDto {
     return {
       id: professional.id,
       tenantId: professional.tenantId,
@@ -40,6 +56,7 @@ export class ProfessionalResponseDto {
       email: professional.email,
       isActive: professional.isActive,
       createdAt: professional.createdAt,
+      procedures: professional.procedures,
     };
   }
 }
