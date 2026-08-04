@@ -32,10 +32,15 @@ export type DashboardProcedureRevenue = {
   totalInCents: number;
 };
 
+/** Janelas oferecidas no filtro de faturamento — espelha o `IsIn` do backend. */
+export const REVENUE_PERIOD_OPTIONS = [7, 30, 90] as const;
+
 export type DashboardAnalytics = {
   byStatus: DashboardStatusCount[];
   byDay: DashboardDayCount[];
   revenueByProcedure: DashboardProcedureRevenue[];
+  /** Janela efetivamente aplicada no faturamento (o backend decide o default). */
+  revenueDays: number;
 };
 
 export type ActionResult<T = undefined> =
