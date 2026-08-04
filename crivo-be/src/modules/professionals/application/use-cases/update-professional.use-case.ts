@@ -42,10 +42,7 @@ export class UpdateProfessionalUseCase {
     }
 
     if (changes.procedureIds?.length) {
-      await this.assertProceduresBelongToTenant(
-        tenantId,
-        changes.procedureIds,
-      );
+      await this.assertProceduresBelongToTenant(tenantId, changes.procedureIds);
     }
 
     return this.professionalRepository.update(id, changes);
@@ -63,9 +60,7 @@ export class UpdateProfessionalUseCase {
     });
 
     if (found.length !== new Set(procedureIds).size) {
-      throw new BadRequestException(
-        'Um ou mais procedimentos são inválidos.',
-      );
+      throw new BadRequestException('Um ou mais procedimentos são inválidos.');
     }
   }
 }
