@@ -9,6 +9,9 @@ export type UpdateTenantData = {
   email?: string | null;
   address?: string | null;
   aiMessagesEnabled?: boolean;
+  businessHoursStart?: number;
+  businessHoursEnd?: number;
+  businessDays?: number[];
 };
 
 export const TENANT_REPOSITORY = 'TenantRepository';
