@@ -39,7 +39,14 @@ export class DashboardAnalyticsResponseDto {
   @ApiProperty({
     type: [ProcedureRevenueDto],
     description:
-      'Faturamento por procedimento, últimos 7 dias, só agendamentos concluídos',
+      'Faturamento por procedimento na janela de `revenueDays`, só agendamentos concluídos',
   })
   revenueByProcedure!: ProcedureRevenueDto[];
+
+  @ApiProperty({
+    example: 30,
+    description:
+      'Janela usada no faturamento, em dias — devolvida para a tela refletir o período aplicado',
+  })
+  revenueDays!: number;
 }
