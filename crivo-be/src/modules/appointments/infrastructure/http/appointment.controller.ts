@@ -24,12 +24,14 @@ import { CreateAppointmentDto } from '../dtos/create-appointment.dto';
 import { RescheduleAppointmentDto } from '../dtos/reschedule-appointment.dto';
 import { ChangeAppointmentStatusDto } from '../dtos/change-status.dto';
 import { QueryAppointmentsDto } from '../dtos/query-appointments.dto';
+import { QueryAvailabilityDto } from '../dtos/query-availability.dto';
 import { AppointmentResponseDto } from '../dtos/appointment-response.dto';
 import { GetAppointmentsUseCase } from '../../application/use-cases/get-appointments.use-case';
 import { GetAppointmentByIdUseCase } from '../../application/use-cases/get-appointment-by-id.use-case';
 import { CreateAppointmentUseCase } from '../../application/use-cases/create-appointment.use-case';
 import { RescheduleAppointmentUseCase } from '../../application/use-cases/reschedule-appointment.use-case';
 import { ChangeAppointmentStatusUseCase } from '../../application/use-cases/change-appointment-status.use-case';
+import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
 
 @ApiTags('Agendamentos')
 @ApiBearerAuth()
@@ -42,6 +44,7 @@ export class AppointmentController {
     private readonly createAppointment: CreateAppointmentUseCase,
     private readonly rescheduleAppointment: RescheduleAppointmentUseCase,
     private readonly changeStatus: ChangeAppointmentStatusUseCase,
+    private readonly getAvailability: GetAvailabilityUseCase,
   ) {}
 
   @Get()
@@ -69,6 +72,28 @@ export class AppointmentController {
       page: query.page,
       perPage: query.perPage,
       total,
+    });
+  }
+
+  // Declarada ANTES de `:id` de propósito: o Nest resolve rotas por ordem de
+  // registro, então `@Get(':id')` primeiro casaria com "availability" e o
+  // ParseUUIDPipe rejeitaria a requisição. Mesma armadilha de `/users/me`.
+  @Get('availability')
+  @ApiOperation({
+    summary:
+      'Horários livres do profissional num dia, já descontando a duração do ' +
+      'procedimento, o expediente da clínica e os agendamentos existentes',
+  })
+  async availability(
+    @Tenant('tenantId') tenantId: string,
+    @Query() query: QueryAvailabilityDto,
+  ) {
+    return this.getAvailability.execute({
+      tenantId,
+      professionalId: query.professionalId,
+      procedureId: query.procedureId,
+      date: query.date,
+      excludeAppointmentId: query.excludeAppointmentId,
     });
   }
 
