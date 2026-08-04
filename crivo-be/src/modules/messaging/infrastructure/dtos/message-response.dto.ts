@@ -31,6 +31,13 @@ export class MessageResponseDto {
   @ApiPropertyOptional({ nullable: true })
   sentAt!: Date | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Quando a última tentativa esgotou e o envio foi dado como falho',
+  })
+  failedAt!: Date | null;
+
   @ApiPropertyOptional({ nullable: true })
   scheduledFor!: Date | null;
 
@@ -58,6 +65,7 @@ export class MessageResponseDto {
       attempts: message.attempts,
       lastError: message.lastError,
       sentAt: message.sentAt,
+      failedAt: message.failedAt,
       scheduledFor: message.scheduledFor,
       createdAt: message.createdAt,
       appointment: message.appointment,
