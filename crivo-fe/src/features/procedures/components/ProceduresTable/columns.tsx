@@ -6,6 +6,7 @@ import Chip from "@mui/material/Chip";
 import { GridActionsCellItem, type GridColDef } from "@mui/x-data-grid";
 
 import { formatCentsToBRL } from "@/lib/currency";
+import { formatDuration } from "@/lib/duration";
 import type { Procedure } from "../../types";
 
 type BuildColumnsArgs = {
@@ -38,7 +39,7 @@ export function buildProcedureColumns({
       field: "durationMinutes",
       headerName: "Duração",
       width: 110,
-      valueFormatter: (value: number) => `${value} min`,
+      valueFormatter: (value: number) => formatDuration(value),
     },
     {
       field: "priceInCents",
