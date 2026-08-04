@@ -55,19 +55,16 @@ export const PatientManagement = () => {
           justifyContent: "space-between",
           gap: 2,
           flexWrap: "wrap",
-          width: "100%",
         }}
       >
-        <Box>
-          <PatientFilters control={control} onClear={clearFilters} />
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateForm}
-          >
-            Novo paciente
-          </Button>
-        </Box>
+        <PatientFilters control={control} onClear={clearFilters} />
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={openCreateForm}
+        >
+          Novo paciente
+        </Button>
       </Box>
 
       <PatientsTable
