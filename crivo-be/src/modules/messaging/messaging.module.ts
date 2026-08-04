@@ -1,8 +1,12 @@
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { BullModule } from '@nestjs/bullmq';
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { createBullBoardAuthMiddleware } from '../../shared/bull-board/bull-board-auth.middleware';
 import { AI_TEXT_GENERATOR } from './domain/ai/ai-text-generator';
 import { MESSAGE_PROVIDER } from './domain/provider/message-provider';
 import { MESSAGE_REPOSITORY } from './domain/repository/message.repository';
@@ -36,6 +40,31 @@ import { GetMessagesUseCase } from './application/use-cases/get-messages.use-cas
       }),
     }),
     BullModule.registerQueue({ name: MESSAGING_QUEUE }),
+    // Painel web da fila em /admin/queues — ver waiting/active/completed/
+    // failed/delayed, corpo de cada job, e permite retry/remove manual.
+    // Só fica de pé com BULL_BOARD_USER/PASSWORD configurados (ver
+    // bull-board-auth.middleware.ts) — sem isso, nega tudo por padrão.
+    BullBoardModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        route: '/admin/queues',
+        adapter: ExpressAdapter,
+        middleware: createBullBoardAuthMiddleware(config),
+        boardOptions: {
+          uiConfig: {
+            // Sem isso o board só atualiza a lista de jobs quando você dá
+            // F5 — força reconsultar a cada 3s, sem depender do usuário
+            // achar o toggle na engrenagem.
+            pollingInterval: { forceInterval: 3000 },
+          },
+        },
+      }),
+    }),
+    BullBoardModule.forFeature({
+      name: MESSAGING_QUEUE,
+      adapter: BullMQAdapter,
+    }),
   ],
   controllers: [MessageController, ConfirmationController],
   providers: [
