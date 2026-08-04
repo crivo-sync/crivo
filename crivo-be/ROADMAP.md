@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-04 (`messaging`). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
+> Última atualização: 2026-08-04 (`messaging` entregue; predição, prontuário e website mapeados). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
 
 ---
 
