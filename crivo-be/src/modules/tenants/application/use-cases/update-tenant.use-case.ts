@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import {
   TENANT_REPOSITORY,
@@ -18,6 +23,17 @@ export class UpdateTenantUseCase {
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found.');
+    }
+
+    // O DTO valida cada campo isolado; a relação entre eles só dá pra checar
+    // aqui, e contra o valor já salvo — a recepção pode mandar só um dos dois.
+    const start = data.businessHoursStart ?? tenant.businessHoursStart;
+    const end = data.businessHoursEnd ?? tenant.businessHoursEnd;
+
+    if (start >= end) {
+      throw new BadRequestException(
+        'O horário de abertura precisa ser anterior ao de fechamento.',
+      );
     }
 
     return this.tenantRepository.update(tenantId, data);
