@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Professional } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import {
@@ -7,8 +7,13 @@ import {
   FindManyProfessionalsParams,
   PaginatedProfessionals,
   ProfessionalRepository,
+  ProfessionalWithProcedures,
   UpdateProfessionalData,
 } from '../../domain/repository/professional.repository';
+
+const PROCEDURES_INCLUDE = {
+  procedures: { select: { id: true, name: true } },
+} satisfies Prisma.ProfessionalInclude;
 
 @Injectable()
 export class PrismaProfessionalRepository implements ProfessionalRepository {
@@ -37,6 +42,7 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.professional.findMany({
         where,
+        include: PROCEDURES_INCLUDE,
         orderBy: { name: 'asc' },
         skip: (page - 1) * perPage,
         take: perPage,
@@ -50,18 +56,39 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
   findByIdAndTenant(
     id: string,
     tenantId: string,
-  ): Promise<Professional | null> {
+  ): Promise<ProfessionalWithProcedures | null> {
     return this.prisma.professional.findFirst({
       where: { id, tenantId, deletedAt: null },
+      include: PROCEDURES_INCLUDE,
     });
   }
 
-  create(data: CreateProfessionalData): Promise<Professional> {
-    return this.prisma.professional.create({ data });
+  create(data: CreateProfessionalData): Promise<ProfessionalWithProcedures> {
+    const { procedureIds, ...rest } = data;
+    return this.prisma.professional.create({
+      data: {
+        ...rest,
+        procedures: { connect: procedureIds?.map((id) => ({ id })) ?? [] },
+      },
+      include: PROCEDURES_INCLUDE,
+    });
   }
 
-  update(id: string, data: UpdateProfessionalData): Promise<Professional> {
-    return this.prisma.professional.update({ where: { id }, data });
+  update(
+    id: string,
+    data: UpdateProfessionalData,
+  ): Promise<ProfessionalWithProcedures> {
+    const { procedureIds, ...rest } = data;
+    return this.prisma.professional.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(procedureIds !== undefined
+          ? { procedures: { set: procedureIds.map((id) => ({ id })) } }
+          : {}),
+      },
+      include: PROCEDURES_INCLUDE,
+    });
   }
 
   async softDelete(id: string): Promise<void> {
