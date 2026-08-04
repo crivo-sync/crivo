@@ -154,17 +154,23 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 
 ### Fase 2 — Diferencial
 
-4. **`prediction`** — começar com regra simples (histórico de faltas, antecedência, procedimento, dia da semana), evoluir para modelo
+4. **`prediction` — risco de no-show** — regra primeiro, modelo depois. Ver [Predição](#predição--o-que-existe-de-verdade-hoje)
    - O que nos separa: **ação por faixa de risco** — risco alto dispara confirmação mais cedo, mais insistente e libera a vaga para lista de espera antes
 5. **Lista de espera** — preenche a lacuna quando o risco se concretiza
-6. **Agendamento online** — página pública por subdomínio (o branding já existe)
+6. **Reativação inteligente de pacientes** — quem não volta há X meses, segmentado por procedimento e ticket. Depende do mesmo histórico da predição; sem `billing` não dá para medir se o retorno pagou o disparo
+7. **Agendamento online** — página pública por subdomínio (o branding já existe)
 
 ### Fase 3 — Monetização e retenção
 
-7. **`billing`** — Stripe, planos, cobrança por assento
-8. **Dashboard financeiro** — faturamento, taxa de comparecimento, receita perdida por falta
-9. **Comissão por profissional**
-10. **Pacotes e fidelidade**
+8. **`billing`** — Stripe, planos, cobrança por assento
+9. **Painel de métricas de ocupação** — taxa de ocupação por profissional/sala/horário, buraco de agenda, receita perdida por falta. Hoje o dashboard mostra contagem e faturamento, não **ocupação** (exige capacidade instalada, que ainda não modelamos)
+10. **Dashboard financeiro** — faturamento, taxa de comparecimento, receita perdida por falta
+11. **Comissão por profissional**
+12. **Pacotes e fidelidade**
+
+### Fase 4 — Escala
+
+13. **Gestão multi-unidade** — uma rede com várias unidades sob o mesmo dono. **Não é o mesmo que multi-tenant**: hoje cada clínica é um `Tenant` isolado, sem nenhum conceito de "grupo de unidades", agenda consolidada ou usuário que enxerga mais de uma. Exige modelar hierarquia (`Organization` → `Tenant`) e rever todo o `TenantContextGuard`, que hoje assume **um** tenant por token. É o item de maior impacto estrutural da lista
 
 ### Fora de escopo por ora
 
