@@ -14,6 +14,8 @@ import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import dayjs from "dayjs";
 
 import { ErrorServer } from "@/components/ui/error-server";
 
@@ -23,17 +25,35 @@ import { PHONE_MASK } from "@/lib/br-masks";
 import { useTenant } from "../../hooks/use-tenant";
 import { useUpdateTenant } from "../../hooks/use-update-tenant";
 import { updateTenantSchema, type UpdateTenantSchema } from "../../schemas/tenant";
+import { BusinessDaysField } from "./business-days-field";
 import { ColorField } from "./color-field";
+import { LogoUpload } from "./logo-upload";
+
+const DEFAULT_BUSINESS_HOURS_START = 480; // 08:00
+const DEFAULT_BUSINESS_HOURS_END = 1080; // 18:00
+const DEFAULT_BUSINESS_DAYS = [1, 2, 3, 4, 5]; // seg–sex
+
+/** Minutos desde a meia-noite -> dayjs (a data é irrelevante, só a hora). */
+const minutesToDayjs = (minutes: number | undefined) =>
+  minutes == null
+    ? null
+    : dayjs().startOf("day").add(minutes, "minute");
+
+/** dayjs -> minutos desde a meia-noite. */
+const dayjsToMinutes = (value: dayjs.Dayjs) =>
+  value.hour() * 60 + value.minute();
 
 const EMPTY_VALUES: UpdateTenantSchema = {
   name: "",
-  logoUrl: "",
   primaryColor: "",
   secondaryColor: "",
   phone: "",
   email: "",
   address: "",
   aiMessagesEnabled: false,
+  businessHoursStart: DEFAULT_BUSINESS_HOURS_START,
+  businessHoursEnd: DEFAULT_BUSINESS_HOURS_END,
+  businessDays: DEFAULT_BUSINESS_DAYS,
 };
 
 export const TenantSettings = () => {
@@ -53,13 +73,16 @@ export const TenantSettings = () => {
     if (!tenant) return;
     reset({
       name: tenant.name,
-      logoUrl: tenant.logoUrl ?? "",
       primaryColor: tenant.primaryColor ?? "",
       secondaryColor: tenant.secondaryColor ?? "",
       phone: tenant.phone ?? "",
       email: tenant.email ?? "",
       address: tenant.address ?? "",
       aiMessagesEnabled: tenant.aiMessagesEnabled,
+      businessHoursStart:
+        tenant.businessHoursStart ?? DEFAULT_BUSINESS_HOURS_START,
+      businessHoursEnd: tenant.businessHoursEnd ?? DEFAULT_BUSINESS_HOURS_END,
+      businessDays: tenant.businessDays ?? DEFAULT_BUSINESS_DAYS,
     });
   }, [tenant, reset]);
 
@@ -179,22 +202,9 @@ export const TenantSettings = () => {
             />
           </Box>
 
-          <Controller
-            control={control}
-            name="logoUrl"
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                id="logoUrl"
-                label="URL do logo"
-                placeholder="https://…"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                disabled={!canManage}
-                fullWidth
-              />
-            )}
-          />
+          {/* Fora do formulário: o upload salva sozinho na hora (como o
+              avatar), não faz parte do "Salvar alterações". */}
+          <LogoUpload logoUrl={tenant.logoUrl} disabled={!canManage} />
 
           <Box
             sx={{
@@ -238,6 +248,96 @@ export const TenantSettings = () => {
                 />
               )}
             />
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>
+              Horário de funcionamento
+            </Typography>
+
+            <Stack spacing={2.5}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                  gap: 2.5,
+                }}
+              >
+                <Controller
+                  control={control}
+                  name="businessHoursStart"
+                  render={({ field, fieldState }) => (
+                    <TimePicker
+                      label="Abertura"
+                      value={minutesToDayjs(field.value)}
+                      // `onChange` dispara a cada tecla durante a digitação,
+                      // com um dayjs inválido (não nulo) — sem o `isValid()`
+                      // gravaríamos NaN no form.
+                      onChange={(value) => {
+                        if (value && !value.isValid()) return;
+                        field.onChange(value ? dayjsToMinutes(value) : undefined);
+                      }}
+                      onAccept={field.onBlur}
+                      disabled={!canManage}
+                      ampm={false}
+                      format="HH:mm"
+                      slotProps={{
+                        textField: {
+                          id: "businessHoursStart",
+                          fullWidth: true,
+                          onBlur: field.onBlur,
+                          error: !!fieldState.error,
+                          helperText: fieldState.error?.message,
+                        },
+                      }}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="businessHoursEnd"
+                  render={({ field, fieldState }) => (
+                    <TimePicker
+                      label="Fechamento"
+                      value={minutesToDayjs(field.value)}
+                      onChange={(value) => {
+                        if (value && !value.isValid()) return;
+                        field.onChange(value ? dayjsToMinutes(value) : undefined);
+                      }}
+                      onAccept={field.onBlur}
+                      disabled={!canManage}
+                      ampm={false}
+                      format="HH:mm"
+                      slotProps={{
+                        textField: {
+                          id: "businessHoursEnd",
+                          fullWidth: true,
+                          onBlur: field.onBlur,
+                          error: !!fieldState.error,
+                          helperText: fieldState.error?.message,
+                        },
+                      }}
+                    />
+                  )}
+                />
+              </Box>
+
+              <Controller
+                control={control}
+                name="businessDays"
+                render={({ field, fieldState }) => (
+                  <BusinessDaysField
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={!canManage}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+            </Stack>
           </Box>
 
           <Controller
