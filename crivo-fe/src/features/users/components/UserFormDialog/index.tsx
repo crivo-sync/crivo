@@ -14,6 +14,8 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 
+import { UnsavedChangesDialog } from "@/components/ui/unsaved-changes-dialog";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useCreateUser } from "../../hooks/use-create-user";
 import { useUpdateUser } from "../../hooks/use-update-user";
 import { userFormSchema, type UserFormSchema } from "../../schemas/user";
@@ -33,16 +35,27 @@ const EMPTY_VALUES: UserFormSchema = {
   role: "STAFF",
 };
 
-export const UserFormDialog = ({ open, onOpenChange, user }: UserFormDialogProps) => {
+export const UserFormDialog = ({
+  open,
+  onOpenChange,
+  user,
+}: UserFormDialogProps) => {
   const isEditing = !!user;
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const isSubmitting = createUser.isPending || updateUser.isPending;
 
-  const { control, handleSubmit, reset, setError } = useForm<UserFormSchema>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: EMPTY_VALUES,
-  });
+  const { control, handleSubmit, reset, setError, formState } =
+    useForm<UserFormSchema>({
+      resolver: zodResolver(userFormSchema),
+      defaultValues: EMPTY_VALUES,
+    });
+
+  const { requestClose, isConfirmOpen, confirmDiscard, cancelDiscard } =
+    useUnsavedChangesGuard({
+      isDirty: formState.isDirty,
+      onConfirmClose: () => onOpenChange(false),
+    });
 
   useEffect(() => {
     if (!open) return;
@@ -89,113 +102,125 @@ export const UserFormDialog = ({ open, onOpenChange, user }: UserFormDialogProps
   });
 
   return (
-    <Dialog open={open} onClose={() => onOpenChange(false)} fullWidth maxWidth="sm">
-      <form onSubmit={onSubmit}>
-        <DialogTitle>
-          {isEditing ? "Editar usuário" : "Cadastrar usuário"}
-        </DialogTitle>
+    <>
+      <Dialog open={open} onClose={requestClose} fullWidth maxWidth="sm">
+        <form onSubmit={onSubmit}>
+          <DialogTitle>
+            {isEditing ? "Editar usuário" : "Cadastrar usuário"}
+          </DialogTitle>
 
-        <DialogContent>
-          <DialogContentText sx={{ mb: 3 }}>
-            {isEditing
-              ? "Atualize o nome e o papel do usuário."
-              : "Preencha os dados do novo usuário. A senha inicial deve ser trocada pelo próprio usuário depois."}
-          </DialogContentText>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 3 }}>
+              {isEditing
+                ? "Atualize o nome e o papel do usuário."
+                : "Preencha os dados do novo usuário. A senha inicial deve ser trocada pelo próprio usuário depois."}
+            </DialogContentText>
 
-          <Stack spacing={2.5}>
-            <Controller
-              control={control}
-              name="name"
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  id="name"
-                  label="Nome"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  fullWidth
-                />
+            <Stack spacing={2.5}>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    id="name"
+                    label="Nome"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  />
+                )}
+              />
+
+              {!isEditing && (
+                <>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        id="email"
+                        type="email"
+                        label="E-mail"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        fullWidth
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        id="password"
+                        type="password"
+                        label="Senha inicial"
+                        error={!!fieldState.error}
+                        helperText={
+                          fieldState.error?.message ?? "Ao menos 8 caracteres."
+                        }
+                        fullWidth
+                      />
+                    )}
+                  />
+                </>
               )}
-            />
 
-            {!isEditing && (
-              <>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      id="email"
-                      type="email"
-                      label="E-mail"
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      fullWidth
-                    />
-                  )}
-                />
+              <Controller
+                control={control}
+                name="role"
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    select
+                    id="role"
+                    label="Papel"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  >
+                    <MenuItem value="STAFF">Recepção</MenuItem>
+                    <MenuItem value="ADMIN">Administrador</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Stack>
+          </DialogContent>
 
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      id="password"
-                      type="password"
-                      label="Senha inicial"
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message ?? "Ao menos 8 caracteres."}
-                      fullWidth
-                    />
-                  )}
-                />
-              </>
-            )}
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button
+              type="button"
+              color="inherit"
+              onClick={requestClose}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSubmitting}
+              startIcon={
+                isSubmitting ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : null
+              }
+            >
+              {isEditing ? "Salvar" : "Cadastrar"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
-            <Controller
-              control={control}
-              name="role"
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  select
-                  id="role"
-                  label="Papel"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  fullWidth
-                >
-                  <MenuItem value="STAFF">Recepção</MenuItem>
-                  <MenuItem value="ADMIN">Administrador</MenuItem>
-                </TextField>
-              )}
-            />
-          </Stack>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            type="button"
-            color="inherit"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isSubmitting}
-            startIcon={
-              isSubmitting ? <CircularProgress size={16} color="inherit" /> : null
-            }
-          >
-            {isEditing ? "Salvar" : "Cadastrar"}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+      <UnsavedChangesDialog
+        open={isConfirmOpen}
+        onDiscard={confirmDiscard}
+        onKeepEditing={cancelDiscard}
+      />
+    </>
   );
 };
