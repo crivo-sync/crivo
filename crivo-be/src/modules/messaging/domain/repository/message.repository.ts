@@ -46,7 +46,8 @@ export const MESSAGE_REPOSITORY = 'MessageRepository';
 
 export type MessageRepository = {
   create(data: CreateMessageData): Promise<Message>;
-  findById(id: string): Promise<Message | null>;
+  /** Traz o paciente junto: o worker precisa dele para logar de quem é a falha. */
+  findById(id: string): Promise<MessageWithPatient | null>;
   findMany(params: FindManyMessagesParams): Promise<PaginatedMessages>;
   markSent(id: string, data: MarkSentData): Promise<void>;
   markFailed(id: string, error: string): Promise<void>;
