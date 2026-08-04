@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -13,6 +13,7 @@ import { GetDashboardSummaryUseCase } from '../../application/use-cases/get-dash
 import { GetDashboardAnalyticsUseCase } from '../../application/use-cases/get-dashboard-analytics.use-case';
 import { DashboardSummaryResponseDto } from '../dtos/dashboard-summary-response.dto';
 import { DashboardAnalyticsResponseDto } from '../dtos/dashboard-analytics-response.dto';
+import { QueryAnalyticsDto } from '../dtos/query-analytics.dto';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -39,10 +40,14 @@ export class DashboardController {
   @Get('analytics')
   @ApiOperation({
     summary:
-      'Dados para gráficos: status dos agendamentos, agendamentos por dia e faturamento por procedimento (últimos 7 dias)',
+      'Dados para gráficos: status e agendamentos por dia (últimos 7 dias) e ' +
+      'faturamento por procedimento (janela configurável, 30 dias por padrão)',
   })
   @ApiOkResponse({ type: DashboardAnalyticsResponseDto })
-  async analytics(@Tenant('tenantId') tenantId: string) {
-    return this.getDashboardAnalytics.execute(tenantId);
+  async analytics(
+    @Tenant('tenantId') tenantId: string,
+    @Query() query: QueryAnalyticsDto,
+  ) {
+    return this.getDashboardAnalytics.execute(tenantId, query.revenueDays);
   }
 }
