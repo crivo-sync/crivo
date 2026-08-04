@@ -98,5 +98,15 @@ export function buildMessageColumns(): GridColDef<Message>[] {
         </Tooltip>
       ),
     },
+    {
+      field: "failedAt",
+      headerName: "Falhou em",
+      width: 130,
+      // Ver a hora exata da falha, sem abrir cada linha, é o que deixa dar
+      // pra cruzar rápido com "ah, foi quando o WhatsApp caiu às 15h" em vez
+      // de só saber que "5 mensagens falharam" sem quando.
+      valueFormatter: (value: string | null) =>
+        value ? dateFormatter.format(new Date(value)) : "—",
+    },
   ];
 }
