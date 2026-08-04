@@ -8,8 +8,18 @@ import {
 } from 'src/modules/appointments/domain/repository/appointment.repository';
 
 const ANALYTICS_WINDOW_DAYS = 7;
-/** Teto de segurança — uma clínica não passa disso em 7 dias na prática. */
+/** Faturamento olha mais longe que os outros gráficos — ver comentário no `execute`. */
+const DEFAULT_REVENUE_WINDOW_DAYS = 30;
+/** Teto de segurança — uma clínica não passa disso na janela usada aqui. */
 const MAX_APPOINTMENTS_IN_WINDOW = 1000;
+
+/** Início do dia N-1 dias atrás (a janela inclui hoje). */
+function startOfDaysAgo(reference: Date, days: number): Date {
+  const date = new Date(reference);
+  date.setDate(date.getDate() - (days - 1));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
 
 const STATUS_ORDER: AppointmentStatus[] = [
   AppointmentStatus.SCHEDULED,
@@ -30,24 +40,40 @@ export class GetDashboardAnalyticsUseCase {
     private readonly appointmentRepository: AppointmentRepository,
   ) {}
 
-  async execute(tenantId: string) {
+  async execute(tenantId: string, revenueDays = DEFAULT_REVENUE_WINDOW_DAYS) {
     const now = new Date();
-    const windowStart = new Date(now);
-    windowStart.setDate(windowStart.getDate() - (ANALYTICS_WINDOW_DAYS - 1));
-    windowStart.setHours(0, 0, 0, 0);
+    const windowStart = startOfDaysAgo(now, ANALYTICS_WINDOW_DAYS);
 
-    const { data: appointments } = await this.appointmentRepository.findMany({
-      tenantId,
-      from: windowStart,
-      to: now,
-      page: 1,
-      perPage: MAX_APPOINTMENTS_IN_WINDOW,
-    });
+    // O faturamento tem janela própria (e maior por padrão): "concluídos nos
+    // últimos 7 dias" volta vazio em clínica de movimento baixo, o que fazia o
+    // gráfico parecer quebrado mesmo com atendimentos concluídos na agenda.
+    //
+    // Como a janela dos gráficos está SEMPRE contida na do faturamento, uma
+    // única busca na maior serve as duas: filtrar em memória custa nada perto
+    // de um segundo round-trip com os mesmos joins.
+    const revenueStart = startOfDaysAgo(
+      now,
+      Math.max(ANALYTICS_WINDOW_DAYS, revenueDays),
+    );
+
+    const { data: revenueAppointments } =
+      await this.appointmentRepository.findMany({
+        tenantId,
+        from: revenueStart,
+        to: now,
+        page: 1,
+        perPage: MAX_APPOINTMENTS_IN_WINDOW,
+      });
+
+    const appointments = revenueAppointments.filter(
+      (appointment) => appointment.startsAt >= windowStart,
+    );
 
     return {
       byStatus: this.groupByStatus(appointments),
       byDay: this.groupByDay(appointments, windowStart, now),
-      revenueByProcedure: this.groupRevenueByProcedure(appointments),
+      revenueByProcedure: this.groupRevenueByProcedure(revenueAppointments),
+      revenueDays,
     };
   }
 
