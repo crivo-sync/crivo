@@ -111,13 +111,20 @@ export const AppointmentManagement = () => {
         onUpdateParams={updateParams}
       />
 
-      <AppointmentFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      {/* Montados só quando abertos: os dois buscam pacientes, profissionais,
+          procedimentos e a clínica ao montar — com eles sempre no ar, toda
+          visita à agenda pagava essas requisições sem nem abrir o formulário. */}
+      {formOpen && (
+        <AppointmentFormDialog open onOpenChange={setFormOpen} />
+      )}
 
-      <RescheduleAppointmentDialog
-        open={!!reschedulingAppointment}
-        onOpenChange={(open) => !open && setReschedulingAppointment(undefined)}
-        appointment={reschedulingAppointment}
-      />
+      {reschedulingAppointment && (
+        <RescheduleAppointmentDialog
+          open
+          onOpenChange={(open) => !open && setReschedulingAppointment(undefined)}
+          appointment={reschedulingAppointment}
+        />
+      )}
 
       <ChangeStatusMenu
         pending={cancelling}
