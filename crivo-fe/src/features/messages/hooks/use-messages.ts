@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { LIVE_REFETCH_INTERVAL_MS } from "@/config/realtime";
 import { getMessagesAction } from "../actions/get-messages-action";
 import type { MessagesQueryParams } from "../schemas/messages-query-params";
 
@@ -18,6 +19,9 @@ export function useMessages(params: MessagesQueryParams) {
       return result.data;
     },
     placeholderData: (previousData) => previousData,
+    // O envio acontece na fila, em segundo plano: PENDING → SENT/FAILED
+    // muda sem nenhuma ação na tela.
+    refetchInterval: LIVE_REFETCH_INTERVAL_MS,
   });
 
   return {
