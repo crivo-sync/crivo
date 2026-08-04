@@ -1,5 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
+import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import {
   PROFESSIONAL_REPOSITORY,
   type ProfessionalRepository,
@@ -12,6 +13,7 @@ export type CreateProfessionalInput = {
   councilCode?: string;
   phone?: string;
   email?: string;
+  procedureIds?: string[];
 };
 
 @Injectable()
@@ -19,9 +21,17 @@ export class CreateProfessionalUseCase {
   constructor(
     @Inject(PROFESSIONAL_REPOSITORY)
     private readonly professionalRepository: ProfessionalRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
-  execute(input: CreateProfessionalInput) {
+  async execute(input: CreateProfessionalInput) {
+    if (input.procedureIds?.length) {
+      await this.assertProceduresBelongToTenant(
+        input.tenantId,
+        input.procedureIds,
+      );
+    }
+
     return this.professionalRepository.create({
       tenantId: input.tenantId,
       name: input.name,
@@ -29,6 +39,23 @@ export class CreateProfessionalUseCase {
       councilCode: input.councilCode ?? null,
       phone: input.phone ?? null,
       email: input.email ?? null,
+      procedureIds: input.procedureIds,
     });
+  }
+
+  // Sem isso, um payload malformado (ou de outro tenant) conseguiria linkar
+  // um procedimento que não é dessa clínica.
+  private async assertProceduresBelongToTenant(
+    tenantId: string,
+    procedureIds: string[],
+  ) {
+    const found = await this.prisma.procedure.findMany({
+      where: { id: { in: procedureIds }, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (found.length !== new Set(procedureIds).size) {
+      throw new BadRequestException('Um ou mais procedimentos são inválidos.');
+    }
   }
 }
