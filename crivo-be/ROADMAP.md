@@ -20,7 +20,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `prontuário` | ⚪ **Não iniciado — zero linha de código.** Requisito obrigatório para odonto/dermato |
 | `billing` | ⚪ Não iniciado |
 
-Temos uma base sólida de cadastro e agenda. **Ainda não temos nada do que diferencia o produto** — a tríade agenda + comunicação + predição existe só no primeiro terço.
+Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação pelo paciente) funcionando em dev. **O que diferencia o produto — a predição — segue em zero.** A tríade agenda + comunicação + predição está em dois terços.
 
 ---
 
