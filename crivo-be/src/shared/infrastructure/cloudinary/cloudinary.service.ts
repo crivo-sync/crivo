@@ -1,6 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  type TransformationOptions,
+  type UploadApiResponse,
+} from 'cloudinary';
+
+/**
+ * Recorte quadrado centrado no rosto — serve para foto de perfil, mas
+ * destruiria um logo (corta um wordmark largo e procura um rosto que não
+ * existe). Por isso a transformação é parâmetro, não constante do service.
+ */
+const AVATAR_TRANSFORMATION: TransformationOptions = [
+  { width: 512, height: 512, crop: 'fill', gravity: 'face' },
+];
 
 @Injectable()
 export class CloudinaryService {
@@ -20,6 +33,7 @@ export class CloudinaryService {
     buffer: Buffer,
     folder: string,
     publicId: string,
+    transformation: TransformationOptions = AVATAR_TRANSFORMATION,
   ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
@@ -28,9 +42,7 @@ export class CloudinaryService {
           public_id: publicId,
           overwrite: true,
           resource_type: 'image',
-          transformation: [
-            { width: 512, height: 512, crop: 'fill', gravity: 'face' },
-          ],
+          transformation,
         },
         (error, result) => {
           if (error || !result) {
