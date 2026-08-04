@@ -19,6 +19,20 @@ export type Appointment = {
   procedure: { id: string; name: string; durationMinutes: number };
 };
 
+export type AvailabilitySlot = {
+  startsAt: string;
+  endsAt: string;
+};
+
+export type Availability = {
+  date: string;
+  /** Duração do procedimento escolhido — define o tamanho de cada horário. */
+  durationMinutes: number;
+  slots: AvailabilitySlot[];
+  /** `true` quando a clínica não atende nesse dia da semana. */
+  closed: boolean;
+};
+
 export type PaginationMeta = {
   page: number;
   perPage: number;
