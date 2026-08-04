@@ -69,7 +69,6 @@ export const AppointmentFilters = ({
           onChange({ professionalId: event.target.value || null, page: "1" })
         }
         sx={{ minWidth: 200 }}
-        size="small"
       >
         <MenuItem value="">Todos</MenuItem>
         {professionals.map((professional) => (
@@ -87,7 +86,6 @@ export const AppointmentFilters = ({
           onChange({ patientId: event.target.value || null, page: "1" })
         }
         sx={{ minWidth: 200 }}
-        size="small"
       >
         <MenuItem value="">Todos</MenuItem>
         {patients.map((patient) => (
@@ -105,7 +103,6 @@ export const AppointmentFilters = ({
           onChange({ status: event.target.value || null, page: "1" })
         }
         sx={{ minWidth: 170 }}
-        size="small"
       >
         <MenuItem value="">Todos</MenuItem>
         {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -119,7 +116,7 @@ export const AppointmentFilters = ({
         label="De"
         value={from ? dayjs(from) : null}
         onChange={handleDateChange("from")}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 170 } } }}
+        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       <DatePicker
@@ -127,7 +124,7 @@ export const AppointmentFilters = ({
         value={to ? dayjs(to) : null}
         onChange={handleDateChange("to")}
         minDate={from ? dayjs(from) : undefined}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 170 } } }}
+        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       {hasFilters && (

@@ -3,6 +3,9 @@
 import { createTheme } from "@mui/material/styles";
 import { ptBR as corePtBR } from "@mui/material/locale";
 import { ptBR as dataGridPtBR } from "@mui/x-data-grid/locales";
+// Só tipos: registra `MuiPickersTextField` no `Components` do theme do MUI
+// core, senão o TS não reconhece a chave abaixo.
+import type {} from "@mui/x-date-pickers/themeAugmentation";
 
 /**
  * Theme do painel administrativo.
@@ -47,6 +50,21 @@ export const muiTheme = createTheme({
     fontFamily: "var(--font-sans), system-ui, sans-serif",
     button: {
       textTransform: "none",
+    },
+  },
+  components: {
+    // "small" em todo lugar por padrão — antes cada tela repetia
+    // `size="small"` (ou esquecia, como o campo de busca de Pacientes, que
+    // ficava maior que o botão "Novo paciente" ao lado). Centralizando
+    // aqui, ajustar a altura dos campos do painel inteiro é uma linha só.
+    MuiTextField: {
+      defaultProps: { size: "small" },
+    },
+    // O DatePicker/DateField não usa MuiTextField por baixo — é um
+    // componente próprio (`PickersTextField`), então precisa do próprio
+    // default para acompanhar o resto dos campos.
+    MuiPickersTextField: {
+      defaultProps: { size: "small" },
     },
   },
 },

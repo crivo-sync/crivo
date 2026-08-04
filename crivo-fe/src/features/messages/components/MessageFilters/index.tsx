@@ -55,7 +55,6 @@ export const MessageFilters = ({
           onChange({ status: event.target.value || null, page: "1" })
         }
         sx={{ minWidth: 170 }}
-        size="small"
       >
         <MenuItem value="">Todos</MenuItem>
         {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -69,7 +68,7 @@ export const MessageFilters = ({
         label="De"
         value={from ? dayjs(from) : null}
         onChange={handleDateChange("from")}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 170 } } }}
+        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       <DatePicker
@@ -77,7 +76,7 @@ export const MessageFilters = ({
         value={to ? dayjs(to) : null}
         onChange={handleDateChange("to")}
         minDate={from ? dayjs(from) : undefined}
-        slotProps={{ textField: { size: "small", sx: { minWidth: 170 } } }}
+        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       {hasFilters && (
