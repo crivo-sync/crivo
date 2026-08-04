@@ -12,6 +12,7 @@ export const createProfessionalSchema = z.object({
     .optional()
     .or(z.literal("")),
   email: z.email("E-mail inválido").optional().or(z.literal("")),
+  procedureIds: z.array(z.string()),
 });
 
 export type CreateProfessionalSchema = z.infer<typeof createProfessionalSchema>;
