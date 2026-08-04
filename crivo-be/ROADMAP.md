@@ -85,8 +85,11 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
 | Agendamento online pelo paciente | ✅ 24h, sem app | ❌ | 🟠 Alta |
 | Lista de espera / preenchimento de lacunas | ✅ | ❌ | 🟠 Alta |
-| Recall pós-procedimento | ✅ automático | ❌ | 🟠 Alta |
-| Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ | 🟠 Alta |
+| Recall pós-procedimento | ✅ automático | ❌ (base do "reativação inteligente", Fase 2) | 🟠 Alta |
+| Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ (há faturamento por procedimento, não fluxo de caixa) | 🟠 Alta |
+| Métricas de ocupação de agenda | ✅ | ❌ — exige modelar capacidade instalada | 🟡 Média |
+| Multi-unidade (rede/franquia) | ✅ (Clinicorp) | ❌ — hoje 1 tenant = 1 clínica, sem hierarquia | 🟡 Média |
+| Chat/atendimento por IA no site | ⚠️ raro no setor | ❌ | 🟢 Baixa |
 | Comissão por profissional | ✅ | ❌ | 🟡 Média |
 | Pacotes e sessões múltiplas | ✅ | ❌ | 🟡 Média |
 | Programa de fidelidade / pontos | ✅ | ❌ | 🟡 Média |
@@ -281,7 +284,10 @@ Quatro observações:
 | Risco | Mitigação |
 | --- | --- |
 | Concorrente já tem produto no ar e nós não | Focar Fase 1 e não dispersar em features de Fase 3 |
-| Predição sem dado suficiente para treinar | Começar com regra determinística; o seed já produz histórico de `NO_SHOW` |
+| Predição sem dado suficiente para treinar | Começar com regra determinística. **Hoje há só 5 `NO_SHOW` no banco de dev** — não treina nada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
+| Dado de teste poluindo o histórico de predição | Boa parte dos 21 `CANCELLED` é agendamento criado/cancelado em teste, não comportamento de paciente. Marcar ou limpar antes de qualquer treino — senão o modelo aprende o padrão do desenvolvedor |
+| Expor preço no Stripe antes de validar | O checkout congela publicamente uma tabela que este documento classifica como hipótese acima do mercado. Validar preço **antes** de ligar o pagamento |
+| Multi-unidade quebrar o isolamento por tenant | `TenantContextGuard` assume um tenant por token. Hierarquia (`Organization` → `Tenant`) precisa ser desenhada antes, não adaptada depois — é onde vazamento entre clínicas apareceria |
 | Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
 | Migração de clínica que já usa concorrente | Importador de pacientes via CSV na Fase 1 |
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
