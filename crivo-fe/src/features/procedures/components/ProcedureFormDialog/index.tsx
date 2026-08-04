@@ -11,12 +11,14 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import InputAdornment from "@mui/material/InputAdornment";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 
-import { parseBRLToCents } from "@/lib/currency";
+import { DurationField } from "@/components/duration-field";
+import { MoneyField } from "@/components/money-field";
+import { UnsavedChangesDialog } from "@/components/ui/unsaved-changes-dialog";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useCreateProcedure } from "../../hooks/use-create-procedure";
 import { useUpdateProcedure } from "../../hooks/use-update-procedure";
 import {
@@ -50,10 +52,17 @@ export const ProcedureFormDialog = ({
   const updateProcedure = useUpdateProcedure();
   const isSubmitting = createProcedure.isPending || updateProcedure.isPending;
 
-  const { control, handleSubmit, reset } = useForm<ProcedureFormSchema>({
-    resolver: zodResolver(procedureFormSchema),
-    defaultValues: EMPTY_VALUES,
-  });
+  const { control, handleSubmit, reset, formState } =
+    useForm<ProcedureFormSchema>({
+      resolver: zodResolver(procedureFormSchema),
+      defaultValues: EMPTY_VALUES,
+    });
+
+  const { requestClose, isConfirmOpen, confirmDiscard, cancelDiscard } =
+    useUnsavedChangesGuard({
+      isDirty: formState.isDirty,
+      onConfirmClose: () => onOpenChange(false),
+    });
 
   useEffect(() => {
     if (!open) return;
@@ -95,82 +104,64 @@ export const ProcedureFormDialog = ({
   });
 
   return (
-    <Dialog
-      open={open}
-      onClose={() => onOpenChange(false)}
-      fullWidth
-      maxWidth="sm"
-    >
-      <form onSubmit={onSubmit}>
-        <DialogTitle>
-          {isEditing ? "Editar procedimento" : "Cadastrar procedimento"}
-        </DialogTitle>
+    <>
+      <Dialog open={open} onClose={requestClose} fullWidth maxWidth="sm">
+        <form onSubmit={onSubmit}>
+          <DialogTitle>
+            {isEditing ? "Editar procedimento" : "Cadastrar procedimento"}
+          </DialogTitle>
 
-        <DialogContent>
-          <DialogContentText sx={{ mb: 3 }}>
-            {isEditing
-              ? "Atualize os dados do procedimento."
-              : "Preencha os dados do novo procedimento."}
-          </DialogContentText>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 3 }}>
+              {isEditing
+                ? "Atualize os dados do procedimento."
+                : "Preencha os dados do novo procedimento."}
+            </DialogContentText>
 
-          <Stack spacing={2.5}>
-            <Controller
-              control={control}
-              name="name"
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  id="name"
-                  label="Nome"
-                  placeholder="Limpeza dental"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  fullWidth
-                />
-              )}
-            />
+            <Stack spacing={2.5}>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    id="name"
+                    label="Nome"
+                    placeholder="Limpeza dental"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name="description"
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  id="description"
-                  label="Descrição (opcional)"
-                  placeholder="Profilaxia e remoção de tártaro"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  multiline
-                  minRows={2}
-                  fullWidth
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name="description"
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    id="description"
+                    label="Descrição (opcional)"
+                    placeholder="Profilaxia e remoção de tártaro"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    multiline
+                    minRows={2}
+                    fullWidth
+                  />
+                )}
+              />
 
-            <Stack direction="row" spacing={2.5}>
               <Controller
                 control={control}
                 name="durationMinutes"
                 render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    onChange={(event) =>
-                      field.onChange(Number(event.target.value))
-                    }
-                    id="durationMinutes"
-                    type="number"
-                    label="Duração"
-                    error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <InputAdornment position="end">min</InputAdornment>
-                        ),
-                      },
-                    }}
-                    fullWidth
+                  <DurationField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    errorMessage={fieldState.error?.message}
                   />
                 )}
               />
@@ -179,72 +170,74 @@ export const ProcedureFormDialog = ({
                 control={control}
                 name="priceInCents"
                 render={({ field, fieldState }) => (
-                  <TextField
-                    value={(field.value / 100).toFixed(2).replace(".", ",")}
-                    onChange={(event) =>
-                      field.onChange(parseBRLToCents(event.target.value))
-                    }
+                  <MoneyField
+                    value={field.value}
+                    onChange={field.onChange}
                     onBlur={field.onBlur}
                     id="priceInCents"
                     label="Preço"
                     error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">R$</InputAdornment>
-                        ),
-                      },
-                    }}
+                    helperText={
+                      fieldState.error?.message ??
+                      "Digite só os números: 30000 vira R$ 300,00."
+                    }
                     fullWidth
                   />
                 )}
               />
+
+              {isEditing && (
+                <Controller
+                  control={control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                        />
+                      }
+                      label="Procedimento ativo"
+                    />
+                  )}
+                />
+              )}
             </Stack>
+          </DialogContent>
 
-            {isEditing && (
-              <Controller
-                control={control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                      />
-                    }
-                    label="Procedimento ativo"
-                  />
-                )}
-              />
-            )}
-          </Stack>
-        </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button
+              type="button"
+              color="inherit"
+              onClick={requestClose}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSubmitting}
+              startIcon={
+                isSubmitting ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : null
+              }
+            >
+              {isEditing ? "Salvar" : "Cadastrar"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            type="button"
-            color="inherit"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isSubmitting}
-            startIcon={
-              isSubmitting ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : null
-            }
-          >
-            {isEditing ? "Salvar" : "Cadastrar"}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+      <UnsavedChangesDialog
+        open={isConfirmOpen}
+        onDiscard={confirmDiscard}
+        onKeepEditing={cancelDiscard}
+      />
+    </>
   );
 };
