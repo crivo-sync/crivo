@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { LIVE_REFETCH_INTERVAL_MS } from "@/config/realtime";
 import { getAppointmentsAction } from "../actions/get-appointments-action";
 import type { AppointmentsQueryParams } from "../schemas/appointments-query-params";
 
@@ -18,6 +19,9 @@ export function useAppointments(params: AppointmentsQueryParams) {
       return result.data;
     },
     placeholderData: (previousData) => previousData,
+    // O paciente confirma pelo WhatsApp, fora do painel — sem isso a
+    // recepção só veria "Agendado" virar "Confirmado" ao dar F5.
+    refetchInterval: LIVE_REFETCH_INTERVAL_MS,
   });
 
   return {
