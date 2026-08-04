@@ -37,7 +37,7 @@ export class ConfirmByTokenUseCase {
     private readonly templates: MessageTemplateService,
   ) {}
 
-  async execute(token: string) {
+  private async findByToken(token: string) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { confirmationToken: token },
       include: {
@@ -51,6 +51,32 @@ export class ConfirmByTokenUseCase {
     if (!appointment) {
       throw new NotFoundException('Link de confirmação inválido ou expirado.');
     }
+
+    return appointment;
+  }
+
+  /**
+   * Só leitura — usado pelo `GET /c/:token` que abre ao tocar no link.
+   *
+   * Precisa ser sem efeito colateral: WhatsApp (e outros apps de mensagem)
+   * faz *pré-fetch* automático de qualquer URL na mensagem para montar a
+   * prévia do link, então um `GET` que confirmasse a presença confirmaria
+   * sozinho, antes do paciente sequer ver a tela — foi reproduzido em teste
+   * (recibo de confirmação chegou ~1s depois do lembrete, tempo impossível
+   * pra uma pessoa abrir o WhatsApp e tocar no link).
+   */
+  async preview(token: string) {
+    const appointment = await this.findByToken(token);
+
+    return {
+      alreadyConfirmed: appointment.status === AppointmentStatus.CONFIRMED,
+      appointment,
+    };
+  }
+
+  /** Confirma de verdade — só o `POST /c/:token/confirm` chama isso. */
+  async execute(token: string) {
+    const appointment = await this.findByToken(token);
 
     if (appointment.status === AppointmentStatus.CONFIRMED) {
       return { alreadyConfirmed: true, appointment };
