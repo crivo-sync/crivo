@@ -1,4 +1,8 @@
-import { Professional } from '@prisma/client';
+import { Procedure, Professional } from '@prisma/client';
+
+export type ProfessionalWithProcedures = Professional & {
+  procedures: Pick<Procedure, 'id' | 'name'>[];
+};
 
 export type CreateProfessionalData = {
   tenantId: string;
@@ -8,6 +12,8 @@ export type CreateProfessionalData = {
   phone?: string | null;
   email?: string | null;
   userId?: string | null;
+  /** Ids já validados (mesmo tenant, ativos) pelo use case. */
+  procedureIds?: string[];
 };
 
 export type UpdateProfessionalData = {
@@ -17,6 +23,8 @@ export type UpdateProfessionalData = {
   phone?: string | null;
   email?: string | null;
   isActive?: boolean;
+  /** `undefined` = não mexe na lista; array (mesmo vazio) = substitui. */
+  procedureIds?: string[];
 };
 
 export type FindManyProfessionalsParams = {
@@ -27,7 +35,7 @@ export type FindManyProfessionalsParams = {
 };
 
 export type PaginatedProfessionals = {
-  data: Professional[];
+  data: ProfessionalWithProcedures[];
   total: number;
 };
 
@@ -37,9 +45,15 @@ export type ProfessionalRepository = {
   findMany(
     params: FindManyProfessionalsParams,
   ): Promise<PaginatedProfessionals>;
-  findByIdAndTenant(id: string, tenantId: string): Promise<Professional | null>;
-  create(data: CreateProfessionalData): Promise<Professional>;
-  update(id: string, data: UpdateProfessionalData): Promise<Professional>;
+  findByIdAndTenant(
+    id: string,
+    tenantId: string,
+  ): Promise<ProfessionalWithProcedures | null>;
+  create(data: CreateProfessionalData): Promise<ProfessionalWithProcedures>;
+  update(
+    id: string,
+    data: UpdateProfessionalData,
+  ): Promise<ProfessionalWithProcedures>;
   softDelete(id: string): Promise<void>;
   countActiveByTenant(tenantId: string): Promise<number>;
 };
