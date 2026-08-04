@@ -203,6 +203,10 @@ export const AppointmentFormDialog = ({
                     onChange={field.onChange}
                     errorMessage={fieldState.error?.message}
                     businessDays={tenant?.businessDays}
+                    businessHoursEnd={tenant?.businessHoursEnd}
+                    procedureDurationMinutes={
+                      selectedProcedure?.durationMinutes
+                    }
                   />
                 )}
               />
