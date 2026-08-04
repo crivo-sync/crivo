@@ -12,6 +12,7 @@ import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
 } from '../../domain/repository/appointment.repository';
+import { BusinessHoursService } from '../services/business-hours.service';
 
 export type CreateAppointmentInput = {
   tenantId: string;
@@ -29,6 +30,7 @@ export class CreateAppointmentUseCase {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly prisma: PrismaService,
     private readonly scheduleReminder: ScheduleAppointmentReminderUseCase,
+    private readonly businessHours: BusinessHoursService,
   ) {}
 
   async execute(input: CreateAppointmentInput) {
@@ -56,7 +58,7 @@ export class CreateAppointmentUseCase {
           deletedAt: null,
           isActive: true,
         },
-        select: { id: true },
+        select: { id: true, procedures: { select: { id: true } } },
       }),
       this.prisma.procedure.findFirst({
         where: {
@@ -81,10 +83,26 @@ export class CreateAppointmentUseCase {
       throw new NotFoundException('Procedimento não encontrado ou inativo.');
     }
 
+    // Lista vazia = profissional sem restrição, faz qualquer procedimento.
+    if (
+      professional.procedures.length > 0 &&
+      !professional.procedures.some((p) => p.id === input.procedureId)
+    ) {
+      throw new BadRequestException(
+        'Este profissional não realiza este procedimento.',
+      );
+    }
+
     // A duração vem do procedimento — a recepção escolhe o que será feito,
     // não quanto tempo leva.
     const endsAt = new Date(
       input.startsAt.getTime() + procedure.durationMinutes * 60_000,
+    );
+
+    await this.businessHours.assertWithinBusinessHours(
+      input.tenantId,
+      input.startsAt,
+      endsAt,
     );
 
     const conflict = await this.appointmentRepository.findOverlapping({
