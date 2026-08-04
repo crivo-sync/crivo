@@ -16,11 +16,12 @@ export class ConfirmationController {
 
   @Get(':token')
   @ApiOperation({
-    summary: 'Detalhes do agendamento a confirmar (abre ao tocar no link)',
+    summary:
+      'Detalhes do agendamento a confirmar (abre ao tocar no link) — só leitura, não confirma',
   })
   async show(@Param('token') token: string) {
     const { appointment, alreadyConfirmed } =
-      await this.confirmByToken.execute(token);
+      await this.confirmByToken.preview(token);
 
     return {
       alreadyConfirmed,
@@ -34,7 +35,9 @@ export class ConfirmationController {
   }
 
   @Post(':token/confirm')
-  @ApiOperation({ summary: 'Confirma a presença (mesmo efeito do GET)' })
+  @ApiOperation({
+    summary: 'Confirma a presença (única rota que muda o status)',
+  })
   async confirm(@Param('token') token: string) {
     const { appointment, alreadyConfirmed } =
       await this.confirmByToken.execute(token);
