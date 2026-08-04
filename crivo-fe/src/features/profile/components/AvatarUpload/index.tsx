@@ -9,11 +9,12 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 
 import { getInitials } from "@/lib/initials";
+import {
+  IMAGE_ACCEPT_ATTRIBUTE,
+  validateImageFile,
+} from "@/lib/image-upload";
 import { useUploadAvatar } from "../../hooks/use-upload-avatar";
 import { useSnackbar } from "@/components/providers/snackbar-provider";
-
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 type AvatarUploadProps = {
   name: string;
@@ -30,12 +31,9 @@ export const AvatarUpload = ({ name, avatarUrl }: AvatarUploadProps) => {
     event.target.value = ""; // permite escolher o mesmo arquivo de novo depois
     if (!file) return;
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      snackbar.showError("Envie uma imagem JPEG, PNG ou WebP.");
-      return;
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      snackbar.showError("A imagem precisa ter até 5MB.");
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      snackbar.showError(invalid);
       return;
     }
 
@@ -89,7 +87,7 @@ export const AvatarUpload = ({ name, avatarUrl }: AvatarUploadProps) => {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={IMAGE_ACCEPT_ATTRIBUTE}
         onChange={handleFileChange}
         hidden
       />
