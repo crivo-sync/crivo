@@ -180,6 +180,74 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 
 ---
 
+## Predição — o que existe de verdade hoje
+
+**Código: nenhum.** Não há módulo `prediction`, nem tabela, nem endpoint.
+O que existe é o **dado bruto sendo acumulado** desde o início, de propósito.
+
+### O que já está sendo coletado
+
+| Sinal | Onde | Por que importa |
+| --- | --- | --- |
+| `CANCELLED` ≠ `NO_SHOW` | `Appointment.status` | **Cancelar é aviso; faltar é o problema.** Só a segunda categoria é o alvo da predição — separá-las desde o schema é o que torna o dado treinável depois |
+| `confirmedAt` | `Appointment` | O paciente respondeu ao lembrete? Não responder é candidato natural a preditor |
+| Histórico por paciente | `Appointment.patientId` | Quem já faltou tende a faltar de novo — é o sinal mais forte na literatura |
+| Horário e dia | `startsAt` | Primeiro horário da manhã e véspera de feriado têm perfil de falta diferente |
+| Procedimento e preço | `procedureId`, `priceInCents` | Ticket alto e procedimento eletivo têm risco diferente de retorno de rotina |
+
+### Volume real (04/08/2026, banco de desenvolvimento)
+
+```
+total       59
+CANCELLED   21
+SCHEDULED   13
+COMPLETED   11
+CONFIRMED    9
+NO_SHOW      5     ← a classe que interessa prever
+confirmedAt 17
+```
+
+**Isso não treina modelo nenhum.** Cinco exemplos positivos não sustentam
+nem uma regressão logística simples, e pior: **os números estão poluídos**.
+Boa parte dos `CANCELLED` veio de agendamento de teste criado e cancelado
+durante o desenvolvimento, não de comportamento real de paciente. Antes de
+qualquer treino sério, o dado de teste precisa sair — ou o modelo vai
+aprender o padrão do desenvolvedor, não o do paciente.
+
+### O caminho realista
+
+1. **Começar por regra determinística**, sem ML. Algo como: já faltou antes ·
+   não confirmou o lembrete · é primeira consulta · horário historicamente
+   ruim. Cada condição soma pontos e o resultado vira faixa (baixo/médio/alto).
+2. **Agir por faixa**, que é o diferencial real — não o número. Risco alto:
+   confirmar mais cedo, insistir mais, liberar para lista de espera antes.
+3. **Medir a regra** contra o que de fato aconteceu. Isso gera o rótulo
+   limpo que um modelo precisaria depois.
+4. **Só então trocar por modelo estatístico**, quando houver volume real de
+   clínica em produção — não com dado de seed.
+
+A ordem importa: a regra entrega valor na semana 1 e produz o dataset que
+justifica o modelo. Começar pelo modelo é construir sobre 5 exemplos.
+
+---
+
+## Website — o que falta
+
+O site institucional (`crivo-fe`, grupo de rotas `(website)`) hoje é
+estático: apresenta o produto, lista planos como texto e tem formulário de
+contato. Duas lacunas mapeadas:
+
+| Item | Situação | Observação |
+| --- | --- | --- |
+| **Chat com IA (DeepSeek)** | ⚪ Não iniciado | Atendimento/qualificação do visitante na landing. O `DeepSeekTextGenerator` já existe em `messaging`, mas serve outro propósito (reescrever lembrete) — chat exige conversa com estado, histórico e contenção de escopo, é integração nova |
+| **Planos reais com Stripe** | ⚪ Não iniciado | Hoje `_data/pricing-plans.ts` é conteúdo estático e o CTA não leva a checkout. Depende de `billing` (Fase 3) — e, antes disso, de **validar o preço**: os valores publicados seguem sendo hipótese não testada (ver abaixo) |
+
+> ⚠️ Ligar o Stripe congela publicamente uma tabela de preços que este mesmo
+> documento classifica como não validada e acima da entrada do mercado.
+> Decidir o preço **antes** de expor checkout, não depois.
+
+---
+
 ## Impacto no modelo de cobrança
 
 Com o panorama completo, a hipótese do README (R$ 149 / R$ 289 + R$ 49 por profissional) fica **acima da porta de entrada de todo o mercado**:
