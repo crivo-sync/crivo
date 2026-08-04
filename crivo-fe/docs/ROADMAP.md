@@ -171,6 +171,118 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
 
 ---
 
+## Regras de agendamento (horário comercial e duração)
+
+Três validações no `crivo-be`, todas em `BusinessHoursService`
+(`src/modules/appointments/application/services/`), chamadas por
+`CreateAppointmentUseCase` **e** `RescheduleAppointmentUseCase` — reagendar
+tinha exatamente as mesmas brechas de criar.
+
+1. **Dia de atendimento** — `Tenant.businessDays`, no padrão `Date.getDay()`
+   (0=domingo … 6=sábado), default seg–sex.
+2. **Dentro do expediente** — `Tenant.businessHoursStart` / `businessHoursEnd`,
+   gravados em **minutos desde a meia-noite** (`480` = 08:00), não `String`
+   `"08:00"`: comparar vira aritmética simples, sem parsing nem fuso no meio.
+3. **O atendimento precisa CABER inteiro na janela** — esta é a regra que
+   motivou o resto. Validar só o horário de início deixaria passar um
+   procedimento de 90min marcado às 17:00 com fechamento às 18:00, que
+   terminaria 18:30. A duração já vinha do procedimento (`endsAt` derivado, a
+   recepção escolhe *o que* será feito, não *quanto tempo leva*), e a regra de
+   **sobreposição** entre agendamentos do mesmo profissional já usava esse
+   `endsAt` — então bloquear a agenda pelo tempo real do procedimento já
+   funcionava; o que faltava era só a barreira do fechamento.
+
+O expediente é comparado em **hora local** (`getHours()`) de propósito: é o
+relógio de parede da clínica, não UTC.
+
+Configurável por clínica em `/painel/configuracoes` (ADMIN; STAFF vê
+desabilitado), com `TimePicker` e um `ToggleButtonGroup` de 7 dias — a
+recepção nunca digita o inteiro de minutos, a conversão acontece na borda do
+formulário. `UpdateTenantUseCase` ainda valida `start < end` cruzando com o
+valor já salvo, já que o `PATCH` pode mandar só um dos dois campos.
+
+**Testado contra a API real**: antes da abertura → recusado; 17:30 + 60min com
+fechamento 18:00 → recusado com a mensagem do horário de término; 16:00 + 60min
+→ aceito; domingo → recusado listando os dias de atendimento.
+
+## Agenda: escolher horário livre em vez de adivinhar
+
+`GET /appointments/availability?professionalId&procedureId&date` devolve
+**apenas os horários em que o atendimento cabe inteiro**, já descontando as
+três coisas de uma vez: expediente da clínica, duração do procedimento e a
+agenda daquele profissional (mais o passado, que também some).
+
+Antes a recepção escolhia qualquer hora num `DateTimePicker` livre e só
+descobria no *Agendar* que o profissional estava ocupado ou que passava do
+fechamento. Agora o `SlotPicker` (`features/appointments/components/`) mostra
+chips clicáveis — o erro deixou de ser possível em vez de ser reportado depois.
+
+Detalhes que não são óbvios:
+
+- **Passo de 15 min ≠ duração.** Os horários são oferecidos de 15 em 15
+  minutos, mas cada um reserva a duração real do procedimento. Um de 30 min às
+  10:30 ocupa até 11:00, então 10:45 desaparece da lista.
+- **`excludeAppointmentId`** existe para o reagendamento: sem ele o próprio
+  horário atual apareceria como ocupado por si mesmo. Verificado na API — 28
+  slots sem o parâmetro, 31 com ele, e o horário do agendamento reaparece.
+- **`closed: true`** é resposta válida (dia sem atendimento), não erro 400:
+  quem perguntou "o que tem livre?" precisa renderizar "a clínica não atende
+  neste dia". Aparece ao reagendar algo que caiu num domingo antes da regra
+  existir.
+
+### Armadilha: `new Date('2026-08-05')` é meia-noite **UTC**
+
+Em Brasília (UTC-3) isso cai em **04/08 às 21:00** — o dia inteiro escorregava
+para o anterior e a agenda vinha errada (a query de 05/08 retornava horários de
+04/08). O DTO agora monta a data em horário **local** via `@Transform` quando o
+formato é `YYYY-MM-DD`. O servidor roda no fuso da clínica, que é o fuso em que
+a recepção raciocina.
+
+### Fonte única de verdade: o hardcode que contradizia o backend
+
+`features/appointments/business-hours.ts` tinha o expediente **chumbado como
+seg–sáb 09h–19h**, enquanto o backend usava seg–sex 08h–18h vindo do banco. Na
+prática o formulário liberava sábado e 18:30 (o backend recusava) e bloqueava
+08:00 (que o backend aceitava). O arquivo foi **removido**: os dias vêm de
+`useTenant()` e os horários do endpoint de disponibilidade.
+
+O `superRefine` do zod que revalidava o horário também saiu — revalidar no
+client só duplica (e diverge d) a regra que já mora no backend. O schema hoje
+só garante que **algum** horário foi escolhido.
+
+## Armadilha resolvida: faturamento vazio com agendamentos concluídos na tela
+
+O card "Faturamento por procedimento" dizia *"nenhum procedimento concluído no
+período"* enquanto a Agenda listava 6 concluídos — parecia bug de agregação,
+mas o backend estava certo: a janela era de **7 dias** e os concluídos eram de
+30/06 a 27/07 (fora dela), mais um em 04/08 (futuro, cortado pelo `to: now`).
+
+Clínica de movimento baixo não fecha procedimento todo dia, então 7 dias é uma
+janela ruim justamente para o gráfico de dinheiro. Correção: `revenueDays`
+(`7|30|90`, default **30**) em `GET /dashboard/analytics`, com **janela própria
+só para o faturamento** — `byStatus` e `byDay` seguem em 7 dias, que faz
+sentido para "como está a semana". Quando as duas janelas coincidem, reusa a
+mesma busca em vez de ir ao banco duas vezes.
+
+O seletor fica no próprio card, e o subtítulo passou a mostrar o total
+faturado no período. Detalhe de UI que custou duas tentativas: no `BarChart`
+horizontal, `margin.left` **não** evita o corte do rótulo ("Limpeza dental"
+virava "Limp…") — o MUI X trunca pela largura reservada ao tick, então é
+preciso `yAxis[].width` junto.
+
+## Proteção contra perda de formulário
+
+`useUnsavedChangesGuard` (`src/hooks/`) + `<UnsavedChangesDialog />`
+(`src/components/ui/`). Um dialog fecha por três caminhos — botão Cancelar,
+clique fora/ESC do MUI, e a aba do browser — e todos passam pelo guard quando
+`formState.isDirty`. O aviso do browser (`beforeunload`) fica separado porque
+não aceita UI customizada; dentro da app é um `<Dialog>` normal.
+
+O caminho de sucesso **não** passa pelo guard: depois de salvar não há nada a
+perder, então `onOpenChange(false)` continua direto.
+
+---
+
 ## Débitos técnicos conhecidos
 
 - **`src/components/ui/`** mistura componentes do site (`header`, `footer`, `logo`, `scroll-reveal`) com o que sobrou da fase shadcn. Como o admin não usa mais nada dali, faria sentido renomear para algo como `src/components/website/`.
