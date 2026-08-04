@@ -10,6 +10,8 @@ import { GetAppointmentByIdUseCase } from './application/use-cases/get-appointme
 import { CreateAppointmentUseCase } from './application/use-cases/create-appointment.use-case';
 import { RescheduleAppointmentUseCase } from './application/use-cases/reschedule-appointment.use-case';
 import { ChangeAppointmentStatusUseCase } from './application/use-cases/change-appointment-status.use-case';
+import { BusinessHoursService } from './application/services/business-hours.service';
+import { GetAvailabilityUseCase } from './application/use-cases/get-availability.use-case';
 
 @Module({
   imports: [PrismaModule, MessagingModule],
@@ -24,6 +26,8 @@ import { ChangeAppointmentStatusUseCase } from './application/use-cases/change-a
     CreateAppointmentUseCase,
     RescheduleAppointmentUseCase,
     ChangeAppointmentStatusUseCase,
+    BusinessHoursService,
+    GetAvailabilityUseCase,
   ],
   exports: [APPOINTMENT_REPOSITORY],
 })
