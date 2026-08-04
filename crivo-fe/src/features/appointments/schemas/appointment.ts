@@ -1,14 +1,11 @@
 import { z } from "zod";
 
-import { validateAppointmentStart } from "../business-hours";
-
-const startsAtField = z
-  .string()
-  .min(1, "Informe data e hora")
-  .superRefine((value, ctx) => {
-    const error = validateAppointmentStart(value);
-    if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, message: error });
-  });
+// O horário só pode vir de um slot que o `GET /appointments/availability`
+// já ofereceu — que por sua vez já aplicou expediente, duração do
+// procedimento e conflito de agenda. Validar de novo aqui seria duplicar
+// (e divergir d) a regra que já mora no backend; só falta garantir que
+// algo foi escolhido.
+const startsAtField = z.string().min(1, "Escolha um horário");
 
 // Espelha CreateAppointmentDto: duração/preço vêm do procedimento no backend.
 export const createAppointmentSchema = z.object({
