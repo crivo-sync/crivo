@@ -24,6 +24,10 @@ type SlotPickerProps = {
   errorMessage?: string;
   /** Dias de atendimento (`getDay()`), para desabilitar no calendário. */
   businessDays?: number[];
+  /** Fechamento da clínica em minutos desde a meia-noite (1080 = 18:00). */
+  businessHoursEnd?: number;
+  /** Duração do procedimento escolhido — define se ainda cabe hoje. */
+  procedureDurationMinutes?: number;
 };
 
 /**
@@ -42,6 +46,8 @@ export const SlotPicker = ({
   excludeAppointmentId,
   errorMessage,
   businessDays,
+  businessHoursEnd,
+  procedureDurationMinutes,
 }: SlotPickerProps) => {
   // O dia é estado local: o form guarda só o ISO final do horário escolhido,
   // mas o usuário precisa navegar entre dias antes de escolher.
@@ -56,6 +62,25 @@ export const SlotPicker = ({
   };
 
   const dateParam = day?.isValid() ? day.format("YYYY-MM-DD") : undefined;
+
+  /**
+   * Hoje deixa de servir quando o atendimento não cabe mais antes do
+   * fechamento — o último início possível é `fechamento - duração`. Antes o
+   * calendário deixava escolher hoje às 18h e só depois a lista de horários
+   * vinha vazia, sem dizer o porquê.
+   */
+  const isTodayOver = (() => {
+    if (businessHoursEnd == null || !procedureDurationMinutes) return false;
+    const now = dayjs();
+    const nowInMinutes = now.hour() * 60 + now.minute();
+    return nowInMinutes > businessHoursEnd - procedureDurationMinutes;
+  })();
+
+  const isDayUnavailable = (date: Dayjs) => {
+    if (businessDays && !businessDays.includes(date.day())) return true;
+    if (isTodayOver && date.isSame(dayjs(), "day")) return true;
+    return false;
+  };
 
   const { availability, isFetching, error, enabled } = useAvailability({
     professionalId,
@@ -176,13 +201,17 @@ export const SlotPicker = ({
         value={day}
         onChange={handleDayChange}
         disablePast
-        shouldDisableDate={(date) =>
-          businessDays ? !businessDays.includes(date.day()) : false
-        }
+        shouldDisableDate={isDayUnavailable}
         slotProps={{
           textField: { fullWidth: true, error: !!errorMessage },
         }}
       />
+
+      {isTodayOver && (
+        <FormHelperText sx={{ mx: 1.75 }}>
+          A clínica já fechou hoje — escolha a partir de amanhã.
+        </FormHelperText>
+      )}
 
       <Box sx={{ mt: 2 }}>{renderSlots()}</Box>
 
