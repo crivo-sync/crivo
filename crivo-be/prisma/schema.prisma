@@ -212,6 +212,9 @@ enum MessageChannel {
 }
 
 enum MessageType {
+  /// Enviada na hora em que a consulta é marcada, quando o lembrete D-1
+  /// ainda está longe — senão o paciente ficaria dias sem nenhum aviso.
+  APPOINTMENT_BOOKED
   APPOINTMENT_REMINDER
   APPOINTMENT_CONFIRMATION_RECEIPT
   MANUAL
@@ -220,6 +223,10 @@ enum MessageType {
 enum MessageStatus {
   /// Na fila, ainda não tentada.
   PENDING
+  /// Estava agendada mas perdeu a validade antes de sair — hoje só acontece
+  /// quando o agendamento é remarcado e o lembrete antigo (com a data velha)
+  /// é descartado. Nunca foi enviada ao paciente.
+  CANCELLED
   SENT
   /// Confirmado pelo provider (Meta devolve status de entrega).
   DELIVERED

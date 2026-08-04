@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-07-30. Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026.
+> Última atualização: 2026-08-04 (`messaging`). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
 
 ---
 
@@ -15,7 +15,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário e ciclo de status |
-| `messaging` | 🟢 Lembrete D-1, confirmação por link, retry e lista de falhas (falta template Meta e webhooks) |
+| `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
 | `prediction` | ⚪ Não iniciado |
 | `billing` | ⚪ Não iniciado |
 
@@ -78,8 +78,8 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 
 | Funcionalidade | Deles | Nosso status | Prioridade |
 | --- | --- | --- | --- |
-| Lembrete de consulta por WhatsApp | ✅ Meta API oficial | ❌ | 🔴 Crítica |
-| Confirmação de consulta pelo paciente | ✅ | ❌ (só a recepção muda status) | 🔴 Crítica |
+| Lembrete de consulta por WhatsApp | ✅ Meta API oficial | ⚠️ funcionando em dev (Evolution); falta credencial Meta | 🔴 Crítica |
+| Confirmação de consulta pelo paciente | ✅ | ✅ página pública `/c/:token` + botão (04/08/2026) | — |
 | Prontuário eletrônico / anamnese | ✅ Ficha digital | ❌ | 🔴 Crítica |
 | Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
 | Agendamento online pelo paciente | ✅ 24h, sem app | ❌ | 🟠 Alta |
@@ -130,14 +130,22 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] Fila BullMQ com retry exponencial (4 tentativas)
    - [x] Lembrete automático D-1 (`REMINDER_HOURS_BEFORE`)
    - [x] Link de confirmação: paciente responde e o status vira `CONFIRMED` sozinho, sem login
+   - [x] **Página pública de confirmação** (04/08/2026) — `crivo-fe` `/c/:token` com os dados do agendamento e botão "Confirmar presença". Antes o link ia direto para a API e o paciente via JSON cru
+   - [x] **`GET /c/:token` não confirma mais sozinho** (04/08/2026) — o WhatsApp faz *pré-fetch* de todo link para montar a prévia, e isso confirmava a presença antes de o paciente abrir. Agora o `GET` só lê; só o `POST /c/:token/confirm` muda o status
+   - [x] **Bull Board em `/admin/queues`** (04/08/2026) — painel da fila (waiting/active/completed/failed/delayed), com retry e remoção manual de job. Protegido por Basic Auth e desligado por padrão (ver README → Bull Board)
+   - [x] **Hora da falha visível** (04/08/2026) — `failedAt` exposto na API, coluna "Falhou em" na tabela e "falhou há X min" no card do Painel
    - [x] **Fallback visível:** esgotou as tentativas → `GET /messages/failed` lista quem precisa de ligação
    - [x] Providers plugáveis (`fake` / `evolution` / `meta`) por env var
    - [x] Rastro de cada envio em `messages` (base para contar conversas por clínica)
    - [x] **Mensagens com IA (DeepSeek), opcional por clínica** (30/07/2026) — reescreve o lembrete com tom natural, mantendo nome/data/hora/link validados literalmente; qualquer falha ou omissão cai no template fixo. Ver [README → Mensagens com IA](./README.md#mensagens-com-ia-opcional-por-clínica)
+   - [x] **Aviso imediato ao marcar a consulta** (04/08/2026) — quem agenda com dias de antecedência recebe na hora um "sua consulta foi marcada" já com o link de confirmação, e o lembrete D-1 continua. Só dispara quando o D-1 ainda está longe, para não mandar duas mensagens seguidas
+   - [x] **Status ao vivo no painel** (04/08/2026) — Agenda e Mensagens se reconsultam a cada 20s (`LIVE_REFETCH_INTERVAL_MS`), já que o paciente confirma pelo WhatsApp, fora do sistema
+   - [ ] 🐞 **Reagendar não refaz o lembrete** — `RescheduleAppointmentUseCase` muda `startsAt` mas não toca na fila. O lembrete antigo continua agendado para o D-1 da data original **e com a data antiga no texto**: o paciente recebe a informação errada. O docstring de `ScheduleAppointmentReminderUseCase` afirma que é "chamado na criação e no reagendamento", mas só a criação chama
+   - [ ] **Credenciais da Meta** — `META_WHATSAPP_TOKEN`/`META_WHATSAPP_PHONE_NUMBER_ID` seguem vazios; hoje só `evolution` (dev) e `fake` funcionam de verdade
    - [ ] Templates editáveis por clínica (hoje o template *fixo* — usado quando a IA está desligada ou falha — é único e fica no código)
    - [ ] Template aprovado pela Meta — texto livre só funciona dentro da janela de 24h
    - [ ] Webhook de status de entrega (`DELIVERED`) e de resposta do paciente
-   - [ ] Reenvio manual a partir da lista de falhas
+   - [ ] Reenvio manual a partir da lista de falhas (o Bull Board já permite retry manual, mas é ferramenta de dev — a recepção precisa de um botão na tela de Mensagens)
    - [ ] Segundo lembrete (D-3) e escalonamento por risco (depende de `prediction`)
 2. **Prontuário básico** — anamnese, evolução, anexos por paciente
 3. **Horário de trabalho e bloqueio de agenda** — hoje aceitamos agendar 3h da manhã de domingo (ver README)

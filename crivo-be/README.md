@@ -330,6 +330,9 @@ Lembrete automático de consulta por WhatsApp, com confirmação pelo próprio p
 ```
 Agendamento criado
         │
+        ├──> falta mais que REMINDER_HOURS_BEFORE?
+        │      └── sim ──> aviso "sua consulta foi marcada" sai AGORA
+        │                  (com o link de confirmação junto)
         ▼
 Lembrete entra na fila, agendado para D-1 (REMINDER_HOURS_BEFORE)
         │
@@ -345,11 +348,22 @@ Worker envia ─── sucesso ──> mensagem SENT
                                    "ligue para estes pacientes"
         │
         ▼
-Paciente toca no link  →  GET /c/:token  →  status vira CONFIRMED
-                                          →  recibo enviado de volta
+Paciente toca no link  →  crivo-fe /c/:token  →  GET /c/:token (só lê)
+                                                        │
+                          toca em "Confirmar presença"  │
+                                                        ▼
+                                        POST /c/:token/confirm
+                                        →  status vira CONFIRMED
+                                        →  recibo enviado de volta
 ```
 
 **Falha nunca é silenciosa.** É a diferença entre a recepção descobrir na hora e descobrir quando o paciente não aparece.
+
+**Por que `GET` não confirma.** O WhatsApp (e qualquer app de mensagem) faz *pré-fetch* de todo link para montar a prévia. Enquanto o `GET` confirmava, a presença era dada como confirmada segundos depois do envio, sem o paciente ter aberto nada — reproduzido em teste em 04/08/2026. Só o `POST` muda estado; o `GET` é leitura pura.
+
+**Duas mensagens, não uma.** Quem marca com dias de antecedência recebe o aviso na hora (para poder confirmar logo) **e** o lembrete na véspera (que é o que de fato reduz falta). Quando a consulta é em menos de `REMINDER_HOURS_BEFORE`, só o lembrete sai — mandar os dois seria duas mensagens quase idênticas com segundos de diferença.
+
+**O painel acompanha sozinho.** Como o paciente confirma fora do sistema, Agenda e Mensagens se reconsultam a cada 20s (`LIVE_REFETCH_INTERVAL_MS` no `crivo-fe`) — o status vira `Confirmado` na tela da recepção sem ninguém dar F5.
 
 ### Providers
 
@@ -399,6 +413,25 @@ A fila usa Redis:
 ```bash
 docker run -d --name crivo-redis -p 6379:6379 redis:7-alpine
 ```
+
+### Bull Board — painel da fila
+
+Painel web da fila BullMQ em **`/admin/queues`**: mostra jobs por estado
+(waiting/active/completed/failed/delayed), o payload de cada um, o erro que
+derrubou, e permite **retry ou remoção manual**.
+
+```env
+BULL_BOARD_USER="admin"
+BULL_BOARD_PASSWORD="uma-senha"
+```
+
+Sem as duas variáveis a rota devolve **404** — de propósito. O board expõe
+telefone e corpo de mensagem de paciente (PII), então ele nunca fica aberto
+por padrão, ao contrário do Swagger em `/docs`.
+
+É ferramenta de **desenvolvedor**, não de recepção: quem trabalha na clínica
+acompanha os envios pela tela **Mensagens** do `crivo-fe`. Ver
+[FILA.md](./FILA.md) para entender como a fila funciona por dentro.
 
 ## Próximos passos
 

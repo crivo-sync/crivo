@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "MessageType" ADD VALUE 'APPOINTMENT_BOOKED';
+
