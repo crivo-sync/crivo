@@ -1,11 +1,17 @@
 export type MessageChannel = "WHATSAPP" | "SMS";
 
 export type MessageType =
+  | "APPOINTMENT_BOOKED"
   | "APPOINTMENT_REMINDER"
   | "APPOINTMENT_CONFIRMATION_RECEIPT"
   | "MANUAL";
 
-export type MessageStatus = "PENDING" | "SENT" | "DELIVERED" | "FAILED";
+export type MessageStatus =
+  | "PENDING"
+  | "CANCELLED"
+  | "SENT"
+  | "DELIVERED"
+  | "FAILED";
 
 export type Message = {
   id: string;
@@ -17,6 +23,7 @@ export type Message = {
   attempts: number;
   lastError: string | null;
   sentAt: string | null;
+  failedAt: string | null;
   scheduledFor: string | null;
   createdAt: string;
   appointment: {
