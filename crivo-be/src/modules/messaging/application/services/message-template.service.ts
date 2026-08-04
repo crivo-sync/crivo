@@ -72,6 +72,36 @@ export class MessageTemplateService {
     ].join('\n');
   }
 
+  /**
+   * Enviada assim que a consulta é marcada. Diferente do lembrete, ela
+   * *informa* um horário novo em vez de relembrar um já conhecido — por isso
+   * o texto diz "foi marcada" e não "lembrete da sua consulta".
+   */
+  appointmentBooked(
+    input: ReminderTemplateInput,
+    { rescheduled = false }: { rescheduled?: boolean } = {},
+  ): string {
+    const { patientFirstName, dateLabel, timeLabel, confirmationUrl } =
+      this.reminderParts(input);
+
+    return [
+      `Olá, ${patientFirstName}! 👋`,
+      '',
+      rescheduled
+        ? `Sua consulta na *${input.clinicName}* foi *remarcada*:`
+        : `Sua consulta na *${input.clinicName}* foi marcada:`,
+      '',
+      `📅 ${dateLabel} às ${timeLabel}`,
+      `💠 ${input.procedureName}`,
+      `👤 ${input.professionalName}`,
+      '',
+      'Já pode confirmar a presença por aqui:',
+      confirmationUrl,
+      '',
+      'Enviaremos um lembrete um dia antes. 😉',
+    ].join('\n');
+  }
+
   confirmationReceipt(clinicName: string): string {
     return `Presença confirmada! ✅ Te esperamos na ${clinicName}.`;
   }
