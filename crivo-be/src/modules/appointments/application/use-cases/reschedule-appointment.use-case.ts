@@ -8,6 +8,7 @@ import {
 import { AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { ScheduleAppointmentReminderUseCase } from 'src/modules/messaging/application/use-cases/schedule-appointment-reminder.use-case';
 import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
@@ -34,6 +35,7 @@ export class RescheduleAppointmentUseCase {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly prisma: PrismaService,
     private readonly businessHours: BusinessHoursService,
+    private readonly scheduleReminder: ScheduleAppointmentReminderUseCase,
   ) {}
 
   async execute(input: RescheduleAppointmentInput) {
@@ -112,11 +114,18 @@ export class RescheduleAppointmentUseCase {
       );
     }
 
-    return this.appointmentRepository.update(appointment.id, {
+    const updated = await this.appointmentRepository.update(appointment.id, {
       startsAt: input.startsAt,
       endsAt,
       professionalId,
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
     });
+
+    // Descarta o lembrete antigo (que carrega a data velha no texto) e
+    // reagenda com os dados novos. Sem isso o paciente era avisado na
+    // véspera da data original, com a informação errada.
+    await this.scheduleReminder.reschedule(appointment.id);
+
+    return updated;
   }
 }
