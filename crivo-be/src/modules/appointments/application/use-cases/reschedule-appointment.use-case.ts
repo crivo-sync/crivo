@@ -14,6 +14,7 @@ import {
   type AppointmentRepository,
 } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
+import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
 
 export type RescheduleAppointmentInput = {
   id: string;
@@ -35,6 +36,7 @@ export class RescheduleAppointmentUseCase {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly prisma: PrismaService,
     private readonly businessHours: BusinessHoursService,
+    private readonly professionalAvailability: ProfessionalAvailabilityService,
     private readonly scheduleReminder: ScheduleAppointmentReminderUseCase,
   ) {}
 
@@ -95,6 +97,15 @@ export class RescheduleAppointmentUseCase {
     const endsAt = new Date(input.startsAt.getTime() + durationMs);
 
     await this.businessHours.assertWithinBusinessHours(
+      input.tenantId,
+      input.startsAt,
+      endsAt,
+    );
+
+    // Vale tanto para o profissional atual quanto para um novo: remarcar não
+    // pode furar a grade nem cair em cima de férias.
+    await this.professionalAvailability.assertAvailable(
+      professionalId,
       input.tenantId,
       input.startsAt,
       endsAt,
