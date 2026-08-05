@@ -9,6 +9,8 @@ import { GetPatientByIdUseCase } from './application/use-cases/get-patient-by-id
 import { CreatePatientUseCase } from './application/use-cases/create-patient.use-case';
 import { UpdatePatientUseCase } from './application/use-cases/update-patient.use-case';
 import { DeletePatientUseCase } from './application/use-cases/delete-patient.use-case';
+import { ImportPatientsUseCase } from './application/use-cases/import-patients.use-case';
+import { PatientCsvService } from './application/services/patient-csv.service';
 
 @Module({
   imports: [PrismaModule],
@@ -23,6 +25,8 @@ import { DeletePatientUseCase } from './application/use-cases/delete-patient.use
     CreatePatientUseCase,
     UpdatePatientUseCase,
     DeletePatientUseCase,
+    ImportPatientsUseCase,
+    PatientCsvService,
   ],
   exports: [PATIENT_REPOSITORY],
 })
