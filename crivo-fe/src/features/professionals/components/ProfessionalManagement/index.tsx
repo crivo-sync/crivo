@@ -14,6 +14,7 @@ import { useProfessionals } from "../../hooks/use-professionals";
 import type { Professional } from "../../types";
 import { ProfessionalFilters } from "../ProfessionalFilters";
 import { ProfessionalsTable } from "../ProfessionalsTable";
+import { ScheduleDialog } from "../ScheduleDialog";
 import { ProfessionalFormDialog } from "../ProfessionalFormDialog";
 import { DeleteProfessionalDialog } from "../DeleteProfessionalDialog";
 
@@ -35,6 +36,9 @@ export const ProfessionalManagement = () => {
     Professional | undefined
   >();
   const [deletingProfessional, setDeletingProfessional] = useState<
+    Professional | undefined
+  >();
+  const [schedulingProfessional, setSchedulingProfessional] = useState<
     Professional | undefined
   >();
 
@@ -87,6 +91,7 @@ export const ProfessionalManagement = () => {
         canManage={canManage}
         onEdit={openEditForm}
         onDelete={setDeletingProfessional}
+        onManageSchedule={setSchedulingProfessional}
         onUpdateParams={updateParams}
       />
 
@@ -103,6 +108,18 @@ export const ProfessionalManagement = () => {
             onOpenChange={(open) => !open && setDeletingProfessional(undefined)}
             professional={deletingProfessional}
           />
+
+          {/* Montado só quando aberto: carrega grade e bloqueios do
+              profissional, requisições que não fazem sentido na listagem. */}
+          {schedulingProfessional && (
+            <ScheduleDialog
+              open
+              onOpenChange={(open) =>
+                !open && setSchedulingProfessional(undefined)
+              }
+              professional={schedulingProfessional}
+            />
+          )}
         </>
       )}
     </Paper>
