@@ -54,7 +54,8 @@ export function buildPatientColumns({
       headerName: "CPF",
       flex: 1,
       minWidth: 140,
-      valueFormatter: (value: string | null) => (value ? formatCpf(value) : "—"),
+      valueFormatter: (value: string | null) =>
+        value ? formatCpf(value) : "—",
     },
     {
       field: "email",
