@@ -11,6 +11,7 @@ import {
   type AppointmentRepository,
 } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
+import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
 
 export type GetAvailabilityInput = {
   tenantId: string;
@@ -39,6 +40,7 @@ export class GetAvailabilityUseCase {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly prisma: PrismaService,
     private readonly businessHours: BusinessHoursService,
+    private readonly professionalAvailability: ProfessionalAvailabilityService,
   ) {}
 
   async execute(input: GetAvailabilityInput) {
@@ -106,14 +108,22 @@ export class GetAvailabilityUseCase {
     const dayEnd = new Date(dayStart);
     dayEnd.setHours(23, 59, 59, 999);
 
-    const { data: appointments } = await this.appointmentRepository.findMany({
-      tenantId: input.tenantId,
-      professionalId: input.professionalId,
-      from: dayStart,
-      to: dayEnd,
-      page: 1,
-      perPage: MAX_APPOINTMENTS_IN_DAY,
-    });
+    const [{ data: appointments }, availability] = await Promise.all([
+      this.appointmentRepository.findMany({
+        tenantId: input.tenantId,
+        professionalId: input.professionalId,
+        from: dayStart,
+        to: dayEnd,
+        page: 1,
+        perPage: MAX_APPOINTMENTS_IN_DAY,
+      }),
+      // Carregado uma vez e reusado nos ~40 slots do laço abaixo — consultar
+      // por slot seria dezenas de idas ao banco por troca de dia na tela.
+      this.professionalAvailability.load(input.professionalId, input.tenantId, {
+        from: dayStart,
+        to: dayEnd,
+      }),
+    ]);
 
     // CANCELLED/NO_SHOW não ocupam a agenda — mesma regra do `findOverlapping`.
     const busy = appointments
@@ -149,6 +159,15 @@ export class GetAvailabilityUseCase {
         (slot) => start.getTime() < slot.end && end.getTime() > slot.start,
       );
       if (overlaps) continue;
+
+      // Fora da grade do profissional (ex.: só atende de manhã) ou dentro de
+      // um bloqueio (férias, congresso). Filtrar aqui é o que impede oferecer
+      // um horário que o `assertAvailable` recusaria no submit.
+      if (!this.professionalAvailability.fitsSchedule(availability, start, end))
+        continue;
+
+      if (this.professionalAvailability.findTimeOff(availability, start, end))
+        continue;
 
       slots.push({ startsAt: start, endsAt: end });
     }
