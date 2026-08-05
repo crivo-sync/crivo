@@ -27,3 +27,19 @@ export type PaginatedResponse<T> = {
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; data?: undefined };
+
+/** Uma faixa de atendimento num dia da semana. Minutos desde a meia-noite. */
+export type ScheduleWindow = {
+  id?: string;
+  /** 0=domingo … 6=sábado, igual a `Date.getDay()`. */
+  weekday: number;
+  startMinutes: number;
+  endMinutes: number;
+};
+
+export type TimeOff = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  reason: string | null;
+};
