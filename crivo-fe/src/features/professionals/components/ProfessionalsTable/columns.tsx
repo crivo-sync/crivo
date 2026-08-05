@@ -2,6 +2,7 @@
 
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import Chip from "@mui/material/Chip";
 import { GridActionsCellItem, type GridColDef } from "@mui/x-data-grid";
 
@@ -11,6 +12,7 @@ import type { Professional } from "../../types";
 type BuildColumnsArgs = {
   onEdit: (professional: Professional) => void;
   onDelete: (professional: Professional) => void;
+  onManageSchedule: (professional: Professional) => void;
   /** STAFF só lê: sem permissão, a coluna de ações nem é montada. */
   canManage: boolean;
 };
@@ -18,6 +20,7 @@ type BuildColumnsArgs = {
 export function buildProfessionalColumns({
   onEdit,
   onDelete,
+  onManageSchedule,
   canManage,
 }: BuildColumnsArgs): GridColDef<Professional>[] {
   const columns: GridColDef<Professional>[] = [
@@ -76,6 +79,13 @@ export function buildProfessionalColumns({
           icon={<EditOutlinedIcon />}
           label="Editar"
           onClick={() => onEdit(row)}
+          showInMenu
+        />,
+        <GridActionsCellItem
+          key="schedule"
+          icon={<ScheduleOutlinedIcon />}
+          label="Horários e bloqueios"
+          onClick={() => onManageSchedule(row)}
           showInMenu
         />,
         <GridActionsCellItem
