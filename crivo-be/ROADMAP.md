@@ -14,7 +14,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `tenants` | 🟢 CRUD + branding público por subdomínio |
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
-| `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, **grade semanal por profissional e bloqueio de agenda** |
+| `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
 | `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
 | `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
 | `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |

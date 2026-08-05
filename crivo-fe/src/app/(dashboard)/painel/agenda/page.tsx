@@ -4,6 +4,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { AppointmentManagement } from "@/features/appointments/components/AppointmentManagement";
+import { AgendaTabs } from "@/features/appointments/components/AgendaTabs";
 
 export const metadata: Metadata = {
   title: "Agenda — Crivo",
@@ -19,6 +20,7 @@ const AgendaPage = () => {
           escolhido.
         </Typography>
       </Box>
+      <AgendaTabs />
       <AppointmentManagement />
     </Stack>
   );

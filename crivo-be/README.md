@@ -350,6 +350,22 @@ Dois intervalos colidem quando `inícioA < fimB` **e** `fimA > inícioB`. Encost
 
 Só `SCHEDULED`, `CONFIRMED` e `COMPLETED` ocupam a agenda — cancelamento e falta liberam o horário.
 
+### Quadro visual (`crivo-fe`)
+
+`/painel/agenda/calendario` mostra os agendamentos de todos os profissionais
+numa grade única, colorida por profissional, com o `@mui/x-scheduler`
+(Community, MIT — a versão Premium tem colunas por profissional, mas exige
+licença paga; ficou de fora por enquanto).
+
+Só leitura, de propósito: marcar continua pelo formulário validado, que já
+aplica expediente, grade do profissional e duração do procedimento — um
+clique-para-criar no quadro duplicaria essas regras num segundo lugar. Busca
+a semana inteira (segunda a domingo, calculado à mão para não depender do
+locale do `dayjs`) de uma vez, com `refetchInterval` — mesmo polling do resto
+do painel. `CANCELLED`/`NO_SHOW` ficam de fora do quadro, mesma regra da
+disponibilidade: não ocupam a agenda, então não fazem sentido aparecer como
+"ocupado".
+
 ### Ciclo de vida
 
 ```

@@ -103,6 +103,18 @@ só as opções de começo — a agenda fica reservada até o fim."*
 Ao escolher, ela mostra o intervalo real reservado, por exemplo
 **"Reservado das 10:00 às 11:30"**.
 
+### Consultar antes de marcar: o Quadro
+
+Em **Agenda**, clique na aba **Quadro** (ao lado de *Lista*) para ver os
+agendamentos de todos os profissionais de uma vez, cada um com uma cor. É o
+jeito mais rápido de responder "quem tem vaga agora?" sem ficar abrindo o
+formulário e trocando profissional um por um.
+
+- O painel à esquerda lista os profissionais — desmarque quem não interessa
+  para sobrar só quem você quer comparar.
+- Alterne **Dia**/**Semana** no topo.
+- É só para **consultar**: marcar continua pelo botão *Novo agendamento*.
+
 ---
 
 ## 4. Por que o horário que eu quero não aparece?
@@ -115,20 +127,19 @@ Esta é a dúvida mais comum. O sistema só oferece horário em que a consulta
 | **A clínica está fechada** naquele dia | O dia aparece apagado no calendário | Escolher outro dia |
 | **A consulta não cabe antes do fechamento** | Some o fim da tarde. Um procedimento de 2 h não aparece às 17h se fecha 18h | Horário mais cedo, ou procedimento mais curto |
 | **Hoje já passou do fechamento** | O dia de hoje fica apagado, com o aviso *"A clínica já fechou hoje"* | Marcar a partir de amanhã |
-| **O profissional não atende naquele dia/turno** | Some o turno inteiro (ex.: nenhuma opção à tarde) | Escolher outro profissional, ou confirmar a grade dele com o administrador |
+| **O profissional não atende naquele dia/turno** | Some o turno inteiro (ex.: nenhuma opção à tarde) | Ver o **Quadro** (acima) para comparar todos de uma vez, ou confirmar a grade com o administrador |
 | **O profissional está de férias/ausente** | Somem os dias inteiros | Outro profissional, ou outra data |
 | **Já tem paciente marcado** | Some só aquele intervalo | Horário vizinho |
 
 ### Como descobrir o horário de um profissional
 
-A grade de horários de cada profissional (e os bloqueios de férias) é
-cadastrada pelo **administrador** — hoje essa tela não aparece para a
-recepção. Se um turno inteiro sumiu e você não sabe por quê, **pergunte ao
-administrador** qual é a grade daquele profissional.
+O **Quadro** (seção anterior) é o jeito mais rápido: veja a semana de um
+profissional e repare em quais dias/horas os agendamentos dele aparecem —
+onde nunca aparece nada é porque ele não atende naquele turno.
 
-Um jeito prático de descobrir sozinha: troque o dia no calendário e veja em
-quais dias aparecem horários. Os dias que oferecem opções são os que ele
-atende.
+A grade de horários em si (e os bloqueios de férias) é cadastrada pelo
+**administrador** — hoje essa tela de edição não aparece para a recepção. Se
+restar dúvida sobre um turno específico, **pergunte ao administrador**.
 
 > Se um profissional **não tem grade cadastrada**, ele pode ser marcado em
 > todo o horário de funcionamento da clínica — por isso alguns profissionais
