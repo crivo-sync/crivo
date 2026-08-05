@@ -78,10 +78,13 @@ const TENANTS: SeedTenant[] = [
         email: 'recepcao@clinicasorriso.com.br',
         role: Role.STAFF,
       },
+      // Quem atende usa PROFESSIONAL, não STAFF: é o papel que abre o
+      // prontuário. Serve também para testar que a recepção (Marina) NÃO
+      // enxerga o mesmo que ele.
       {
         name: 'Dr. Paulo Nogueira',
         email: 'paulo@clinicasorriso.com.br',
-        role: Role.STAFF,
+        role: Role.PROFESSIONAL,
       },
       // Usuário inativo: serve para validar que login/token são bloqueados.
       {
@@ -259,6 +262,16 @@ const TENANTS: SeedTenant[] = [
 
 async function clean() {
   // Ordem importa: filhos antes dos pais por causa das foreign keys.
+  //
+  // Prontuário vem primeiro de todos: `clinical_notes` e `anamneses` apontam
+  // para paciente/usuário com `RESTRICT`, então apagá-los depois faria o
+  // `patient.deleteMany()` abaixo estourar.
+  await prisma.clinicalNote.deleteMany();
+  await prisma.anamnesis.deleteMany();
+  // Grade e bloqueio têm `onDelete: Cascade` no profissional, mas apagar
+  // explicitamente mantém a ordem legível e não depende do cascade.
+  await prisma.professionalSchedule.deleteMany();
+  await prisma.professionalTimeOff.deleteMany();
   await prisma.message.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.procedure.deleteMany();
@@ -358,6 +371,140 @@ async function seedAppointments(tenantId: string): Promise<number> {
   return created;
 }
 
+/**
+ * Prontuário de exemplo: ficha de saúde + evolução para os primeiros
+ * pacientes. Só faz sentido depois dos agendamentos, porque as notas se
+ * penduram nos atendimentos já concluídos.
+ */
+async function seedMedicalRecords(tenantId: string): Promise<number> {
+  const alreadySeeded = await prisma.clinicalNote.count({
+    where: { tenantId },
+  });
+
+  if (alreadySeeded > 0) {
+    return alreadySeeded;
+  }
+
+  // Quem assina o registro precisa ter necessidade clínica — nunca a recepção.
+  const author = await prisma.user.findFirst({
+    where: { tenantId, role: { in: [Role.PROFESSIONAL, Role.ADMIN] } },
+    orderBy: { role: 'asc' },
+  });
+
+  const patients = await prisma.patient.findMany({
+    where: { tenantId },
+    orderBy: { name: 'asc' },
+    take: 3,
+  });
+
+  if (!author || patients.length === 0) {
+    return 0;
+  }
+
+  let notes = 0;
+
+  for (const [index, patient] of patients.entries()) {
+    await prisma.anamnesis.upsert({
+      where: { patientId: patient.id },
+      update: {},
+      create: {
+        tenantId,
+        patientId: patient.id,
+        allergies: index === 0 ? 'Dipirona' : 'Nega alergias',
+        medications: index === 0 ? 'Losartana 50mg (uso contínuo)' : null,
+        conditions: index === 0 ? 'Hipertensão controlada' : null,
+        observations:
+          index === 1 ? 'Relata ansiedade em procedimentos longos.' : null,
+        updatedByUserId: author.id,
+      },
+    });
+
+    // Atendimento já concluído para amarrar a evolução — reflete o uso real,
+    // em que a nota nasce de uma consulta que aconteceu.
+    const pastAppointment = await prisma.appointment.findFirst({
+      where: { tenantId, patientId: patient.id, status: 'COMPLETED' },
+      orderBy: { startsAt: 'desc' },
+    });
+
+    await prisma.clinicalNote.create({
+      data: {
+        tenantId,
+        patientId: patient.id,
+        appointmentId: pastAppointment?.id ?? null,
+        authorUserId: author.id,
+        content:
+          index === 0
+            ? 'Avaliação inicial. Higiene satisfatória, sem sinais de cárie ativa. Orientado uso de fio dental.'
+            : 'Procedimento realizado sem intercorrências. Paciente orientado sobre os cuidados pós-atendimento.',
+      },
+    });
+    notes += 1;
+  }
+
+  return notes;
+}
+
+/**
+ * Grade semanal e um bloqueio de exemplo.
+ *
+ * De propósito, só o **segundo** profissional de cada clínica recebe grade:
+ * assim o seed produz os dois cenários que importam testar — quem tem
+ * horário restrito e quem herda o expediente da clínica (grade vazia).
+ */
+async function seedSchedules(tenantId: string): Promise<number> {
+  const alreadySeeded = await prisma.professionalSchedule.count({
+    where: { tenantId },
+  });
+
+  if (alreadySeeded > 0) {
+    return alreadySeeded;
+  }
+
+  const professionals = await prisma.professional.findMany({
+    where: { tenantId },
+    orderBy: { name: 'asc' },
+  });
+
+  const restricted = professionals[1];
+  if (!restricted) return 0;
+
+  // Segunda, quarta e sexta de manhã (08:00–12:00); terça o dia inteiro com
+  // intervalo de almoço — duas faixas no mesmo dia, que é o caso que a
+  // modelagem "uma linha por faixa" existe para cobrir.
+  const windows = [
+    { weekday: 1, startMinutes: 480, endMinutes: 720 },
+    { weekday: 2, startMinutes: 480, endMinutes: 720 },
+    { weekday: 2, startMinutes: 780, endMinutes: 1080 },
+    { weekday: 3, startMinutes: 480, endMinutes: 720 },
+    { weekday: 5, startMinutes: 480, endMinutes: 720 },
+  ];
+
+  await prisma.professionalSchedule.createMany({
+    data: windows.map((window) => ({
+      ...window,
+      tenantId,
+      professionalId: restricted.id,
+    })),
+  });
+
+  // Férias daqui a ~3 semanas: longe o bastante para não colidir com os
+  // agendamentos que o seed acabou de criar.
+  const vacationStart = dayAt(21, 0);
+  const vacationEnd = dayAt(26, 23, 59);
+
+  await prisma.professionalTimeOff.create({
+    data: {
+      tenantId,
+      professionalId: restricted.id,
+      startsAt: vacationStart,
+      endsAt: vacationEnd,
+      reason: 'Férias',
+    },
+  });
+
+  return windows.length;
+}
+
 async function full() {
   const hashedPassword = await bcrypt.hash(DEV_PASSWORD, SALT_ROUNDS);
 
@@ -448,17 +595,25 @@ async function full() {
     }
 
     const appointmentCount = await seedAppointments(tenant.id);
+    const recordCount = await seedMedicalRecords(tenant.id);
+    const scheduleCount = await seedSchedules(tenant.id);
 
     console.log(
-      `✅ ${tenant.name} (${tenant.subdomain}) — ${users.length} usuários, ${patients.length} pacientes, ${professionals.length} profissionais, ${procedures.length} procedimentos, ${appointmentCount} agendamentos`,
+      `✅ ${tenant.name} (${tenant.subdomain}) — ${users.length} usuários, ${patients.length} pacientes, ${professionals.length} profissionais, ${procedures.length} procedimentos, ${appointmentCount} agendamentos, ${recordCount} evoluções, ${scheduleCount} faixas de horário`,
     );
   }
 
   console.log(`\n🔑 Senha de todos os usuários: ${DEV_PASSWORD}`);
-  console.log('   Logins ADMIN:');
+  // Lista um login por papel: testar RBAC (quem vê prontuário, quem não vê)
+  // exige saber com qual e-mail entrar em cada caso.
   for (const tenant of TENANTS) {
-    const admin = tenant.users.find((user) => user.role === Role.ADMIN);
-    console.log(`   - ${admin?.email} (${tenant.name})`);
+    console.log(`\n   ${tenant.name}:`);
+    for (const role of [Role.ADMIN, Role.PROFESSIONAL, Role.STAFF]) {
+      const user = tenant.users.find(
+        (candidate) => candidate.role === role && candidate.isActive !== false,
+      );
+      if (user) console.log(`   - ${role.padEnd(12)} ${user.email}`);
+    }
   }
 }
 

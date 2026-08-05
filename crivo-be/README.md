@@ -135,21 +135,32 @@ npm run prisma:reset        # dropa o banco, reaplica migrations e roda o seed
 
 O modo `full` cria **dois tenants de propósito** — é o mínimo para conseguir testar isolamento multi-tenant de verdade (garantir que uma clínica nunca enxerga dados da outra):
 
-| Tenant          | Subdomain         | Usuários                    | Pacientes | Profissionais | Procedimentos | Agendamentos |
-| --------------- | ----------------- | --------------------------- | --------- | ------------- | ------------- | ------------ |
-| Clínica Sorriso | `clinica-sorriso` | 1 ADMIN, 2 STAFF, 1 inativo | 12        | 2             | 4             | 14           |
-| Estética Bella  | `estetica-bella`  | 1 ADMIN, 1 STAFF            | 8         | 1             | 3             | 14           |
+| Tenant          | Subdomain         | Usuários                                  | Pacientes | Profissionais | Procedimentos | Agendamentos | Evoluções |
+| --------------- | ----------------- | ----------------------------------------- | --------- | ------------- | ------------- | ------------ | --------- |
+| Clínica Sorriso | `clinica-sorriso` | 1 ADMIN, 1 PROFESSIONAL, 1 STAFF, 1 inativo | 12      | 2             | 4             | 14           | 3         |
+
+A **Dra. Helena** recebe grade semanal e um bloqueio de férias; o **Dr. Paulo** fica sem grade de propósito — assim o seed produz os dois cenários que importam testar (horário restrito e herdar o expediente da clínica).
+| Estética Bella  | `estetica-bella`  | 1 ADMIN, 1 STAFF                          | 8         | 1             | 3             | 14           | 3         |
 
 Os agendamentos misturam passado e futuro de propósito, incluindo `NO_SHOW` e `CANCELLED` — é esse histórico que o módulo `prediction` vai consumir, então o seed já o produz.
 
-Todos os usuários usam a senha **`senha12345`**. Logins de ADMIN:
+O seed também cria **anamnese e evolução** para os primeiros pacientes, e um usuário `PROFESSIONAL` na Clínica Sorriso — sem ele não dá para testar que a recepção *não* enxerga o prontuário.
 
-- `admin@clinicasorriso.com.br`
-- `admin@esteticabella.com.br`
-  recepcao@clinicasorriso.com.br — STAFF, senha senha12345 (mesma senha padrão de todos os usuários de seed)
-  paulo@clinicasorriso.com.br — STAFF
-  recepcao@esteticabella.com.br — STAFF (outro tenant)
-  inativo@clinicasorriso.com.br — STAFF inativo (serve pra testar bloqueio de login)
+Todos os usuários usam a senha **`senha12345`**:
+
+| Login | Papel | Serve para |
+| ----- | ----- | ---------- |
+| `admin@clinicasorriso.com.br`   | ADMIN        | Acesso total |
+| `paulo@clinicasorriso.com.br`   | PROFESSIONAL | Vê prontuário, mas não gerencia usuários |
+| `recepcao@clinicasorriso.com.br`| STAFF        | Agenda e cadastro; **403 no prontuário** |
+| `inativo@clinicasorriso.com.br` | STAFF        | Login bloqueado (usuário inativo) |
+| `admin@esteticabella.com.br`    | ADMIN        | Outro tenant — testar isolamento |
+| `recepcao@esteticabella.com.br` | STAFF        | Outro tenant |
+
+> ⚠️ **Ao criar um model novo, atualize o `clean()` do seed.** As FKs do
+> prontuário são `RESTRICT`: se `clinical_notes`/`anamneses` não forem
+> apagados antes de `patients`, o `SEED_TYPE=clean` estoura com erro de
+> foreign key. Filhos sempre antes dos pais.
 
 O usuário `inativo@clinicasorriso.com.br` nasce com `isActive: false` — serve para verificar que login e access token são bloqueados. Os pacientes variam de propósito entre com/sem CPF e com/sem e-mail, cobrindo os campos opcionais.
 
@@ -303,6 +314,36 @@ Quem chama informa apenas `startsAt` — **`endsAt` e `priceInCents` são deriva
 - Paciente, profissional e procedimento são buscados **com filtro de tenant** — não dá para agendar usando o paciente de outra clínica.
 - Não se agenda no passado.
 
+### Quem pode ser agendado, quando
+
+Três camadas, da mais ampla para a mais específica — todas precisam permitir:
+
+| Camada | Onde | Regra |
+| ------ | ---- | ----- |
+| **Expediente da clínica** | `Tenant.businessHours*` / `businessDays` | O atendimento precisa **caber inteiro**: 90min às 17:00 com fechamento às 18:00 é recusado |
+| **Grade do profissional** | `ProfessionalSchedule` | Faixas por dia da semana. **Grade vazia = atende o expediente inteiro** — é o que evita travar quem foi cadastrado antes desta regra existir |
+| **Bloqueio pontual** | `ProfessionalTimeOff` | Férias, congresso. Vence a grade |
+
+Uma linha por faixa (e não uma por dia) é o que permite `terça 08–12` **e**
+`terça 13–18` — o intervalo de almoço.
+
+As três valem tanto para **oferecer** horário (`GET /appointments/availability`
+filtra os slots) quanto para **aceitar** o agendamento (criação e
+reagendamento recusam com o motivo). Filtrar sem validar deixaria a API
+aberta; validar sem filtrar mostraria ao usuário horário que dá erro no
+submit.
+
+Bloquear um período que já tem agendamento é **recusado**, não cancela o
+paciente em silêncio: remarcar é decisão da clínica.
+
+| Método | Rota | Papel |
+| ------ | ---- | ----- |
+| `GET`  | `/professionals/:id/schedule`          | Autenticado — a recepção precisa saber quando cada um atende |
+| `PUT`  | `/professionals/:id/schedule`          | **ADMIN** — substitui a grade inteira |
+| `GET`  | `/professionals/:id/time-off`          | Autenticado |
+| `POST` | `/professionals/:id/time-off`          | **ADMIN** |
+| `DELETE` | `/professionals/:id/time-off/:timeOffId` | **ADMIN** |
+
 ### Conflito de horário
 
 Dois intervalos colidem quando `inícioA < fimB` **e** `fimA > inícioB`. Encostar não é conflito: um atendimento que termina 14:00 e outro que começa 14:00 convivem.
@@ -321,6 +362,75 @@ SCHEDULED ──> CONFIRMED ──> COMPLETED
 `COMPLETED`, `CANCELLED` e `NO_SHOW` são **terminais** — viram histórico e não mudam mais.
 
 > A distinção entre `CANCELLED` e `NO_SHOW` é o dado mais importante do sistema: são comportamentos diferentes, e é sobre eles que o módulo `prediction` vai treinar. Por isso `NO_SHOW` não pode ser marcado em agendamento futuro.
+
+## Importação de pacientes (CSV)
+
+`POST /patients/import` (multipart, campo `file`), restrito a **ADMIN**. É
+operação de implantação: um arquivo com a coluna errada suja a base inteira de
+uma vez, ao contrário do cadastro manual.
+
+### A prévia não é conveniência, é o ponto
+
+O corpo aceita `dryRun`. Com `dryRun=true` (**o padrão** — se o campo vier
+ausente ou torto, o pior caso é não gravar nada) o arquivo é analisado e o
+relatório volta **sem gravar**.
+
+Isso existe porque o modo de falhar de uma importação é silencioso: telefone e
+CPF trocados de coluna não geram erro nenhum, geram centenas de cadastros
+plausíveis e errados. A tela mostra as primeiras linhas já mapeadas em
+*Nome / Telefone / CPF / E-mail* — é isso que denuncia a troca antes de virar
+problema.
+
+As duas chamadas mandam o mesmo arquivo; nada é guardado entre elas.
+
+### O que o parser aceita
+
+O parser é próprio (`src/shared/csv/parse-csv.ts`), sem dependência nova.
+Cobre o que uma clínica realmente manda:
+
+| Situação | Tratamento |
+| --- | --- |
+| `Salvar como CSV` do Excel pt-BR | Separador `;` detectado sozinho (além de `,` e TAB) |
+| Arquivo em **Latin-1** | Detectado e redecodificado — é o padrão do Excel em português |
+| BOM, CRLF | Removidos |
+| `"Souza, Ana"` | Vírgula dentro de aspas não quebra a coluna |
+| Quebra de linha dentro de aspas | Preservada, sem desalinhar o número da linha |
+| Linha em branco no meio | Pulada, sem desalinhar o número da linha |
+| `(11) 98765-4321`, `111.222.333-44` | Formatação removida |
+| `5511987654321` | DDI removido — mas **não** de um número de 11 dígitos, porque `55` é o DDD de Santa Maria/RS |
+
+Cabeçalhos são flexíveis: `celular`, `fone`, `whatsapp` e `contato` valem por
+`telefone`; `paciente` vale por `nome`. Só `nome` e `telefone` são
+obrigatórios. Exigir cabeçalho exato transformaria a importação num "edite o
+arquivo antes", que é justamente o trabalho que ela deveria poupar.
+
+### Duplicatas e limites
+
+A chave de duplicidade é o **CPF** quando existe (é o que o banco garante
+único) e o **telefone** quando não existe. Sem esse fallback, reimportar a
+planilha de uma clínica que não guarda CPF duplicaria a base inteira.
+Verificado nos dois sentidos: dentro do próprio arquivo e contra a base —
+reimportar o mesmo arquivo cria **zero**.
+
+Paciente com soft delete não bloqueia: o `delete` move o CPF para
+`<cpf>_del_<timestamp>` justamente para liberar o `@@unique`, então
+recadastrar quem foi excluído funciona.
+
+Limites: **2MB** e **5.000 linhas** por importação. As mesmas regras de
+validação do `CreatePatientDto` valem linha a linha — se divergissem, a
+clínica conseguiria importar um paciente que o formulário recusaria.
+
+> ⚠️ O limite de 2MB precisa do `serverActions.bodySizeLimit` no
+> `next.config.ts` do `crivo-fe`: o padrão do Next é 1MB, e sem alinhar os
+> dois um arquivo entre 1 e 2MB morre no framework com erro genérico em vez
+> da mensagem tratada daqui.
+
+### Testes
+
+`npm test` roda os unitários (`jest.config.js`, `*.spec.ts` ao lado do
+código). O parser e as regras de paciente têm 45 casos — inclusive o Latin-1,
+o `;`, a linha em branco no meio e o DDD 55. São as regras onde um engano não
+dá erro, só cadastro errado.
 
 ## Prontuário
 
@@ -475,6 +585,18 @@ por padrão, ao contrário do Swagger em `/docs`.
 É ferramenta de **desenvolvedor**, não de recepção: quem trabalha na clínica
 acompanha os envios pela tela **Mensagens** do `crivo-fe`. Ver
 [FILA.md](./FILA.md) para entender como a fila funciona por dentro.
+
+## Manual da recepção
+
+O [MANUAL-RECEPCAO.md](./MANUAL-RECEPCAO.md) é o guia de operação escrito
+para quem atende o telefone na clínica — sem termo técnico, feito para ser
+impresso ou enviado junto na implantação. Cobre marcar/remarcar, por que um
+horário não aparece na lista, a diferença entre *Cancelado* e *Faltou*, e o
+que fazer quando uma mensagem falha.
+
+Ao mudar regra de disponibilidade ou o fluxo de mensagens, atualize esse
+arquivo junto — ele descreve comportamento, e comportamento que muda em
+silêncio vira ligação de suporte.
 
 ## Próximos passos
 

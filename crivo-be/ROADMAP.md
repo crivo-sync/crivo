@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-04 (`messaging` entregue; predição, prontuário e website mapeados). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
+> Última atualização: 2026-08-05 (Fase 1 completa: importador CSV entregue; predição e website seguem mapeados). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
 
 ---
 
@@ -13,8 +13,8 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF) |
 | `tenants` | 🟢 CRUD + branding público por subdomínio |
 | `users` | 🟢 Gestão de equipe (ADMIN) |
-| `patients` | 🟢 CRUD, busca, paginação, soft delete |
-| `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário e ciclo de status |
+| `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
+| `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, **grade semanal por profissional e bloqueio de agenda** |
 | `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
 | `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
 | `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
@@ -157,10 +157,20 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Evolução append-only** — `ClinicalNote` não tem `updatedAt` nem `deletedAt`, e não existe rota de PUT/DELETE. Corrigir é escrever nota nova. A ausência dos campos é o que impede alterar histórico, sem custo de versionamento
    - [x] Tela de detalhe do paciente com abas (Dados / Anamnese / Evolução) — as clínicas só aparecem para quem pode vê-las
    - [ ] **Anexos (fotos, exames)** — ver "Fora de escopo" abaixo
-3. **Horário por profissional e bloqueio de agenda** — ⚠️ *parcialmente resolvido*. O horário da **clínica** já existe e é aplicado (`businessHoursStart/End/Days` + `assertWithinBusinessHours`): agendar domingo 3h da manhã já é recusado. O que falta:
-   - **Horário por profissional** — hoje qualquer profissional pode ser agendado em qualquer horário aberto da clínica. Dr. Paulo que só atende de manhã é agendável às 17h
-   - **Bloqueio pontual** — férias, almoço, congresso. Não existe nenhum conceito de indisponibilidade
-4. **Importador de pacientes via CSV** — sem isso, migrar de concorrente é inviável na prática
+3. **Horário por profissional e bloqueio de agenda** — 🟢 **entregue em 04/08/2026**
+   - [x] **Grade semanal** (`ProfessionalSchedule`) — uma linha por faixa, então "terça 08–12" e "terça 13–18" convivem (intervalo de almoço). Grade vazia = atende o expediente inteiro da clínica, para não travar quem já estava cadastrado
+   - [x] **Bloqueio pontual** (`ProfessionalTimeOff`) — férias, congresso. Sempre vence a grade
+   - [x] Aplicado nos três pontos: `get-availability` (filtra os slots oferecidos), `create-appointment` e `reschedule-appointment` (recusam com o motivo)
+   - [x] Bloquear período com agendamento marcado é **recusado**, não cancela o paciente em silêncio — remarcar é decisão da clínica
+   - [x] Tela em Profissionais → menu da linha → "Horários e bloqueios"
+4. **Importador de pacientes via CSV** — 🟢 **entregue em 05/08/2026**
+   - [x] **Prévia obrigatória** (`dryRun`) — o modo de falhar da importação é silencioso: coluna trocada não dá erro, gera centenas de cadastros errados. A tela mostra as primeiras linhas já mapeadas em Nome/Telefone/CPF antes de gravar
+   - [x] **Parser próprio** (`src/shared/csv/`) — aspas, `;` do Excel pt-BR, CRLF, BOM e arquivo em Latin-1, que é o que "Salvar como CSV" gera em português. Sem dependência nova
+   - [x] **Cabeçalhos flexíveis** — `celular`/`fone`/`whatsapp` valem por `telefone`, `paciente` vale por `nome`. Exigir cabeçalho exato transformaria a importação num "edite o arquivo antes", que é o trabalho que ela deveria poupar
+   - [x] **Idempotente** — dedupe por CPF (ou telefone, quando não há CPF), dentro do arquivo e contra a base. Reimportar a mesma planilha cria zero
+   - [x] Erro por linha com o número da linha do arquivo, para conferir com a planilha aberta
+   - [x] Restrito a `ADMIN`: é operação de implantação, e um arquivo errado suja a base inteira de uma vez
+   - [x] Testes unitários do parser e das regras de paciente (45 casos) — primeiro `jest.config.js` do projeto
 
 ### Fase 2 — Diferencial
 
@@ -311,7 +321,7 @@ Quatro observações:
 | Expor preço no Stripe antes de validar | O checkout congela publicamente uma tabela que este documento classifica como hipótese acima do mercado. Validar preço **antes** de ligar o pagamento |
 | Multi-unidade quebrar o isolamento por tenant | `TenantContextGuard` assume um tenant por token. Hierarquia (`Organization` → `Tenant`) precisa ser desenhada antes, não adaptada depois — é onde vazamento entre clínicas apareceria |
 | Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
-| Migração de clínica que já usa concorrente | Importador de pacientes via CSV na Fase 1 |
+| Migração de clínica que já usa concorrente | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar |
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
 | Tentação de usar API não oficial para baratear | **Decidido: Meta Cloud API oficial.** Banimento é permanente e sem recurso — perderíamos a agenda do cliente junto com o número |
 | Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |

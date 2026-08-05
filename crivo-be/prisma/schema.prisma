@@ -49,6 +49,8 @@ model Tenant {
   messages      Message[]
   anamneses     Anamnesis[]
   clinicalNotes ClinicalNote[]
+  schedules     ProfessionalSchedule[]
+  timeOff       ProfessionalTimeOff[]
 
   @@map("tenants")
 }
@@ -194,16 +196,71 @@ model Professional {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id])
+  user         User?                  @relation(fields: [userId], references: [id])
   appointments Appointment[]
+  schedules    ProfessionalSchedule[]
+  timeOff      ProfessionalTimeOff[]
   /// Procedimentos que este profissional realiza. Lista vazia = faz todos
   /// (sem restrição) — só passa a filtrar o agendamento quando o admin
   /// marca especialidades específicas.
-  procedures   Procedure[]   @relation("ProfessionalProcedures")
+  procedures   Procedure[]            @relation("ProfessionalProcedures")
 
   @@index([tenantId])
   @@map("professionals")
+}
+
+/// Uma faixa de atendimento do profissional num dia da semana.
+///
+/// É uma linha por faixa, não uma por dia: assim "segunda 08–12" e
+/// "segunda 14–18" convivem, que é como se representa intervalo de almoço.
+/// Profissional **sem nenhuma linha** atende no expediente inteiro da
+/// clínica — mesma regra dos procedimentos, para não travar quem já existe.
+model ProfessionalSchedule {
+  id             String @id @default(uuid())
+  tenantId       String @map("tenant_id")
+  professionalId String @map("professional_id")
+
+  /// 0=domingo … 6=sábado — mesma convenção de `Date.getDay()` e de
+  /// `Tenant.businessDays`.
+  weekday Int
+
+  /// Minutos desde a meia-noite, igual a `Tenant.businessHoursStart`.
+  /// Inteiro em vez de String("08:00") pelo mesmo motivo: comparar vira
+  /// aritmética, sem parsing nem fuso no meio.
+  startMinutes Int @map("start_minutes")
+  endMinutes   Int @map("end_minutes")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, professionalId, weekday])
+  @@map("professional_schedules")
+}
+
+/// Ausência pontual: férias, congresso, compromisso pessoal.
+///
+/// Bloqueia a agenda no intervalo independentemente da grade semanal — é o
+/// "hoje não" que a grade recorrente não consegue expressar.
+model ProfessionalTimeOff {
+  id             String @id @default(uuid())
+  tenantId       String @map("tenant_id")
+  professionalId String @map("professional_id")
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+  reason   String?
+
+  createdAt DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, professionalId, startsAt])
+  @@map("professional_time_off")
 }
 
 /// O que é feito na consulta. Define duração padrão e preço.
