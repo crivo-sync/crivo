@@ -13,6 +13,7 @@ type ProfessionalsTableProps = {
   canManage: boolean;
   onEdit: (professional: Professional) => void;
   onDelete: (professional: Professional) => void;
+  onManageSchedule: (professional: Professional) => void;
   onUpdateParams: (updates: Record<string, string | null>) => void;
 };
 
@@ -23,11 +24,18 @@ export const ProfessionalsTable = ({
   canManage,
   onEdit,
   onDelete,
+  onManageSchedule,
   onUpdateParams,
 }: ProfessionalsTableProps) => {
   const columns = useMemo(
-    () => buildProfessionalColumns({ onEdit, onDelete, canManage }),
-    [onEdit, onDelete, canManage],
+    () =>
+      buildProfessionalColumns({
+        onEdit,
+        onDelete,
+        onManageSchedule,
+        canManage,
+      }),
+    [onEdit, onDelete, onManageSchedule, canManage],
   );
 
   return (
