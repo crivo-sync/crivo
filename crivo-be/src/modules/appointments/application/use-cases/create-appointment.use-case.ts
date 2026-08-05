@@ -13,6 +13,7 @@ import {
   type AppointmentRepository,
 } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
+import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
 
 export type CreateAppointmentInput = {
   tenantId: string;
@@ -31,6 +32,7 @@ export class CreateAppointmentUseCase {
     private readonly prisma: PrismaService,
     private readonly scheduleReminder: ScheduleAppointmentReminderUseCase,
     private readonly businessHours: BusinessHoursService,
+    private readonly professionalAvailability: ProfessionalAvailabilityService,
   ) {}
 
   async execute(input: CreateAppointmentInput) {
@@ -100,6 +102,16 @@ export class CreateAppointmentUseCase {
     );
 
     await this.businessHours.assertWithinBusinessHours(
+      input.tenantId,
+      input.startsAt,
+      endsAt,
+    );
+
+    // Expediente da clínica é o teto; a grade do profissional recorta dentro
+    // dele. Clínica aberta 08–18 não significa que este profissional atende
+    // às 17h.
+    await this.professionalAvailability.assertAvailable(
+      input.professionalId,
       input.tenantId,
       input.startsAt,
       endsAt,
