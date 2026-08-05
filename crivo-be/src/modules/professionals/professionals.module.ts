@@ -9,10 +9,13 @@ import { GetProfessionalByIdUseCase } from './application/use-cases/get-professi
 import { CreateProfessionalUseCase } from './application/use-cases/create-professional.use-case';
 import { UpdateProfessionalUseCase } from './application/use-cases/update-professional.use-case';
 import { DeleteProfessionalUseCase } from './application/use-cases/delete-professional.use-case';
+import { ReplaceScheduleUseCase } from './application/use-cases/replace-schedule.use-case';
+import { ManageTimeOffUseCase } from './application/use-cases/manage-time-off.use-case';
+import { ProfessionalScheduleController } from './infrastructure/http/professional-schedule.controller';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [ProfessionalController],
+  controllers: [ProfessionalController, ProfessionalScheduleController],
   providers: [
     {
       provide: PROFESSIONAL_REPOSITORY,
@@ -23,6 +26,8 @@ import { DeleteProfessionalUseCase } from './application/use-cases/delete-profes
     CreateProfessionalUseCase,
     UpdateProfessionalUseCase,
     DeleteProfessionalUseCase,
+    ReplaceScheduleUseCase,
+    ManageTimeOffUseCase,
   ],
   exports: [PROFESSIONAL_REPOSITORY],
 })
