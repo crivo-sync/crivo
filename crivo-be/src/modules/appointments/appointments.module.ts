@@ -11,6 +11,7 @@ import { CreateAppointmentUseCase } from './application/use-cases/create-appoint
 import { RescheduleAppointmentUseCase } from './application/use-cases/reschedule-appointment.use-case';
 import { ChangeAppointmentStatusUseCase } from './application/use-cases/change-appointment-status.use-case';
 import { BusinessHoursService } from './application/services/business-hours.service';
+import { ProfessionalAvailabilityService } from './application/services/professional-availability.service';
 import { GetAvailabilityUseCase } from './application/use-cases/get-availability.use-case';
 
 @Module({
@@ -27,6 +28,7 @@ import { GetAvailabilityUseCase } from './application/use-cases/get-availability
     RescheduleAppointmentUseCase,
     ChangeAppointmentStatusUseCase,
     BusinessHoursService,
+    ProfessionalAvailabilityService,
     GetAvailabilityUseCase,
   ],
   exports: [APPOINTMENT_REPOSITORY],
