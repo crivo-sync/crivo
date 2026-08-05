@@ -4,6 +4,7 @@ import { Patient, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import {
   CreatePatientData,
+  ExistingPatientKey,
   FindManyPatientsParams,
   PaginatedPatients,
   PatientRepository,
@@ -59,8 +60,39 @@ export class PrismaPatientRepository implements PatientRepository {
     });
   }
 
+  async findExistingKeys({
+    tenantId,
+    cpfs,
+    phones,
+  }: {
+    tenantId: string;
+    cpfs: string[];
+    phones: string[];
+  }): Promise<ExistingPatientKey[]> {
+    // Sem nenhuma chave para procurar, um `OR: []` traria a base inteira.
+    if (cpfs.length === 0 && phones.length === 0) return [];
+
+    return this.prisma.patient.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        OR: [
+          ...(cpfs.length > 0 ? [{ cpf: { in: cpfs } }] : []),
+          ...(phones.length > 0 ? [{ phone: { in: phones } }] : []),
+        ],
+      },
+      select: { cpf: true, phone: true },
+    });
+  }
+
   create(data: CreatePatientData): Promise<Patient> {
     return this.prisma.patient.create({ data });
+  }
+
+  async createMany(data: CreatePatientData[]): Promise<number> {
+    const { count } = await this.prisma.patient.createMany({ data });
+
+    return count;
   }
 
   update(id: string, data: UpdatePatientData): Promise<Patient> {
