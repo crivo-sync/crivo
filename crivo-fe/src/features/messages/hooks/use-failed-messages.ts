@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { LIVE_REFETCH_INTERVAL_MS } from "@/config/realtime";
+import { LIVE_REFETCH_INTERVAL_MS } from "@/lib/realtime";
 import { getFailedMessagesAction } from "../actions/get-failed-messages-action";
 
 export const FAILED_MESSAGES_QUERY_KEY = ["messages", "failed"] as const;
