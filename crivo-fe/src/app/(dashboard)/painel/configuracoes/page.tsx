@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
-import { TenantSettings } from "@/features/tenant/components/TenantSettings";
+import { SettingsTabs } from "@/features/tenant/components/SettingsTabs";
 
 export const metadata: Metadata = {
   title: "Configurações — Crivo",
@@ -19,7 +19,7 @@ const ConfiguracoesPage = () => {
           edição restrita a administradores.
         </Typography>
       </Box>
-      <TenantSettings />
+      <SettingsTabs />
     </Stack>
   );
 };
