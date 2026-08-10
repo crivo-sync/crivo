@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { LIVE_REFETCH_INTERVAL_MS } from "@/config/realtime";
+import { LIVE_REFETCH_INTERVAL_MS } from "@/lib/realtime";
 import { getAppointmentsAction } from "../actions/get-appointments-action";
 import type { AppointmentsQueryParams } from "../schemas/appointments-query-params";
 
