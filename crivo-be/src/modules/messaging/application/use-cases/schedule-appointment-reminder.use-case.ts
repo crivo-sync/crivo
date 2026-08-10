@@ -16,7 +16,10 @@ import {
   SendMessageJob,
 } from '../../infrastructure/queue/messaging.queue';
 import { MessageComposerService } from '../services/message-composer.service';
+import { AssessAppointmentRiskUseCase } from 'src/modules/prediction/application/assess-appointment-risk.use-case';
+import type { RiskLevel } from 'src/modules/prediction/domain/no-show-risk';
 import { MessageTemplateService } from '../services/message-template.service';
+import { planReminders } from '../services/reminder-schedule';
 
 @Injectable()
 export class ScheduleAppointmentReminderUseCase {
@@ -31,6 +34,7 @@ export class ScheduleAppointmentReminderUseCase {
     private readonly composer: MessageComposerService,
     private readonly templates: MessageTemplateService,
     private readonly config: ConfigService,
+    private readonly assessRisk: AssessAppointmentRiskUseCase,
   ) {}
 
   private get hoursBefore(): number {
@@ -78,37 +82,65 @@ export class ScheduleAppointmentReminderUseCase {
       aiMessagesEnabled: appointment.tenant.aiMessagesEnabled,
     });
 
-    const sendAt = new Date(
-      appointment.startsAt.getTime() - this.hoursBefore * 3_600_000,
-    );
-    const delay = Math.max(0, sendAt.getTime() - Date.now());
+    /**
+     * Quantos lembretes, e quando, dependem do risco de falta — é aqui que a
+     * predição vira ação em vez de um número numa tela. Risco alto recebe um
+     * lembrete cedo (dá tempo de a clínica reagir ao silêncio) e outro na
+     * véspera; risco baixo mantém o único de sempre.
+     *
+     * A falha do cálculo não pode travar o envio: sem risco, cai no
+     * cronograma padrão e o paciente recebe o lembrete como antes.
+     */
+    let level: RiskLevel = 'LOW';
 
-    const message = await this.messageRepository.create({
-      tenantId: appointment.tenantId,
-      appointmentId: appointment.id,
-      type: MessageType.APPOINTMENT_REMINDER,
-      toPhone: appointment.patient.phone,
-      body,
-      scheduledFor: delay > 0 ? sendAt : new Date(),
-    });
+    try {
+      const risk = await this.assessRisk.forAppointment(
+        appointment.id,
+        appointment.tenantId,
+      );
+      level = risk.level;
+    } catch (error) {
+      this.logger.warn(
+        `Não foi possível calcular o risco do agendamento ${appointment.id}: ${
+          error instanceof Error ? error.message : 'erro desconhecido'
+        }. Usando o cronograma padrão.`,
+      );
+    }
 
-    // `jobId` = id da mensagem: torna o job endereçável para cancelar
-    // quando o agendamento é remarcado (ver `cancelPending`).
-    await this.queue.add(
-      'send',
-      { messageId: message.id },
-      { ...SEND_JOB_OPTIONS, delay, jobId: message.id },
+    const planned = planReminders(
+      level,
+      appointment.startsAt,
+      this.hoursBefore,
     );
+
+    for (const reminder of planned) {
+      const message = await this.messageRepository.create({
+        tenantId: appointment.tenantId,
+        appointmentId: appointment.id,
+        type: MessageType.APPOINTMENT_REMINDER,
+        toPhone: appointment.patient.phone,
+        body,
+        scheduledFor: reminder.delay > 0 ? reminder.sendAt : new Date(),
+      });
+
+      // `jobId` = id da mensagem: torna o job endereçável para cancelar
+      // quando o agendamento é remarcado (ver `cancelPending`).
+      await this.queue.add(
+        'send',
+        { messageId: message.id },
+        { ...SEND_JOB_OPTIONS, delay: reminder.delay, jobId: message.id },
+      );
+    }
 
     this.logger.log(
-      `Lembrete agendado para ${sendAt.toISOString()} (mensagem ${message.id})`,
+      `Risco ${level}: ${planned.length} lembrete(s) agendado(s) para o atendimento ${appointment.id} ` +
+        `(${planned.map((r) => `D-${r.hoursBefore}h`).join(', ')})`,
     );
 
-    // Só faz sentido avisar agora se o lembrete ainda está longe. Quando a
-    // consulta é em menos de `REMINDER_HOURS_BEFORE`, o lembrete acima já
-    // sai imediatamente (delay = 0) — mandar os dois seria duas mensagens
-    // quase idênticas com segundos de diferença.
-    if (delay > 0) {
+    // Só faz sentido avisar agora se o primeiro lembrete ainda está longe.
+    // Quando a consulta é logo ali, o lembrete já sai imediatamente — mandar
+    // os dois seria duas mensagens quase idênticas com segundos de diferença.
+    if (planned[0].delay > 0) {
       await this.sendBookedNotice(appointment, confirmationToken, rescheduled);
     }
   }
@@ -185,6 +217,17 @@ export class ScheduleAppointmentReminderUseCase {
   async reschedule(appointmentId: string): Promise<void> {
     await this.cancelPending(appointmentId);
     await this.execute(appointmentId, true);
+  }
+
+  /**
+   * Chamado quando o agendamento é cancelado.
+   *
+   * Sem isto o paciente que desmarcou continuava recebendo o lembrete da
+   * consulta que não existe mais — pior que não avisar, porque ele pode
+   * aparecer na clínica.
+   */
+  async cancelScheduled(appointmentId: string): Promise<void> {
+    await this.cancelPending(appointmentId);
   }
 
   /**
