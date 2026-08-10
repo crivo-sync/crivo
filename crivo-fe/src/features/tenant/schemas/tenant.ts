@@ -25,6 +25,15 @@ export const updateTenantSchema = z
     email: z.email("E-mail inválido").optional().or(z.literal("")),
     address: z.string().trim().optional().or(z.literal("")),
     aiMessagesEnabled: z.boolean().optional(),
+    // Três representações do mesmo estado, por camada: `""` é o que o
+    // `<select>` consegue expressar, `null` é o que o backend espera para
+    // "voltar ao padrão do servidor", e `undefined` é "não mexeu neste
+    // campo". A conversão de `""` para `null` acontece no submit.
+    messagingProvider: z
+      .enum(["FAKE", "EVOLUTION", "META"])
+      .nullable()
+      .optional()
+      .or(z.literal("")),
     // Minutos desde a meia-noite (480 = 08:00). O TimePicker converte na borda
     // do formulário; aqui só chegam inteiros já validados.
     businessHoursStart: z
