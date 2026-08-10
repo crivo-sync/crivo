@@ -68,6 +68,7 @@ export class ScheduleAppointmentReminderUseCase {
     }
 
     const body = await this.composer.composeReminder({
+      tenantId: appointment.tenantId,
       patientName: appointment.patient.name,
       clinicName: appointment.tenant.name,
       professionalName: appointment.professional.name,
@@ -117,9 +118,12 @@ export class ScheduleAppointmentReminderUseCase {
    * com dias de antecedência ficava sem nenhum contato até o D-1 — e sem
    * poder confirmar, já que o link só chegava com o lembrete.
    *
-   * Usa o template fixo de propósito, sem passar pela IA: o texto promete
-   * "enviaremos um lembrete um dia antes", e essa é uma afirmação sobre o
-   * comportamento do sistema que a IA não deve reescrever nem omitir.
+   * **Nunca passa pela IA**, de propósito: o texto promete "enviaremos um
+   * lembrete um dia antes", e essa é uma afirmação sobre o comportamento do
+   * sistema que a IA não deve reescrever nem omitir.
+   *
+   * Aceita, sim, o template personalizado da clínica — ali quem escreve é
+   * uma pessoa que sabe o que a clínica faz, não um gerador de texto.
    */
   private async sendBookedNotice(
     appointment: {
@@ -134,7 +138,8 @@ export class ScheduleAppointmentReminderUseCase {
     confirmationToken: string,
     rescheduled: boolean,
   ): Promise<void> {
-    const body = this.templates.appointmentBooked(
+    const body = await this.templates.renderBooked(
+      appointment.tenantId,
       {
         patientName: appointment.patient.name,
         clinicName: appointment.tenant.name,
