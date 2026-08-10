@@ -15,7 +15,11 @@ type PatientFiltersProps = {
 
 export const PatientFilters = ({ control, onClear }: PatientFiltersProps) => {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    // `flex: 1` em vez de largura fixa em px: a busca ocupa o espaço que
+    // sobra ao lado dos botões de ação. Os valores cravados (1000 aqui, 500
+    // nas outras telas) davam a cada tela do painel uma barra de tamanho
+    // diferente. Não é `width: 100%` porque o pai é flex com botões ao lado.
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
       <Controller
         control={control}
         name="search"
@@ -23,7 +27,6 @@ export const PatientFilters = ({ control, onClear }: PatientFiltersProps) => {
           <TextField
             {...field}
             placeholder="Buscar por nome, telefone, CPF ou e-mail"
-            sx={{ width: 1000, maxWidth: "100%" }}
             slotProps={{
               input: {
                 startAdornment: (
