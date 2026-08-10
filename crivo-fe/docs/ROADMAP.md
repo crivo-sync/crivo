@@ -21,7 +21,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | 🟢 Histórico + aba de falhas, **com reenvio manual** e leitura do texto completo. Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
-| `configuracoes` (tenants/me) | 🟢 Leitura para todos, edição restrita a ADMIN |
+| `configuracoes` (tenants/me) | 🟢 Duas abas: **Dados da clínica** (leitura para todos, edição ADMIN) e **Mensagens automáticas** (editor de templates, só ADMIN) |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
