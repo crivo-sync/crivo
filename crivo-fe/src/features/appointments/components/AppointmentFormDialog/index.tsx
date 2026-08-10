@@ -65,6 +65,7 @@ export const AppointmentFormDialog = ({
     if (open) reset(EMPTY_VALUES);
   }, [open, reset]);
 
+  const selectedPatientId = watch("patientId");
   const selectedProfessionalId = watch("professionalId");
   const selectedProcedureId = watch("procedureId");
 
@@ -160,8 +161,17 @@ export const AppointmentFormDialog = ({
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
+                    helperText={
+                      fieldState.error?.message ??
+                      (!selectedPatientId ? "Escolha o paciente antes." : undefined)
+                    }
                     loading={isLoading}
+                    // Cascata: cada campo depende do anterior para fazer
+                    // sentido — o procedimento é filtrado pelo profissional, e
+                    // os horários dependem dos dois. Abrir tudo de uma vez
+                    // deixava a recepção preencher fora de ordem e ver a lista
+                    // mudar embaixo do que já tinha escolhido.
+                    disabled={!selectedPatientId}
                   />
                 )}
               />
@@ -181,6 +191,9 @@ export const AppointmentFormDialog = ({
                     error={!!fieldState.error}
                     helperText={
                       fieldState.error?.message ??
+                      (!selectedProfessionalId
+                        ? "Escolha o profissional antes."
+                        : undefined) ??
                       (selectedProcedure &&
                         `${formatDuration(selectedProcedure.durationMinutes)} · ${formatCentsToBRL(selectedProcedure.priceInCents)}`) ??
                       (selectedProfessional &&
@@ -188,6 +201,7 @@ export const AppointmentFormDialog = ({
                         "Mostrando só os procedimentos que este profissional realiza.")
                     }
                     loading={isLoading}
+                    disabled={!selectedProfessionalId}
                   />
                 )}
               />
@@ -207,6 +221,7 @@ export const AppointmentFormDialog = ({
                     procedureDurationMinutes={
                       selectedProcedure?.durationMinutes
                     }
+                    professionalSchedules={selectedProfessional?.schedules}
                   />
                 )}
               />
