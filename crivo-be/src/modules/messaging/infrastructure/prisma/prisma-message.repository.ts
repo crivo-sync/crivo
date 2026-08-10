@@ -95,6 +95,21 @@ export class PrismaMessageRepository implements MessageRepository {
     });
   }
 
+  async resetForRetry(id: string): Promise<void> {
+    await this.prisma.message.update({
+      where: { id },
+      data: {
+        status: MessageStatus.PENDING,
+        attempts: 0,
+        // Limpar os dois é o que faz a mensagem sumir da lista de falhas —
+        // se ficarem, a recepção continuaria vendo "ligar para este paciente"
+        // depois de já ter reenviado.
+        failedAt: null,
+        lastError: null,
+      },
+    });
+  }
+
   async incrementAttempts(id: string): Promise<void> {
     await this.prisma.message.update({
       where: { id },
