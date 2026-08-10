@@ -129,9 +129,23 @@ npm run start:dev
 
 ```bash
 npm run prisma:seed         # SEED_TYPE=full (padrão) — popula dados
-npm run prisma:seed:clean   # SEED_TYPE=clean — zera as tabelas
+npm run prisma:seed:clean   # SEED_TYPE=clean — zera as tabelas (NÃO repovoa)
 npm run prisma:reset        # dropa o banco, reaplica migrations e roda o seed
 ```
+
+> `prisma:seed:clean` só **apaga**. Para recomeçar do zero são dois passos:
+> `npm run prisma:seed:clean && npm run prisma:seed`.
+
+**Os agendamentos respeitam a agenda de quem atende.** O plano usa offsets em
+dias corridos (`-30`, `+7`…), então a data cai num dia da semana diferente a
+cada execução — antes isso gerava consulta em sábado ou fora da grade do
+profissional, que o próprio backend recusaria e que aparecia no Quadro em cima
+de faixa "não atende". O seed agora empurra a data até achar um dia válido,
+**mantendo o sinal do offset** para o histórico continuar no passado (é a
+matéria-prima da predição) e o futuro no futuro.
+
+Por isso `seedSchedules` roda **antes** de `seedAppointments`: na ordem
+inversa a checagem leria uma grade ainda vazia.
 
 O modo `full` cria **dois tenants de propósito** — é o mínimo para conseguir testar isolamento multi-tenant de verdade (garantir que uma clínica nunca enxerga dados da outra):
 
@@ -676,9 +690,44 @@ descartar seria perder o contato. Telefone que bate com dois cadastros também
 fica sem vínculo, porque atribuir a conversa à pessoa errada é pior do que
 deixar em aberto.
 
-> ⚠️ Hoje a mensagem é apenas **registrada**. Responder "SIM" ainda não
-> confirma o agendamento (o link `/c/:token` segue sendo o caminho), e não há
-> tela para a recepção ler o que chegou — ver ROADMAP.
+### Confirmação por resposta
+
+Responder **"sim"** no WhatsApp confirma o agendamento — sem abrir link.
+
+O que é aceito: `sim`, `s`, `1`, `ok`, `confirmo`, `estarei lá` e variações,
+ignorando acento, caixa, pontuação e emoji. Pedido de cancelar (`não`,
+`cancelar`, `preciso remarcar`) é reconhecido mas **não cancela sozinho**: só
+sinaliza para a recepção, porque cancelar libera horário e aciona política de
+remarcação.
+
+Qualquer outra coisa vira `UNKNOWN` e espera leitura humana. A comparação é
+por **frase inteira**, não por trecho — `"não posso, sim?"` contém "sim" e é
+uma recusa.
+
+Para confirmar, o agendamento precisa ser futuro, estar `SCHEDULED`/`CONFIRMED`
+e **já ter recebido lembrete**. Sem a última regra, um "ok" solto respondendo
+outra conversa confirmaria a próxima consulta da agenda.
+
+### Caixa de entrada
+
+Aba **Recebidas** em Mensagens: o que o paciente escreveu, com a leitura do
+sistema ao lado (`Confirmou` / `Quer cancelar` / `Precisa ler`).
+
+Confirmação automática já nasce lida, então a caixa mostra só o que precisa de
+alguém. Não lidas ficam em negrito e com fundo destacado; a recepção marca uma
+a uma ou usa "Marcar todas como lidas".
+
+```
+GET   /inbound-messages?unreadOnly=true&intent=UNKNOWN
+PATCH /inbound-messages/read-all
+PATCH /inbound-messages/:id/read
+```
+
+A resposta traz `unreadTotal` **fora** do `meta` da paginação: conta o tenant
+inteiro, não a página nem o filtro, porque é o número que alimenta o badge.
+
+> ⚠️ A recepção **lê** e marca como tratada, mas ainda **não responde** pelo
+> painel — responder segue sendo pelo WhatsApp da clínica. Ver ROADMAP.
 
 ## Manual da recepção
 

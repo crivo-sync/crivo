@@ -150,8 +150,25 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Aviso imediato ao marcar a consulta** (04/08/2026) — quem agenda com dias de antecedência recebe na hora um "sua consulta foi marcada" já com o link de confirmação, e o lembrete D-1 continua. Só dispara quando o D-1 ainda está longe, para não mandar duas mensagens seguidas
    - [x] **Status ao vivo no painel** (04/08/2026) — Agenda e Mensagens se reconsultam a cada 20s (`LIVE_REFETCH_INTERVAL_MS`), já que o paciente confirma pelo WhatsApp, fora do sistema
    - [x] 🐞 **Reagendar refaz o lembrete** (04/08/2026) — antes `RescheduleAppointmentUseCase` mudava `startsAt` sem tocar na fila, e o lembrete antigo saía no D-1 da data original **com a data velha no texto**. Agora `reschedule()` cancela o que está pendente e reagenda com os dados atuais. São duas camadas de propósito: a remoção da fila (por `jobId` fixo) é *best-effort*, e o guard de `CANCELLED` no `MessageProcessor` é o que de fato impede o envio errado se o job já tiver saído da fila
-   - [ ] **Credenciais da Meta** — 🅿️ **adiado por custo** (05/08/2026). A Meta cobra por conversa e a decisão é esperar caixa; até lá o provider de produção é `evolution`. Ver [Risco: Evolution em produção](#riscos) — a decisão original deste documento era o oposto, e o risco de banimento continua valendo
-   - [ ] Templates editáveis por clínica (hoje o template *fixo* — usado quando a IA está desligada ou falha — é único e fica no código)
+   - [x] **Provider escolhido por clínica** (10/08/2026) — `Tenant.messagingProvider` (`FAKE`/`EVOLUTION`/`META`), com seletor em Configurações. Antes `MESSAGING_PROVIDER` valia para o processo inteiro, o que impedia uma clínica migrar para a Meta enquanto outra segue na Evolution — e é exatamente essa a transição em curso. Decisões:
+     - **Credenciais continuam em variáveis de ambiente** — a clínica escolhe o *caminho*, não guarda segredo no banco. Token da Meta dá acesso ao WhatsApp da clínica; guardá-lo exigiria criptografia em repouso e mascaramento na API, que é projeto próprio
+     - **Nulo = padrão do servidor** — clínicas existentes não mudam de comportamento, e a opção "Padrão do sistema" continua alcançável para voltar atrás
+     - **Resolvido por mensagem, não injetado no boot** — `MessageProviderResolver` consulta o tenant a cada envio, então trocar o provider pela tela vale **sem reiniciar**. Verificado ao vivo: `fake` → troca para `evolution` pela API → o envio seguinte já saiu pela Evolution
+     - **A tela explica a consequência** — "o WhatsApp não autoriza esse tipo de conexão, o número pode ser bloqueado em definitivo" no não oficial, e "nada é enviado de verdade" no simulado. Quem marcasse "simulado" sem entender acharia que avisou o paciente
+   - [ ] **Credenciais da Meta** — 🅿️ **adiado por custo** (05/08/2026). O provider `meta` está pronto e selecionável, mas `META_WHATSAPP_TOKEN`/`META_WHATSAPP_PHONE_NUMBER_ID` seguem vazios — escolher META sem eles faz o envio falhar. Até lá o caminho é `evolution`. Ver [Risco: Evolution em produção](#riscos)
+   - [x] **Templates editáveis por clínica — backend** (10/08/2026) — `GET/PUT /message-templates`, tabela `message_templates` (uma linha por tenant+tipo). Decisões:
+     - **Marcadores em português** (`{{paciente}}`, `{{data}}`, `{{link}}`) — quem escreve é a recepção, não um dev; `{{patientName}}` seria barreira sem ganho
+     - **Validação ao salvar, não no envio** — exige `{{data}}`, `{{hora}}` e `{{link}}`, e recusa marcador inexistente. Template quebrado só apareceria quando o paciente não recebesse, e aí a consulta já passou
+     - **O texto padrão vem com os marcadores à mostra**, como ponto de partida — verificado que ele renderiza **idêntico** ao template fixo do código, então a clínica edita exatamente o que recebe hoje
+     - **Desligar preserva o rascunho** (`isActive: false` volta ao padrão sem apagar). A listagem devolve `body` **e** `defaultBody`, para a tela poder mostrar o que o paciente de fato recebe quando está desligado
+     - **`@Roles(ADMIN)`** — o texto sai em nome da clínica para todos os pacientes
+     - **Falha na leitura cai no padrão**: personalização não pode derrubar envio
+     - 15 testes do renderizador + verificação ponta a ponta: agendamento real gerou lembrete com o texto personalizado e aviso de marcação com o padrão (só o lembrete fora personalizado)
+   - [x] **Templates editáveis — tela** (10/08/2026) — aba "Mensagens automáticas" em Configurações, com editor, marcadores clicáveis e pré-visualização com dados de exemplo. Detalhes:
+     - **A prévia mostra o que o paciente recebe *agora*** — com a personalização desligada, exibe o texto padrão, não o rascunho no editor. Mostrar o rascunho como se fosse o envio real era o erro que essa distinção evita
+     - **Marcadores entram por clique**, não digitação: `{{paciente}}` escrito à mão é a principal fonte de erro, e marcador inválido é recusado no salvamento
+     - **Substituição duplicada no front** (só para a prévia) — pedir a prévia ao servidor a cada tecla seria uma requisição por caractere. Validado que casa com o backend nos casos de borda (espaço nas chaves, maiúsculas, marcador desconhecido, chave simples)
+     - **Abas em Configurações**: os textos são longos e têm prévia; empilhados abaixo do formulário esconderiam o botão de salvar dos dados da clínica
    - [ ] Template aprovado pela Meta — texto livre só funciona dentro da janela de 24h
    - [x] **Webhook de entrada — mensagem do paciente** (05/08/2026) — `POST /webhooks/inbound/:tenantId/:token` grava em `inbound_messages` e vincula ao paciente pelo telefone. É a fundação do Chat Center: até aqui a mensageria era só de saída, sem nenhum caminho de volta. Decisões que não são óbvias:
      - **Tabela separada de `messages`** — aquela é registro de envio (fila, tentativas, agendamento, destino); nada disso existe na entrada, e espremer as duas deixaria metade das colunas sempre nulas
@@ -161,8 +178,21 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Descarta de propósito**: `fromMe` (é o nosso próprio lembrete voltando), grupos (`@g.us`), e mídia sem legenda — hoje o Crivo só lê texto
      - **Número desconhecido é gravado mesmo assim**, sem vínculo: perder o contato de quem ainda não é paciente seria perder justamente o lead. Telefone que bate com dois cadastros também fica sem vínculo — atribuir à pessoa errada é pior que não atribuir
      - Testado contra a API real: token inválido → 401, evento irrelevante → ignorado, paciente cadastrado → vinculado, reentrega do mesmo id → não duplica, número desconhecido → gravado sem vínculo. 11 testes unitários do parser do payload
-   - [ ] **Confirmação por resposta** — hoje a mensagem do paciente é só registrada; responder "SIM" ainda não muda o status do agendamento (o link `/c/:token` continua sendo o caminho)
-   - [ ] **Caixa de entrada / tela de conversa** — `inbound_messages` já acumula o histórico, mas não há tela: a recepção ainda não vê o que o paciente respondeu
+   - [x] **Confirmação por resposta** (10/08/2026) — responder "sim" no WhatsApp confirma o agendamento, sem abrir link. O `/c/:token` continua existindo, mas exige sair do WhatsApp; quem já está lá só responde. Decisões que importam:
+     - **`UNKNOWN` é o padrão, e casa frase inteira** (não `includes`) — "não posso, sim?" contém "sim" e é uma recusa. Confirmar presença de quem não confirmou é pior que pedir para um humano ler: a clínica reserva o horário e o paciente falta assim mesmo, que é o problema que o produto existe para reduzir
+     - **`CANCEL` não cancela sozinho** — só sinaliza para a recepção. Cancelar libera horário e aciona política de remarcação; é decisão da clínica, não de um casamento de texto
+     - **Só confirma agendamento futuro, `SCHEDULED`/`CONFIRMED`, que já recebeu lembrete** — sem a última regra, um "ok" solto (resposta a outra conversa) confirmaria a próxima consulta da agenda
+     - **Interpreta depois de gravar** — o `create` da `inbound_messages` é o que barra a reentrega do webhook (índice único); interpretar antes faria o mesmo evento repetido confirmar de novo e mandar um segundo recibo
+     - **`intent` e `appointmentId` gravados** na mensagem recebida: é o registro de *por que* um agendamento foi confirmado sozinho. Confirmação automática já nasce lida; o resto fica na caixa de entrada
+     - 38 testes do interpretador + verificação ao vivo: ambígua → não confirma; "Sim! 👍" → `CONFIRMED` com recibo; segundo "sim" → sem segundo recibo; "preciso remarcar" → sinaliza sem cancelar; número desconhecido → não confirma nada
+   - [x] **Caixa de entrada** (10/08/2026) — aba "Recebidas" em Mensagens, com `GET /inbound-messages`, `PATCH :id/read` e `PATCH read-all`. O webhook já gravava tudo, mas ninguém lia: um "posso levar minha filha?" ficava no banco sem chegar a um humano. Decisões:
+     - **`unreadTotal` fora do `meta` da paginação** — conta o tenant inteiro, não a página nem o filtro. É o número do badge, e dentro do `meta` mudaria a cada filtro aplicado
+     - **`read-all` registrado ANTES de `:id/read`** — o Nest casa rota por ordem de registro, não por especificidade; invertido, `read-all` cairia em `:id/read` com `id = "read-all"`. Mesma armadilha já documentada em `MeController`
+     - **`updateMany` com o tenant no `where`** (em vez de `update` por id) é o que impede uma clínica de marcar mensagem de outra sabendo o UUID
+     - **Confirmação automática já nasce lida**, então a caixa mostra só o que precisa de gente. Não lidas aparecem em negrito e com fundo destacado
+     - **Número fora da base aparece como "Não cadastrado"**, não como erro: quem escreve pela primeira vez costuma ser lead
+     - Testado ao vivo: listagem, filtros `unreadOnly` true/false, marcar uma (badge cai de 3 para 2), marcar todas (vai a 0), id inexistente → 404, e **isolamento entre clínicas** — outra clínica vê 0 mensagens e recebe 404 ao tentar marcar mensagem alheia
+   - [ ] **Tela de conversa (responder pelo painel)** — hoje a recepção lê e marca como tratada, mas responder ainda é pelo WhatsApp da clínica. Exige envio manual avulso (`MANUAL` já existe no enum `MessageType`)
    - [ ] Webhook de status de entrega (`DELIVERED`)
    - [x] **Reenvio manual a partir da lista de falhas** (06/08/2026) — `POST /messages/:id/resend`, com ação na tela de Mensagens. Antes o retry só existia no Bull Board, ferramenta de dev protegida por Basic Auth que expõe a fila inteira; a lista "ligar para estes pacientes" era um beco sem saída. Detalhes que não são óbvios:
      - **Só aceita `FAILED`** — reenviar uma `SENT` duplicaria a mensagem no WhatsApp do paciente, e uma `PENDING` já está na fila. Nos dois casos recusa com 400 em vez de criar um segundo envio silencioso
@@ -250,16 +280,15 @@ O que existe é o **dado bruto sendo acumulado** desde o início, de propósito.
 | Horário e dia | `startsAt` | Primeiro horário da manhã e véspera de feriado têm perfil de falta diferente |
 | Procedimento e preço | `procedureId`, `priceInCents` | Ticket alto e procedimento eletivo têm risco diferente de retorno de rotina |
 
-### Volume real (06/08/2026, banco de desenvolvimento)
+### Volume real (10/08/2026, banco de desenvolvimento)
 
 ```
-total       35
-SCHEDULED   15
+total       28
 COMPLETED   10
+SCHEDULED    8
 NO_SHOW      4     ← a classe que interessa prever
 CONFIRMED    4
 CANCELLED    2
-confirmedAt  4
 ```
 
 **Isso não treina modelo nenhum.** Quatro exemplos positivos não sustentam
@@ -269,9 +298,9 @@ por alguém que faltou — um modelo treinado aqui aprenderia o padrão do
 desenvolvedor. Antes de qualquer treino sério, é preciso volume real de
 clínica em produção.
 
-> O volume caiu de 59 para 35 desde 04/08 porque o banco foi reseedado
-> durante o desenvolvimento. Isso reforça o ponto: enquanto o histórico for
-> seed, ele se apaga a cada `SEED_TYPE=clean` e não acumula nada.
+> O volume oscilou de 59 → 35 → 28 entre 04 e 10/08 porque o banco foi
+> reseedado durante o desenvolvimento. Isso reforça o ponto: enquanto o
+> histórico for seed, ele se apaga a cada limpeza e não acumula nada.
 
 ### O caminho realista
 

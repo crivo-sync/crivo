@@ -314,6 +314,21 @@ async function seedAppointments(tenantId: string): Promise<number> {
     return 0;
   }
 
+  // Regras de agendamento da clínica, para o seed não gerar dado que o
+  // próprio backend recusaria.
+  const tenant = await prisma.tenant.findUniqueOrThrow({
+    where: { id: tenantId },
+    select: {
+      businessDays: true,
+      businessHoursStart: true,
+      businessHoursEnd: true,
+    },
+  });
+
+  const schedules = await prisma.professionalSchedule.findMany({
+    where: { tenantId },
+  });
+
   // [offset em dias, hora, status] — offsets negativos são histórico.
   const plan: [number, number, AppointmentStatus][] = [
     [-30, 9, AppointmentStatus.COMPLETED],
@@ -332,6 +347,32 @@ async function seedAppointments(tenantId: string): Promise<number> {
     [7, 9, AppointmentStatus.SCHEDULED],
   ];
 
+  /**
+   * O horário cabe na agenda daquele profissional?
+   *
+   * Grade vazia = herda o expediente da clínica, mesma regra do backend
+   * (`ProfessionalAvailabilityService`).
+   */
+  const fits = (professionalId: string, startsAt: Date, endsAt: Date) => {
+    const weekday = startsAt.getDay();
+    const start = startsAt.getHours() * 60 + startsAt.getMinutes();
+    const end = endsAt.getHours() * 60 + endsAt.getMinutes();
+
+    const own = schedules.filter((w) => w.professionalId === professionalId);
+
+    if (own.length === 0) {
+      return (
+        tenant.businessDays.includes(weekday) &&
+        start >= tenant.businessHoursStart &&
+        end <= tenant.businessHoursEnd
+      );
+    }
+
+    return own.some(
+      (w) => w.weekday === weekday && start >= w.startMinutes && end <= w.endMinutes,
+    );
+  };
+
   let created = 0;
 
   for (const [index, [offsetDays, hour, status]] of plan.entries()) {
@@ -339,10 +380,35 @@ async function seedAppointments(tenantId: string): Promise<number> {
     const professional = professionals[index % professionals.length];
     const procedure = procedures[index % procedures.length];
 
-    const startsAt = dayAt(offsetDays, hour);
-    const endsAt = new Date(
-      startsAt.getTime() + procedure.durationMinutes * 60_000,
-    );
+    /**
+     * Empurra a data até achar um dia em que o profissional atenda.
+     *
+     * O `plan` usa offsets em dias corridos, então a data que cai num sábado
+     * (ou num dia fora da grade) muda conforme o dia em que o seed roda — e
+     * gerava agendamento que o próprio backend recusaria, deixando o Quadro
+     * com consulta em cima de faixa "não atende". Sete tentativas cobrem a
+     * semana inteira; passou disso, aquele profissional não tem dia válido e
+     * a linha é pulada.
+     */
+    let startsAt = dayAt(offsetDays, hour);
+    let endsAt = new Date(startsAt.getTime() + procedure.durationMinutes * 60_000);
+    let attempts = 0;
+
+    while (!fits(professional.id, startsAt, endsAt) && attempts < 7) {
+      // Mantém o sinal do offset: histórico continua no passado, futuro no
+      // futuro — senão um `-30` viraria data futura e o histórico de faltas
+      // (matéria-prima da predição) apareceria como consulta a acontecer.
+      startsAt = dayAt(offsetDays + (offsetDays < 0 ? -(attempts + 1) : attempts + 1), hour);
+      endsAt = new Date(startsAt.getTime() + procedure.durationMinutes * 60_000);
+      attempts += 1;
+    }
+
+    if (!fits(professional.id, startsAt, endsAt)) {
+      console.warn(
+        `⏭️  ${professional.name} não tem dia válido para ${hour}h — agendamento pulado.`,
+      );
+      continue;
+    }
 
     await prisma.appointment.create({
       data: {
@@ -460,10 +526,11 @@ async function seedSchedules(tenantId: string): Promise<number> {
     return alreadySeeded;
   }
 
-  // Ordena por criação (não por nome) para `professionals[1]` ser o segundo
-  // profissional como cadastrado na seed — com ordenação por nome o "Dr.
-  // Paulo" vinha antes da "Dra. Helena" e a grade restrita caía na pessoa
-  // errada, deixando a dona da clínica sem horário livre.
+  // Ordena por CRIAÇÃO, não por nome: assim `professionals[1]` é sempre o
+  // segundo da lista em `TENANTS`, independente de como as pessoas se
+  // chamem. Por nome a ordem dependia do "Dr."/"Dra." do início do texto —
+  // qualquer cadastro novo podia mover a grade restrita para outra pessoa
+  // sem ninguém mexer nesta função.
   const professionals = await prisma.professional.findMany({
     where: { tenantId },
     orderBy: { createdAt: 'asc' },
@@ -598,9 +665,13 @@ async function full() {
       }
     }
 
+    // Grade ANTES dos agendamentos: `seedAppointments` consulta a grade para
+    // não marcar consulta em dia que o profissional não atende. Na ordem
+    // inversa ela leria uma grade ainda vazia e voltaria a gerar dado que o
+    // backend recusaria.
+    const scheduleCount = await seedSchedules(tenant.id);
     const appointmentCount = await seedAppointments(tenant.id);
     const recordCount = await seedMedicalRecords(tenant.id);
-    const scheduleCount = await seedSchedules(tenant.id);
 
     console.log(
       `✅ ${tenant.name} (${tenant.subdomain}) — ${users.length} usuários, ${patients.length} pacientes, ${professionals.length} profissionais, ${procedures.length} procedimentos, ${appointmentCount} agendamentos, ${recordCount} evoluções, ${scheduleCount} faixas de horário`,

@@ -26,6 +26,14 @@ model Tenant {
   /// por padrão: sem custo extra nem dependência externa até a clínica optar.
   aiMessagesEnabled Boolean @default(false) @map("ai_messages_enabled")
 
+  /// Por qual caminho o WhatsApp desta clínica sai.
+  ///
+  /// Nulo = usa o padrão do servidor (`MESSAGING_PROVIDER`), que é como todas
+  /// as clínicas funcionavam antes. As credenciais seguem em variáveis de
+  /// ambiente: aqui a clínica escolhe **qual** caminho usar, não guarda
+  /// segredo no banco.
+  messagingProvider MessagingProvider? @map("messaging_provider")
+
   /// Horário de funcionamento, em minutos desde a meia-noite (480 = 08:00).
   /// Inteiro em vez de String("08:00") de propósito: comparar agendamento com
   /// o expediente vira aritmética simples, sem parsing nem fuso no meio.
@@ -41,17 +49,18 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  patients        Patient[]
-  users           User[]
-  professionals   Professional[]
-  procedures      Procedure[]
-  appointments    Appointment[]
-  messages        Message[]
-  inboundMessages InboundMessage[]
-  anamneses       Anamnesis[]
-  clinicalNotes   ClinicalNote[]
-  schedules       ProfessionalSchedule[]
-  timeOff         ProfessionalTimeOff[]
+  patients         Patient[]
+  users            User[]
+  professionals    Professional[]
+  procedures       Procedure[]
+  appointments     Appointment[]
+  messages         Message[]
+  inboundMessages  InboundMessage[]
+  messageTemplates MessageTemplate[]
+  anamneses        Anamnesis[]
+  clinicalNotes    ClinicalNote[]
+  schedules        ProfessionalSchedule[]
+  timeOff          ProfessionalTimeOff[]
 
   @@map("tenants")
 }
@@ -318,18 +327,60 @@ model Appointment {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  professional  Professional   @relation(fields: [professionalId], references: [id])
-  procedure     Procedure      @relation(fields: [procedureId], references: [id])
-  messages      Message[]
-  clinicalNotes ClinicalNote[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  patient         Patient          @relation(fields: [patientId], references: [id])
+  professional    Professional     @relation(fields: [professionalId], references: [id])
+  procedure       Procedure        @relation(fields: [procedureId], references: [id])
+  messages        Message[]
+  inboundMessages InboundMessage[]
+  clinicalNotes   ClinicalNote[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
   @@index([tenantId, professionalId, startsAt])
   @@index([tenantId, startsAt])
   @@index([patientId])
   @@map("appointments")
+}
+
+/// Texto personalizado de uma mensagem automática.
+///
+/// Uma linha por (tenant, tipo). Ausente = o template fixo do código, que
+/// segue sendo o padrão: clínica que nunca personalizou continua funcionando
+/// sem nenhuma linha aqui.
+model MessageTemplate {
+  id       String      @id @default(uuid())
+  tenantId String      @map("tenant_id")
+  type     MessageType
+
+  /// Texto com marcadores `{{paciente}}`, `{{data}}` etc. Os marcadores
+  /// disponíveis dependem do `type` — ver `MessageTemplateService`.
+  body String
+
+  /// Desligar volta ao texto padrão sem perder o que foi escrito. Sem isso, a
+  /// clínica precisaria apagar o próprio texto para testar o padrão.
+  isActive Boolean @default(true) @map("is_active")
+
+  updatedByUserId String?  @map("updated_by_user_id")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, type])
+  @@map("message_templates")
+}
+
+/// Por onde o WhatsApp sai. As credenciais de cada um ficam em variáveis de
+/// ambiente do servidor — este enum só diz qual caminho a clínica usa.
+enum MessagingProvider {
+  /// Nada é enviado de verdade. Serve para demonstrar o produto e para
+  /// desenvolver sem gastar conversa nem arriscar o número.
+  FAKE
+  /// Camada não oficial sobre o WhatsApp Web. Barata, mas a Meta não
+  /// autoriza e o banimento do número é permanente — ver ROADMAP.
+  EVOLUTION
+  /// Cloud API oficial. Cobra por conversa e não corre risco de banimento.
+  META
 }
 
 enum MessageChannel {
@@ -421,14 +472,37 @@ model InboundMessage {
   sentAt            DateTime       @map("sent_at")
   /// Preenchido quando alguém da clínica dá a mensagem por tratada.
   readAt            DateTime?      @map("read_at")
-  createdAt         DateTime       @default(now())
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id])
-  patient Patient? @relation(fields: [patientId], references: [id])
+  /// O que o sistema entendeu da resposta. Guardado (em vez de recalculado na
+  /// leitura) porque é o registro de **por que** um agendamento foi
+  /// confirmado sozinho — se o vocabulário mudar depois, o histórico continua
+  /// explicando a decisão que foi tomada na época.
+  intent        ReplyIntent @default(UNKNOWN)
+  /// Agendamento afetado por esta resposta. Nulo quando a intenção foi
+  /// `UNKNOWN`, ou quando não havia agendamento elegível para confirmar.
+  appointmentId String?     @map("appointment_id")
+
+  createdAt DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  patient     Patient?     @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
   @@unique([tenantId, providerMessageId])
   @@index([tenantId, createdAt])
   @@index([tenantId, readAt])
   @@index([patientId])
   @@map("inbound_messages")
+}
+
+/// Interpretação da resposta do paciente ao lembrete.
+enum ReplyIntent {
+  /// Resposta inequívoca de presença ("sim", "confirmo", "ok").
+  CONFIRM
+  /// Pedido claro de cancelar/remarcar. Hoje **não** cancela sozinho: só
+  /// sinaliza para a recepção, porque cancelar é decisão da clínica.
+  CANCEL
+  /// Não deu para entender com segurança. É o padrão: confirmar presença de
+  /// quem não confirmou é pior do que pedir para um humano ler.
+  UNKNOWN
 }
