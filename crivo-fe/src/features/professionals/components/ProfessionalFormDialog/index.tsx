@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -17,19 +18,28 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 
 import { MaskedTextField } from "@/components/masked-text-field";
+import { useSnackbar } from "@/components/providers/snackbar-provider";
 import { UnsavedChangesDialog } from "@/components/ui/unsaved-changes-dialog";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { PHONE_MASK } from "@/lib/br-masks";
 import { getProceduresAction } from "@/features/procedures/actions/get-procedures-action";
+import { putScheduleAction } from "../../actions/schedule-actions";
 import { useCreateProfessional } from "../../hooks/use-create-professional";
+import { SCHEDULE_QUERY_KEY } from "../../hooks/use-schedule";
 import { useUpdateProfessional } from "../../hooks/use-update-professional";
 import {
   professionalFormSchema,
   type ProfessionalFormSchema,
 } from "../../schemas/professional";
-import type { Professional } from "../../types";
+import type { Professional, ScheduleWindow } from "../../types";
+import {
+  hasInvalidWindow,
+  WeeklyGridEditor,
+} from "../ScheduleDialog/weekly-grid-editor";
+import { useTenant } from "@/features/tenant/hooks/use-tenant";
 
 type ProfessionalFormDialogProps = {
   open: boolean;
@@ -56,8 +66,29 @@ export const ProfessionalFormDialog = ({
   const isEditing = !!professional;
   const createProfessional = useCreateProfessional();
   const updateProfessional = useUpdateProfessional();
+  const queryClient = useQueryClient();
+  const snackbar = useSnackbar();
+  const { tenant } = useTenant();
+
+  /**
+   * A grade fica em memória durante o cadastro porque as faixas pertencem a
+   * um profissional que ainda não existe — só há `professionalId` para
+   * gravar depois que a criação responde.
+   *
+   * Vazia é um estado válido, não um formulário incompleto: sem faixas o
+   * backend libera o expediente inteiro da clínica, que é o padrão certo
+   * para quem só quer cadastrar alguém rápido.
+   *
+   * Nasce vazia a cada abertura porque `ProfessionalManagement` remonta este
+   * dialog por `key` — não há efeito de limpeza para manter em sincronia.
+   */
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleWindow[]>([]);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+
   const isSubmitting =
-    createProfessional.isPending || updateProfessional.isPending;
+    createProfessional.isPending ||
+    updateProfessional.isPending ||
+    isSavingSchedule;
 
   const { data: procedures = [], isLoading: isLoadingProcedures } = useQuery({
     queryKey: ["professional-form", "procedures"],
@@ -76,7 +107,10 @@ export const ProfessionalFormDialog = ({
 
   const { requestClose, isConfirmOpen, confirmDiscard, cancelDiscard } =
     useUnsavedChangesGuard({
-      isDirty: formState.isDirty,
+      // A grade vive fora do react-hook-form, então `formState.isDirty` não a
+      // enxerga: sem somar isso, fechar depois de montar a semana inteira
+      // descartaria tudo sem perguntar.
+      isDirty: formState.isDirty || scheduleDraft.length > 0,
       onConfirmClose: () => onOpenChange(false),
     });
 
@@ -116,7 +150,31 @@ export const ProfessionalFormDialog = ({
           input: { ...base, isActive },
         });
       } else {
-        await createProfessional.mutateAsync(base);
+        const created = await createProfessional.mutateAsync(base);
+
+        // Segundo passo: a grade só pode ser gravada agora, com o id em mãos.
+        // Uma falha aqui não desfaz o cadastro — o profissional existe e é
+        // utilizável (atende o expediente da clínica), então o certo é dizer
+        // o que ficou faltando em vez de fingir que nada foi salvo.
+        if (scheduleDraft.length > 0) {
+          setIsSavingSchedule(true);
+          try {
+            const result = await putScheduleAction(created.id, scheduleDraft);
+            if (!result.success) throw new Error(result.message);
+
+            queryClient.invalidateQueries({
+              queryKey: [...SCHEDULE_QUERY_KEY, created.id],
+            });
+          } catch (error) {
+            snackbar.showError(
+              `Profissional cadastrado, mas os horários não foram salvos: ${
+                error instanceof Error ? error.message : "erro inesperado"
+              }. Ajuste em Horários e bloqueios.`,
+            );
+          } finally {
+            setIsSavingSchedule(false);
+          }
+        }
       }
       onOpenChange(false);
     } catch {
@@ -272,6 +330,30 @@ export const ProfessionalFormDialog = ({
                 )}
               />
 
+              {/* Só no cadastro: na edição, a grade é editada em "Horários e
+                  bloqueios", que salva direto e ainda traz os bloqueios. */}
+              {!isEditing && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                    Horários de atendimento (opcional)
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", display: "block", mb: 1.5 }}
+                  >
+                    Deixe vazio para atender em todo o expediente da clínica.
+                    Mais de uma faixa no mesmo dia cobre intervalo de almoço.
+                    Bloqueios de datas (férias) são definidos depois, em
+                    Horários e bloqueios.
+                  </Typography>
+                  <WeeklyGridEditor
+                    value={scheduleDraft}
+                    onChange={setScheduleDraft}
+                    clinicHours={tenant}
+                  />
+                </Box>
+              )}
+
               {isEditing && (
                 <Controller
                   control={control}
@@ -306,7 +388,9 @@ export const ProfessionalFormDialog = ({
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              // Grade inválida só voltaria como 400 no segundo passo, depois
+              // de o profissional já ter sido criado.
+              disabled={isSubmitting || hasInvalidWindow(scheduleDraft)}
               startIcon={
                 isSubmitting ? (
                   <CircularProgress size={16} color="inherit" />
