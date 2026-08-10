@@ -1,6 +1,11 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AppointmentStatus, MessageType, ReplyIntent } from '@prisma/client';
+import {
+  AppointmentStatus,
+  MessageStatus,
+  MessageType,
+  ReplyIntent,
+} from '@prisma/client';
 import { Queue } from 'bullmq';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
@@ -107,9 +112,17 @@ export class ConfirmByReplyUseCase {
    * - **só `SCHEDULED`/`CONFIRMED`** — cancelado ou concluído não volta atrás
    *   por mensagem;
    * - **o mais próximo primeiro** — é o que o lembrete acabou de mencionar;
-   * - **só se houver lembrete enviado** para ele. Sem isso, um "ok" solto
+   * - **só se houver aviso criado** para ele. Sem isso, um "ok" solto
    *   (resposta a outra conversa, ou mensagem espontânea) confirmaria a
    *   próxima consulta que o paciente tivesse na agenda.
+   *
+   * A última condição olha a **existência** da mensagem, não o `sentAt`.
+   * Exigir envio confirmado parecia mais rigoroso, mas quebrava exatamente
+   * quando mais importa: com o WhatsApp da clínica instável as mensagens
+   * ficam `PENDING`, e o paciente que respondesse "sim" pelo histórico da
+   * conversa era ignorado em silêncio — a clínica seguia achando que ninguém
+   * confirmou. Mensagem `CANCELLED` fica de fora porque pertence a um
+   * agendamento que foi remarcado.
    */
   private async findTarget(tenantId: string, patientId: string) {
     return this.prisma.appointment.findFirst({
@@ -128,7 +141,7 @@ export class ConfirmByReplyUseCase {
                 MessageType.APPOINTMENT_BOOKED,
               ],
             },
-            sentAt: { not: null },
+            status: { not: MessageStatus.CANCELLED },
           },
         },
       },
