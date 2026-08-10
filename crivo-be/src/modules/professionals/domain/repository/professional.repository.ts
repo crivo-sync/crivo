@@ -2,6 +2,12 @@ import { Procedure, Professional } from '@prisma/client';
 
 export type ProfessionalWithProcedures = Professional & {
   procedures: Pick<Procedure, 'id' | 'name'>[];
+  /** Grade semanal (0=domingo … 6=sábado, minutos desde a meia-noite). Vazio = atende o expediente da clínica. */
+  schedules: {
+    weekday: number;
+    startMinutes: number;
+    endMinutes: number;
+  }[];
 };
 
 export type CreateProfessionalData = {
