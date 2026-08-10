@@ -2,10 +2,22 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-06 (webhook de entrada + reenvio manual entregues).
-> **Fase 1 não está completa**: seguem abertos os templates editáveis, a
-> confirmação por resposta e a caixa de entrada — e a Meta foi adiada por custo,
-> então o WhatsApp roda em Evolution com risco de banimento assumido.
+> Última atualização: 2026-08-10 (Fase 2 iniciada: predição por regra,
+> escalonamento de lembretes por risco e lista de espera com oferta por
+> WhatsApp).
+>
+> **Fase 1: o que era construível está construído.** O que segue aberto
+> depende de coisas fora do código:
+> - **Credenciais da Meta** — adiado por custo. O provider está pronto e
+>   selecionável; sem as chaves, escolher META faz o envio falhar. Até lá o
+>   WhatsApp roda em Evolution, com risco de banimento **assumido**
+> - **Template aprovado pela Meta** — só existe com conta Meta
+> - **Webhook de `DELIVERED`** — a Evolution não entrega esse status de forma
+>   confiável; faz sentido junto com a Meta
+> - **Tela de conversa** (responder pelo painel) — lacuna que a caixa de
+>   entrada tornou visível; é feature nova, não pendência da entrega
+> - **Segundo lembrete D-3** — depende de `prediction` (Fase 2)
+>
 > Análise competitiva baseada em material público consultado em 30/07/2026 —
 > preços não reconfirmados desde então.
 
@@ -20,12 +32,15 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
-| `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas com **reenvio manual**, painel da fila e **webhook de entrada** (06/08/2026). ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos). A mensagem do paciente é gravada mas **ainda não lida** (sem confirmação por resposta nem caixa de entrada) |
-| `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
+| `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada, reenvio manual, templates editáveis por clínica e provider selecionável. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
+| `prediction` | 🟡 **Regra + ação + tela** (10/08/2026) — risco por fatores explicados, escalonamento automático de lembretes por faixa e aba "Risco de falta" na Agenda. Falta **medir a regra** contra o que aconteceu (é o que diz se os pesos estão certos) e o modelo estatístico, que depende de volume real. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
 | `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
+| `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
 | `billing` | ⚪ Não iniciado |
 
-Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação pelo paciente) funcionando em dev. **O que diferencia o produto — a predição — segue em zero.** A tríade agenda + comunicação + predição está em dois terços.
+Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação por link e por resposta) funcionando em dev. **A tríade agenda + comunicação + predição está completa em primeira versão** — a predição saiu do zero e já *age*: escalona lembretes por risco e alimenta a lista de espera.
+
+O que falta não é construir a predição, é **provar que ela acerta**: ninguém mediu ainda se os pesos da regra correspondem ao comportamento real do paciente. Ver [Predição](#predição--o-que-existe-de-verdade-hoje).
 
 ---
 
@@ -89,7 +104,7 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | Prontuário eletrônico / anamnese | ✅ Ficha digital | ✅ anamnese + evolução (04/08/2026); sem anexos | — |
 | Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
 | Agendamento online pelo paciente | ✅ 24h, sem app | ❌ | 🟠 Alta |
-| Lista de espera / preenchimento de lacunas | ✅ | ❌ | 🟠 Alta |
+| Lista de espera / preenchimento de lacunas | ✅ | ✅ com sugestão automática ao cancelar e oferta por WhatsApp (10/08/2026) | — |
 | Recall pós-procedimento | ✅ automático | ❌ (base do "reativação inteligente", Fase 2) | 🟠 Alta |
 | Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ (há faturamento por procedimento, não fluxo de caixa) | 🟠 Alta |
 | Métricas de ocupação de agenda | ✅ | ❌ — exige modelar capacidade instalada | 🟡 Média |
@@ -178,6 +193,9 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Descarta de propósito**: `fromMe` (é o nosso próprio lembrete voltando), grupos (`@g.us`), e mídia sem legenda — hoje o Crivo só lê texto
      - **Número desconhecido é gravado mesmo assim**, sem vínculo: perder o contato de quem ainda não é paciente seria perder justamente o lead. Telefone que bate com dois cadastros também fica sem vínculo — atribuir à pessoa errada é pior que não atribuir
      - Testado contra a API real: token inválido → 401, evento irrelevante → ignorado, paciente cadastrado → vinculado, reentrega do mesmo id → não duplica, número desconhecido → gravado sem vínculo. 11 testes unitários do parser do payload
+   - [x] 🐞 **Dois bugs achados no teste de ponta a ponta** (10/08/2026) — simulando a jornada completa da recepção:
+     - **Confirmação ignorada quando o WhatsApp está instável**: `findTarget` exigia `sentAt: { not: null }` no lembrete. Com a Evolution fora do ar as mensagens ficam `PENDING`, então o paciente que respondia "sim" era ignorado **em silêncio** — e a clínica seguia achando que ninguém confirmou. Quebrava exatamente na hora em que mais importa. Agora olha a existência da mensagem (excluindo `CANCELLED`), não o envio confirmado
+     - **Cancelar não cancelava os lembretes**: `ChangeAppointmentStatusUseCase` mudava o status sem tocar na fila, então o paciente que desmarcou continuava recebendo lembrete da consulta que não existe mais — pior que não avisar, porque ele pode aparecer na clínica. O `reschedule` já fazia isso desde 04/08; o cancelamento tinha a mesma lacuna e ninguém tinha notado
    - [x] **Confirmação por resposta** (10/08/2026) — responder "sim" no WhatsApp confirma o agendamento, sem abrir link. O `/c/:token` continua existindo, mas exige sair do WhatsApp; quem já está lá só responde. Decisões que importam:
      - **`UNKNOWN` é o padrão, e casa frase inteira** (não `includes`) — "não posso, sim?" contém "sim" e é uma recusa. Confirmar presença de quem não confirmou é pior que pedir para um humano ler: a clínica reserva o horário e o paciente falta assim mesmo, que é o problema que o produto existe para reduzir
      - **`CANCEL` não cancela sozinho** — só sinaliza para a recepção. Cancelar libera horário e aciona política de remarcação; é decisão da clínica, não de um casamento de texto
@@ -200,7 +218,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Checa o tenant, não só o id** — é o que impede uma clínica de disparar mensagem de outra sabendo o UUID
      - A ação fica no menu de três pontos da linha (padrão das demais tabelas do painel) e só aparece na aba de falhas — histórico é registro, não fila de ação
      - Testado contra a API real: `FAILED` → 204 e a mensagem volta a `PENDING` com tentativas zeradas; reenviar a mesma de novo → 400; id inexistente → 404; worker reprocessa (tentativas sobem)
-   - [ ] Segundo lembrete (D-3) e escalonamento por risco (depende de `prediction`)
+   - [x] **Segundo lembrete e escalonamento por risco** (10/08/2026) — entregue junto com a ação por faixa em `prediction`: risco alto recebe D-72h + D-24h, médio D-48h, baixo D-24h. Ver [Fase 2 → prediction](#fase-2--diferencial)
 2. **Prontuário básico** — 🟢 **entregue em 04/08/2026** (anamnese + evolução)
    - [x] Novo papel `PROFESSIONAL`: prontuário é dado sensível de saúde (LGPD Art. 11) e a recepção (`STAFF`) não tem necessidade clínica de lê-lo. `@Roles(ADMIN, PROFESSIONAL)` no controller inteiro, para que rota nova nasça restrita
    - [x] **Anamnese** — ficha de saúde por paciente (alergias, medicações, condições, observações), com registro de quem preencheu por último
@@ -225,8 +243,41 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 ### Fase 2 — Diferencial
 
 4. **`prediction` — risco de no-show** — regra primeiro, modelo depois. Ver [Predição](#predição--o-que-existe-de-verdade-hoje)
-   - O que nos separa: **ação por faixa de risco** — risco alto dispara confirmação mais cedo, mais insistente e libera a vaga para lista de espera antes
+   - [x] **Regra determinística** (10/08/2026) — `GET /prediction/no-show/upcoming` (agenda futura ordenada por risco) e `GET /prediction/no-show/:id`. Decisões:
+     - **Pesos são hipótese explícita, não ajuste** — ninguém mediu ainda quanto cada fator vale nesta clínica. Ficam em `RISK_FACTORS`, num lugar só, com o raciocínio de cada um documentado para poder ser contestado
+     - **`factors` acompanha todo score** — "risco alto" sem motivo é um número que a recepção não tem como checar nem discordar. Com os fatores, a decisão é auditável
+     - **Calculado sob demanda, não gravado** — os sinais mudam sozinhos (o paciente confirma, o horário se aproxima); um score persistido ficaria velho sem ninguém notar. Materializar faz sentido quando o cálculo ficar caro
+     - **Histórico bom desconta** (`RELIABLE_HISTORY: -20`), mas **uma falta anterior cancela o desconto**: presença repetida não vale como previsibilidade se o paciente já furou
+     - **Ordena por risco, não por horário** — a tela responde "para quem eu ligo hoje?", e a recepção tem tempo limitado
+     - 15 testes da regra + verificação contra a agenda real: paciente com falta anterior + sem confirmação + primeiro horário → `HIGH` (70), com os três fatores listados. Isolamento entre clínicas verificado (404)
+   - [x] **Ação automática por faixa — lembretes** (10/08/2026) — a antecedência e a **quantidade** de lembretes passam a depender do risco (`REMINDER_HOURS_BY_RISK`): alto recebe D-72h **e** D-24h, médio recebe D-48h, baixo mantém o D-24h único. É o ponto em que a predição deixa de ser um número numa tela. Decisões:
+     - **Risco baixo não recebe mais mensagem** — insistir com quem sempre comparece gasta conversa paga e ensina o paciente a ignorar o WhatsApp da clínica
+     - **Dois lembretes no risco alto, não um mais cedo** — o cedo dá à clínica tempo de reagir ao silêncio; o da véspera pega o momento em que a falta se decide. Um só não faz as duas coisas
+     - **Falha no cálculo cai no cronograma padrão** — predição não pode travar envio: sem risco, o paciente recebe o lembrete como antes
+     - **Lembrete cujo horário já passou é descartado**, e consulta em cima da hora ainda recebe um envio imediato — senão marcar para amanhã não geraria lembrete nenhum
+     - 7 testes da política + verificação ao vivo: paciente com falta anterior → 2 lembretes (D-72h, D-24h); paciente com histórico de presença → 1 (D-48h). **Reagendar refaz o plano inteiro**: os dois antigos viraram `CANCELLED` e dois novos foram criados com as datas certas
+     - Isto fecha também o item "segundo lembrete (D-3)" que estava listado em `messaging` esperando `prediction`
+   - [x] **Tela de risco** (10/08/2026) — `/painel/agenda/risco`, terceira aba da Agenda. Ordenada por risco (não por horário): responde "para quem eu ligo hoje?". Cada card mostra **os motivos**, não só a faixa — "risco alto" sozinho é um número que a recepção não tem como checar nem discordar. Aberta a STAFF: agir sobre o risco é trabalho da recepção
+   - [ ] **Ação por faixa — lista de espera** — risco alto deveria liberar a vaga para outro paciente antes. Depende da lista de espera (item 5)
+   - [ ] **Medir a regra contra o que aconteceu** — comparar risco previsto × falta real é o que gera o rótulo limpo que um modelo precisaria, e o que diz se os pesos estão errados
 5. **Lista de espera** — preenche a lacuna quando o risco se concretiza
+   - [x] **Backend** (10/08/2026) — tabela `waitlist_entries` e `GET/POST /waitlist`, `GET /waitlist/candidates/:appointmentId`, `PATCH :id/offered`, `DELETE :id`. Decisões:
+     - **Sugere, não oferece sozinho** — mandar mensagem automática ao primeiro da fila parece eficiente, mas remarcar tem contexto que o sistema não tem ("essa paciente pediu para não ligar de manhã"), e oferta errada gasta conversa paga. A recepção decide; `PATCH :id/offered` registra que ela avisou
+     - **Ordem de chegada, não menor risco** — a fila é uma promessa de justiça ao paciente; furar por critério interno da clínica é o tipo de coisa que ele percebe e reclama
+     - **Casamento conservador**: mesmo procedimento (a duração da vaga veio dele), profissional compatível (quem escolheu alguém não é encaixado com outro) e dentro da janela declarada. Melhor não oferecer do que oferecer errado
+     - **`professionalId` opcional** — "qualquer profissional" é o caso comum de quem só quer ser atendido logo
+     - **Remover é `CANCELLED`, não delete** — quantos desistiram de esperar é o dado que diz se a agenda está apertada demais
+     - 11 testes do casamento + verificação ao vivo: fila em ordem de chegada, duplicata recusada (400), 6 na fila → 4 candidatos (excluídos quem exigia outro profissional e quem tinha janela incompatível), oferecer duas vezes → 404, isolamento entre clínicas → 404
+   - [x] **Tela** (10/08/2026) — `/painel/agenda/espera`, quarta aba da Agenda. Tabela por ordem de chegada, dialog de inclusão (paciente, procedimento, profissional opcional, janela de datas e observações) e ações "marcar como oferecida" / "tirar da fila". "Qualquer um" e "Qualquer data" aparecem escritos, não como campo vazio — o vazio parece dado faltando, quando na verdade é o caso que **aumenta** a chance de encaixe
+   - [x] **Ligação com o cancelamento** (10/08/2026) — cancelar um agendamento abre um dialog com os candidatos da fila, na hora. Fecha o ciclo: antes a vaga liberada dependia de a recepção lembrar de abrir outra tela e cruzar procedimento e horário na mão
+   - [x] **Oferta por WhatsApp** (10/08/2026) — botão "Avisar" em cada candidato manda a mensagem pelo mesmo canal e fila das demais. Decisões:
+     - **Tipo próprio `WAITLIST_OFFER`**, não `MANUAL` — é o que permite medir quantas ofertas viram agendamento, o número que diz se a fila funciona
+     - **A oferta não reserva o horário** — o texto pede resposta e avisa que "a vaga é por ordem de resposta". A mesma vaga costuma ser oferecida a mais de uma pessoa; prometer a todas geraria conflito
+     - **Sem link de confirmação** — aquele token pertence a um agendamento que ainda não existe
+     - **Mensagem sem `appointmentId`** — vinculá-la ao agendamento cancelado faria a oferta aparecer no histórico de um atendimento que não vai acontecer
+     - **Falha no envio não desfaz a marcação** — a vaga continua oferecida e a recepção liga; voltar para `WAITING` faria a mesma pessoa ser sugerida de novo. A resposta distingue `offered` de `notified`, e a tela só diz "avisado no WhatsApp" quando a mensagem realmente saiu
+     - **`appointmentId` é opcional**: sem ele, `markOffered` só registra que a recepção avisou por fora (ligou)
+     - Verificado o ciclo inteiro ao vivo: cancelar → 1 candidato sugerido → "Avisar" → `OFFERED` + mensagem `WAITLIST_OFFER` na fila com o texto correto
 6. **Reativação inteligente de pacientes** — quem não volta há X meses, segmentado por procedimento e ticket. Depende do mesmo histórico da predição; sem `billing` não dá para medir se o retorno pagou o disparo
 7. **Agendamento online** — página pública por subdomínio (o branding já existe)
 
@@ -267,8 +318,19 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 
 ## Predição — o que existe de verdade hoje
 
-**Código: nenhum.** Não há módulo `prediction`, nem tabela, nem endpoint.
-O que existe é o **dado bruto sendo acumulado** desde o início, de propósito.
+**Existe uma regra determinística, não um modelo** (desde 10/08/2026). O
+módulo `prediction` calcula risco somando fatores conhecidos (histórico de
+falta, silêncio ao lembrete, primeira consulta, horário, antecedência) e
+devolve faixa + os motivos. Não há tabela: o cálculo é sob demanda sobre
+`Appointment`.
+
+**O que ainda não existe é o diferencial**: agir por faixa. Hoje a regra
+*informa* o risco; ninguém dispara nada a partir dele. Um concorrente que
+mostra "risco alto" numa tela e não faz nada com isso está no mesmo lugar
+que nós.
+
+**E não há modelo estatístico** — nem deveria haver ainda, pelo motivo
+abaixo.
 
 ### O que já está sendo coletado
 

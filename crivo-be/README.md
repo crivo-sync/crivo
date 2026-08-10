@@ -690,6 +690,31 @@ descartar seria perder o contato. Telefone que bate com dois cadastros também
 fica sem vínculo, porque atribuir a conversa à pessoa errada é pior do que
 deixar em aberto.
 
+### Lembretes por risco de falta
+
+Quantos lembretes o paciente recebe — e quando — depende do risco de ele
+faltar:
+
+| Risco | Lembretes |
+| --- | --- |
+| Alto | D-72h **e** D-24h |
+| Médio | D-48h |
+| Baixo | D-24h |
+
+O risco vem de `GET /prediction/no-show/:id` (regra determinística: histórico
+de falta, silêncio ao lembrete, primeira consulta, horário, antecedência).
+
+**Por que dois lembretes no risco alto e não um mais cedo:** o cedo dá à
+clínica tempo de reagir se o paciente não responder; o da véspera pega o
+momento em que a falta se decide. Um só não faz as duas coisas.
+
+**Por que risco baixo não recebe mais mensagem:** insistir com quem sempre
+comparece gasta conversa paga e ensina o paciente a ignorar o WhatsApp da
+clínica.
+
+Se o cálculo de risco falhar, o envio **não** trava: cai no cronograma padrão
+(`REMINDER_HOURS_BEFORE`).
+
 ### Confirmação por resposta
 
 Responder **"sim"** no WhatsApp confirma o agendamento — sem abrir link.

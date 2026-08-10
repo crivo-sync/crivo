@@ -57,6 +57,7 @@ model Tenant {
   messages         Message[]
   inboundMessages  InboundMessage[]
   messageTemplates MessageTemplate[]
+  waitlistEntries  WaitlistEntry[]
   anamneses        Anamnesis[]
   clinicalNotes    ClinicalNote[]
   schedules        ProfessionalSchedule[]
@@ -128,6 +129,7 @@ model Patient {
   anamnesis       Anamnesis?
   clinicalNotes   ClinicalNote[]
   inboundMessages InboundMessage[]
+  waitlistEntries WaitlistEntry[]
 
   @@unique([tenantId, cpf])
   @@index([tenantId])
@@ -207,15 +209,16 @@ model Professional {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  tenant       Tenant                 @relation(fields: [tenantId], references: [id])
-  user         User?                  @relation(fields: [userId], references: [id])
-  appointments Appointment[]
-  schedules    ProfessionalSchedule[]
-  timeOff      ProfessionalTimeOff[]
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id])
+  user            User?                  @relation(fields: [userId], references: [id])
+  appointments    Appointment[]
+  schedules       ProfessionalSchedule[]
+  timeOff         ProfessionalTimeOff[]
   /// Procedimentos que este profissional realiza. Lista vazia = faz todos
   /// (sem restrição) — só passa a filtrar o agendamento quando o admin
   /// marca especialidades específicas.
-  procedures   Procedure[]            @relation("ProfessionalProcedures")
+  procedures      Procedure[]            @relation("ProfessionalProcedures")
+  waitlistEntries WaitlistEntry[]
 
   @@index([tenantId])
   @@map("professionals")
@@ -289,9 +292,10 @@ model Procedure {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  appointments  Appointment[]
-  professionals Professional[] @relation("ProfessionalProcedures")
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  appointments    Appointment[]
+  professionals   Professional[]  @relation("ProfessionalProcedures")
+  waitlistEntries WaitlistEntry[]
 
   @@index([tenantId])
   @@map("procedures")
@@ -303,6 +307,65 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
   NO_SHOW
+}
+
+/// Situação de quem está esperando uma vaga.
+enum WaitlistStatus {
+  /// Esperando. É o único estado que aparece quando abre uma vaga.
+  WAITING
+  /// Foi avisado de uma vaga e a clínica aguarda resposta.
+  OFFERED
+  /// Virou agendamento — `appointmentId` aponta para ele.
+  SCHEDULED
+  /// Saiu da fila: desistiu, remarcou por fora, ou a clínica removeu.
+  CANCELLED
+}
+
+/// Paciente esperando uma vaga.
+///
+/// Existe para o buraco que o cancelamento abre: hoje uma consulta cancelada
+/// na véspera simplesmente evapora, e a recepção não tem lista de quem
+/// gostaria daquele horário. É também o destino da vaga liberada por risco
+/// alto de falta — ver `prediction` no ROADMAP.
+model WaitlistEntry {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+
+  patientId      String  @map("patient_id")
+  /// Opcional: "qualquer profissional" é o caso comum de quem só quer ser
+  /// atendido logo. Preenchido quando o paciente faz questão de alguém.
+  professionalId String? @map("professional_id")
+  /// O que ele quer fazer — define a duração da vaga que serve para ele.
+  procedureId    String  @map("procedure_id")
+
+  /// Janela em que o paciente aceita ser encaixado. Nulo = qualquer data.
+  preferredFrom DateTime? @map("preferred_from")
+  preferredTo   DateTime? @map("preferred_to")
+
+  /// Observação da recepção ("só de manhã", "avisar pelo fixo").
+  notes String?
+
+  status WaitlistStatus @default(WAITING)
+
+  /// Quando a vaga foi oferecida e por qual agendamento cancelado. Guardado
+  /// para a recepção saber há quanto tempo espera resposta.
+  offeredAt     DateTime? @map("offered_at")
+  /// Agendamento criado a partir desta espera.
+  appointmentId String?   @map("appointment_id")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  professional Professional? @relation(fields: [professionalId], references: [id])
+  procedure    Procedure     @relation(fields: [procedureId], references: [id])
+
+  /// A busca é sempre "quem está esperando nesta clínica", ordenada por
+  /// chegada — quem entrou primeiro tem preferência.
+  @@index([tenantId, status, createdAt])
+  @@index([patientId])
+  @@map("waitlist_entries")
 }
 
 model Appointment {
@@ -394,6 +457,10 @@ enum MessageType {
   APPOINTMENT_BOOKED
   APPOINTMENT_REMINDER
   APPOINTMENT_CONFIRMATION_RECEIPT
+  /// Aviso de que abriu uma vaga, para quem está na lista de espera.
+  /// Tipo próprio (e não `MANUAL`) para a clínica conseguir medir quantas
+  /// ofertas viram agendamento — é o que diz se a fila funciona.
+  WAITLIST_OFFER
   MANUAL
 }
 
