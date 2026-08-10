@@ -2,15 +2,16 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { BullModule } from '@nestjs/bullmq';
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
 import { createBullBoardAuthMiddleware } from '../../shared/bull-board/bull-board-auth.middleware';
 import { AI_TEXT_GENERATOR } from './domain/ai/ai-text-generator';
-import { MESSAGE_PROVIDER } from './domain/provider/message-provider';
 import { MESSAGE_REPOSITORY } from './domain/repository/message.repository';
+import { INBOUND_MESSAGE_REPOSITORY } from './domain/repository/inbound-message.repository';
 import { PrismaMessageRepository } from './infrastructure/prisma/prisma-message.repository';
+import { PrismaInboundMessageRepository } from './infrastructure/prisma/prisma-inbound-message.repository';
 import { FakeMessageProvider } from './infrastructure/providers/fake-message.provider';
 import { EvolutionMessageProvider } from './infrastructure/providers/evolution-message.provider';
 import { MetaMessageProvider } from './infrastructure/providers/meta-message.provider';
@@ -20,12 +21,18 @@ import { MESSAGING_QUEUE } from './infrastructure/queue/messaging.queue';
 import { MessageController } from './infrastructure/http/message.controller';
 import { ConfirmationController } from './infrastructure/http/confirmation.controller';
 import { InboundWebhookController } from './infrastructure/http/inbound-webhook.controller';
+import { InboundMessageController } from './infrastructure/http/inbound-message.controller';
+import { MessageTemplateController } from './infrastructure/http/message-template.controller';
 import { MessageTemplateService } from './application/services/message-template.service';
 import { MessageComposerService } from './application/services/message-composer.service';
+import { MessageProviderResolver } from './application/services/message-provider-resolver.service';
 import { ScheduleAppointmentReminderUseCase } from './application/use-cases/schedule-appointment-reminder.use-case';
 import { ConfirmByTokenUseCase } from './application/use-cases/confirm-by-token.use-case';
 import { GetMessagesUseCase } from './application/use-cases/get-messages.use-case';
 import { ReceiveInboundMessageUseCase } from './application/use-cases/receive-inbound-message.use-case';
+import { ConfirmByReplyUseCase } from './application/use-cases/confirm-by-reply.use-case';
+import { GetInboundMessagesUseCase } from './application/use-cases/get-inbound-messages.use-case';
+import { ManageTemplatesUseCase } from './application/use-cases/manage-templates.use-case';
 import { ResendMessageUseCase } from './application/use-cases/resend-message.use-case';
 
 @Module({
@@ -73,50 +80,22 @@ import { ResendMessageUseCase } from './application/use-cases/resend-message.use
     MessageController,
     ConfirmationController,
     InboundWebhookController,
+    InboundMessageController,
+    MessageTemplateController,
   ],
   providers: [
     {
       provide: MESSAGE_REPOSITORY,
       useClass: PrismaMessageRepository,
     },
+    {
+      provide: INBOUND_MESSAGE_REPOSITORY,
+      useClass: PrismaInboundMessageRepository,
+    },
     FakeMessageProvider,
     EvolutionMessageProvider,
     MetaMessageProvider,
-    {
-      // Provider escolhido por env var: fake (padrão) | evolution | meta.
-      provide: MESSAGE_PROVIDER,
-      inject: [
-        ConfigService,
-        FakeMessageProvider,
-        EvolutionMessageProvider,
-        MetaMessageProvider,
-      ],
-      useFactory: (
-        config: ConfigService,
-        fake: FakeMessageProvider,
-        evolution: EvolutionMessageProvider,
-        meta: MetaMessageProvider,
-      ) => {
-        const selected = config.get<string>('MESSAGING_PROVIDER') ?? 'fake';
-        const logger = new Logger('MessagingModule');
-
-        switch (selected) {
-          case 'meta':
-            logger.log('Provider de mensagens: Meta Cloud API (oficial)');
-            return meta;
-          case 'evolution':
-            logger.warn(
-              'Provider de mensagens: Evolution API (NÃO oficial) — apenas desenvolvimento',
-            );
-            return evolution;
-          default:
-            logger.log(
-              'Provider de mensagens: fake (nada é enviado de verdade)',
-            );
-            return fake;
-        }
-      },
-    },
+    MessageProviderResolver,
     MessageProcessor,
     MessageTemplateService,
     MessageComposerService,
@@ -130,6 +109,9 @@ import { ResendMessageUseCase } from './application/use-cases/resend-message.use
     ConfirmByTokenUseCase,
     GetMessagesUseCase,
     ReceiveInboundMessageUseCase,
+    ConfirmByReplyUseCase,
+    GetInboundMessagesUseCase,
+    ManageTemplatesUseCase,
     ResendMessageUseCase,
   ],
   exports: [ScheduleAppointmentReminderUseCase, MESSAGE_REPOSITORY],

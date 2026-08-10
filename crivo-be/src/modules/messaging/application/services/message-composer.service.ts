@@ -11,6 +11,8 @@ import {
 
 export type ComposeReminderInput = ReminderTemplateInput & {
   aiMessagesEnabled: boolean;
+  /** Para buscar o template personalizado desta clínica. */
+  tenantId: string;
 };
 
 /**
@@ -34,7 +36,13 @@ export class MessageComposerService {
   ) {}
 
   async composeReminder(input: ComposeReminderInput): Promise<string> {
-    const fixedText = this.templates.appointmentReminder(input);
+    // Texto da clínica quando personalizado; o fixo do código quando não.
+    // Serve também de fallback da IA — se ela falhar, o paciente recebe o
+    // texto que a clínica escreveu, não um padrão que ela já rejeitou.
+    const fixedText = await this.templates.renderReminder(
+      input.tenantId,
+      input,
+    );
 
     if (!input.aiMessagesEnabled) {
       return fixedText;
