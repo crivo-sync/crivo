@@ -9,6 +9,17 @@ export class ProfessionalProcedureDto {
   name!: string;
 }
 
+export class ProfessionalScheduleWindowDto {
+  @ApiProperty({ example: 3, description: '0=domingo … 6=sábado' })
+  weekday!: number;
+
+  @ApiProperty({ example: 480, description: 'Minutos desde a meia-noite' })
+  startMinutes!: number;
+
+  @ApiProperty({ example: 720 })
+  endMinutes!: number;
+}
+
 export class ProfessionalResponseDto {
   @ApiProperty()
   id!: string;
@@ -43,6 +54,13 @@ export class ProfessionalResponseDto {
   })
   procedures!: ProfessionalProcedureDto[];
 
+  @ApiProperty({
+    type: [ProfessionalScheduleWindowDto],
+    description:
+      'Grade semanal. Vazio = atende o expediente inteiro da clínica.',
+  })
+  schedules!: ProfessionalScheduleWindowDto[];
+
   static fromEntity(
     professional: ProfessionalWithProcedures,
   ): ProfessionalResponseDto {
@@ -57,6 +75,10 @@ export class ProfessionalResponseDto {
       isActive: professional.isActive,
       createdAt: professional.createdAt,
       procedures: professional.procedures,
+      // `?? []` porque `create`/`update` devolvem a entidade recém-gravada,
+      // cuja grade ainda não existe — e um `undefined` aqui sumiria do JSON,
+      // fazendo o cliente ler "sem grade" como se fosse fato confirmado.
+      schedules: professional.schedules ?? [],
     };
   }
 }
