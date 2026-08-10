@@ -17,6 +17,7 @@ import { AppointmentsTable } from "../AppointmentsTable";
 import { AppointmentFormDialog } from "../AppointmentFormDialog";
 import { RescheduleAppointmentDialog } from "../RescheduleAppointmentDialog";
 import { ChangeStatusMenu } from "../ChangeStatusMenu";
+import { SlotCandidatesDialog } from "@/features/waitlist/components/SlotCandidatesDialog";
 import { useChangeAppointmentStatus } from "../../hooks/use-change-appointment-status";
 
 export const AppointmentManagement = () => {
@@ -50,6 +51,8 @@ export const AppointmentManagement = () => {
   const [cancelling, setCancelling] = useState<
     { appointment: Appointment; status: AppointmentStatus } | undefined
   >();
+  /** Agendamento recém-cancelado — abre a sugestão da lista de espera. */
+  const [freedSlotId, setFreedSlotId] = useState<string | undefined>();
 
   const handleChangeStatus = (
     appointment: Appointment,
@@ -131,7 +134,18 @@ export const AppointmentManagement = () => {
       <ChangeStatusMenu
         pending={cancelling}
         onOpenChange={(open) => !open && setCancelling(undefined)}
+        onCancelled={setFreedSlotId}
       />
+
+      {/* A vaga que acabou de abrir: sugere quem da fila pode ocupá-la, em
+          vez de esperar a recepção lembrar de conferir a lista. */}
+      {freedSlotId && (
+        <SlotCandidatesDialog
+          open
+          appointmentId={freedSlotId}
+          onOpenChange={(open) => !open && setFreedSlotId(undefined)}
+        />
+      )}
     </Paper>
   );
 };
