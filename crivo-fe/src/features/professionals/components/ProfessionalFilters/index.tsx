@@ -18,7 +18,11 @@ export const ProfessionalFilters = ({
   onClear,
 }: ProfessionalFiltersProps) => {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    // `flex: 1` em vez de largura fixa: a busca ocupa o espaço que sobra ao
+    // lado do botão "Novo profissional", em vez dos 500px cravados que
+    // deixavam cada tela do painel com uma barra de tamanho diferente.
+    // Não é `width: 100%` porque o pai é flex com o botão ao lado.
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
       <Controller
         control={control}
         name="search"
@@ -26,7 +30,6 @@ export const ProfessionalFilters = ({
           <TextField
             {...field}
             placeholder="Buscar por nome, especialidade, registro ou e-mail"
-            sx={{ width: 500, maxWidth: "100%" }}
             slotProps={{
               input: {
                 startAdornment: (
