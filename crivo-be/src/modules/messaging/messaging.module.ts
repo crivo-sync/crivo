@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { PredictionModule } from '../prediction/prediction.module';
 import { createBullBoardAuthMiddleware } from '../../shared/bull-board/bull-board-auth.middleware';
 import { AI_TEXT_GENERATOR } from './domain/ai/ai-text-generator';
 import { MESSAGE_REPOSITORY } from './domain/repository/message.repository';
@@ -38,6 +39,9 @@ import { ResendMessageUseCase } from './application/use-cases/resend-message.use
 @Module({
   imports: [
     PrismaModule,
+    // O cronograma de lembretes depende da faixa de risco. `prediction` não
+    // importa `messaging`, então não há ciclo.
+    PredictionModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -114,6 +118,12 @@ import { ResendMessageUseCase } from './application/use-cases/resend-message.use
     ManageTemplatesUseCase,
     ResendMessageUseCase,
   ],
-  exports: [ScheduleAppointmentReminderUseCase, MESSAGE_REPOSITORY],
+  // `MessageTemplateService` é exportado para a lista de espera montar o
+  // texto da oferta de vaga sem duplicar formatação de data/hora.
+  exports: [
+    ScheduleAppointmentReminderUseCase,
+    MESSAGE_REPOSITORY,
+    MessageTemplateService,
+  ],
 })
 export class MessagingModule {}

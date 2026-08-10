@@ -235,4 +235,49 @@ export class MessageTemplateService {
   confirmationReceipt(clinicName: string): string {
     return `Presença confirmada! ✅ Te esperamos na ${clinicName}.`;
   }
+
+  /**
+   * Aviso de vaga para quem está na lista de espera.
+   *
+   * **Não confirma nada nem reserva o horário**: o texto pede uma resposta,
+   * e quem agenda é a recepção. A mesma vaga costuma ser oferecida a mais de
+   * uma pessoa — prometer o horário a todas geraria conflito e uma
+   * conversa constrangedora com quem chegou em segundo.
+   *
+   * Sem link de confirmação de propósito: aquele token pertence a um
+   * agendamento que ainda não existe.
+   */
+  waitlistOffer(input: {
+    patientName: string;
+    clinicName: string;
+    professionalName: string;
+    procedureName: string;
+    startsAt: Date;
+  }): string {
+    const dateLabel = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIMEZONE,
+      day: '2-digit',
+      month: '2-digit',
+    }).format(input.startsAt);
+
+    const timeLabel = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(input.startsAt);
+
+    return [
+      `Olá, ${input.patientName.split(' ')[0]}! 👋`,
+      '',
+      `Abriu uma vaga na *${input.clinicName}*:`,
+      '',
+      `📅 ${dateLabel} às ${timeLabel}`,
+      `💠 ${input.procedureName}`,
+      `👤 ${input.professionalName}`,
+      '',
+      'Tem interesse? Responda esta mensagem que confirmamos com você.',
+      '',
+      '_A vaga é por ordem de resposta._',
+    ].join('\n');
+  }
 }
