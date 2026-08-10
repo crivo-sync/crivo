@@ -115,6 +115,20 @@ formulário e trocando profissional um por um.
 - Alterne **Dia**/**Semana** no topo.
 - É só para **consultar**: marcar continua pelo botão *Novo agendamento*.
 
+#### ⚠️ Espaço vazio nem sempre é horário livre
+
+Deixe **apenas um profissional marcado** em *Recursos*. Aí o Quadro pinta de
+**cinza** todas as horas em que essa pessoa **não atende** — fora da grade
+dela, no almoço, em férias, ou com a clínica fechada.
+
+Isso importa: a Dra. Helena atende quarta só das **08:00 às 12:00**. Sem as
+faixas cinza, a quarta à tarde parece livre no Quadro, e você só descobre
+que não é ao tentar marcar.
+
+Com mais de um profissional marcado as faixas somem — numa agenda
+compartilhada não dá para saber de quem seria o cinza. Nesse caso, use a
+legenda logo acima do calendário, que lista a grade de cada um.
+
 ---
 
 ## 4. Por que o horário que eu quero não aparece?

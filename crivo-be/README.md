@@ -366,6 +366,31 @@ do painel. `CANCELLED`/`NO_SHOW` ficam de fora do quadro, mesma regra da
 disponibilidade: não ocupam a agenda, então não fazem sentido aparecer como
 "ocupado".
 
+#### Faixas "não atende"
+
+Numa grade vazia, **espaço em branco é lido como horário livre** — e não é:
+a Dra. Helena atende quarta só até as 12:00, então a tarde inteira parecia
+disponível. Com **um único profissional** visível, o quadro pinta de cinza as
+horas em que ele não pode receber paciente.
+
+A conta é a mesma do `get-availability`: **expediente da clínica ∩ grade do
+profissional − bloqueios**. Se divergir, o quadro volta a prometer horário
+que o formulário recusa. Ao mexer em `off-hours.ts`, confira à mão os casos
+que já quebraram: grade vazia (herda o expediente), dia sem janela (bloqueia
+inteiro), intervalo de almoço (dois blocos no mesmo dia), férias e fim de
+semana. O `crivo-fe` ainda não tem runner de teste — quando tiver, essa
+função é a primeira candidata.
+
+Com dois ou mais profissionais as faixas somem: numa grade compartilhada,
+cinza não diz de quem é, e marcaria como indisponível um horário livre para
+os outros. A grade de cada um fica na legenda acima do calendário, que vem
+de `schedules` embutido em `GET /professionals` (uma requisição, não N).
+
+> Os blocos são eventos **sem `resource`**, o que os deixa imunes ao filtro
+> do painel lateral (`getOccurrencesFromEvents` só esconde evento cujos
+> recursos estão todos ocultos). Usam hora de parede + `timezone`, e não
+> `Z` + UTC, para não escorregar uma hora se o horário de verão voltar.
+
 ### Ciclo de vida
 
 ```
@@ -601,6 +626,59 @@ por padrão, ao contrário do Swagger em `/docs`.
 É ferramenta de **desenvolvedor**, não de recepção: quem trabalha na clínica
 acompanha os envios pela tela **Mensagens** do `crivo-fe`. Ver
 [FILA.md](./FILA.md) para entender como a fila funciona por dentro.
+
+### Recebendo mensagem do paciente (webhook)
+
+Até aqui a mensageria era só de saída. `POST /webhooks/inbound/:tenantId/:token`
+recebe o que o paciente responde e grava em `inbound_messages`, vinculando ao
+cadastro pelo telefone.
+
+**Configuração:**
+
+```bash
+# 1. Gere o segredo e coloque no .env
+openssl rand -hex 32
+
+INBOUND_WEBHOOK_TOKEN="o-valor-gerado"
+
+# 2. Aponte a Evolution para o endpoint (WEBHOOK_BY_EVENTS precisa ser false,
+#    senão ela anexa o nome do evento ao caminho e a rota não casa)
+curl -X POST "$EVOLUTION_API_URL/webhook/set/$EVOLUTION_INSTANCE" \
+  -H "apikey: $EVOLUTION_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "webhook": {
+      "enabled": true,
+      "url": "https://SEU-BACKEND/webhooks/inbound/TENANT_ID/SEU_TOKEN",
+      "byEvents": false,
+      "events": ["MESSAGES_UPSERT"]
+    }
+  }'
+```
+
+**Por que o segredo vai no caminho:** o provider não faz login. O token da URL
+é a única credencial, comparado em tempo constante (`timingSafeEqual`). Sem
+`INBOUND_WEBHOOK_TOKEN` configurado o endpoint **recusa tudo** — um webhook
+aberto aceitaria qualquer um injetando mensagem no nome de um paciente.
+
+**Por que o `tenantId` vai no caminho:** a Evolution é uma instância por
+clínica e o payload dela não diz de qual tenant é a mensagem.
+
+O endpoint responde **200 mesmo quando ignora** o evento: o WhatsApp reentrega
+o webhook quando não recebe sucesso, e reentregar não conserta um payload que
+descartamos de propósito (evento de conexão, mensagem que nós mesmos
+enviamos, grupo, mídia sem legenda). Reentrega do mesmo evento não duplica —
+`(tenantId, providerMessageId)` é único.
+
+Número que não bate com nenhum cadastro **é gravado assim mesmo**, sem
+vínculo: quem escreve pela primeira vez normalmente é um paciente novo, e
+descartar seria perder o contato. Telefone que bate com dois cadastros também
+fica sem vínculo, porque atribuir a conversa à pessoa errada é pior do que
+deixar em aberto.
+
+> ⚠️ Hoje a mensagem é apenas **registrada**. Responder "SIM" ainda não
+> confirma o agendamento (o link `/c/:token` segue sendo o caminho), e não há
+> tela para a recepção ler o que chegou — ver ROADMAP.
 
 ## Manual da recepção
 

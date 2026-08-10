@@ -41,16 +41,17 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  patients      Patient[]
-  users         User[]
-  professionals Professional[]
-  procedures    Procedure[]
-  appointments  Appointment[]
-  messages      Message[]
-  anamneses     Anamnesis[]
-  clinicalNotes ClinicalNote[]
-  schedules     ProfessionalSchedule[]
-  timeOff       ProfessionalTimeOff[]
+  patients        Patient[]
+  users           User[]
+  professionals   Professional[]
+  procedures      Procedure[]
+  appointments    Appointment[]
+  messages        Message[]
+  inboundMessages InboundMessage[]
+  anamneses       Anamnesis[]
+  clinicalNotes   ClinicalNote[]
+  schedules       ProfessionalSchedule[]
+  timeOff         ProfessionalTimeOff[]
 
   @@map("tenants")
 }
@@ -113,10 +114,11 @@ model Patient {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  appointments  Appointment[]
-  anamnesis     Anamnesis?
-  clinicalNotes ClinicalNote[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  appointments    Appointment[]
+  anamnesis       Anamnesis?
+  clinicalNotes   ClinicalNote[]
+  inboundMessages InboundMessage[]
 
   @@unique([tenantId, cpf])
   @@index([tenantId])
@@ -392,4 +394,41 @@ model Message {
   @@index([tenantId, createdAt])
   @@index([appointmentId])
   @@map("messages")
+}
+
+/// Mensagem recebida do paciente.
+///
+/// Tabela separada de `Message` de propósito: aquela é um registro de envio
+/// (tem fila, tentativas, agendamento, destino) e nada disso existe na
+/// entrada. Espremer as duas num modelo só deixaria metade das colunas
+/// sempre nulas e o significado de `status` ambíguo.
+model InboundMessage {
+  id                String         @id @default(uuid())
+  tenantId          String         @map("tenant_id")
+  /// Resolvido pelo telefone quando bate com um cadastro. Fica nulo quando
+  /// escreve um número desconhecido — a mensagem é guardada mesmo assim, ou
+  /// perderíamos justamente o contato de quem ainda não é paciente.
+  patientId         String?        @map("patient_id")
+  channel           MessageChannel @default(WHATSAPP)
+  /// Telefone de origem, só dígitos com DDI (mesma normalização do envio).
+  fromPhone         String         @map("from_phone")
+  body              String
+  provider          String?
+  /// Id da mensagem no provider. Único por tenant: o webhook do WhatsApp
+  /// reentrega o mesmo evento em retry, e sem isso a conversa duplicaria.
+  providerMessageId String?        @map("provider_message_id")
+  /// Quando o paciente enviou (relógio do provider), não quando recebemos.
+  sentAt            DateTime       @map("sent_at")
+  /// Preenchido quando alguém da clínica dá a mensagem por tratada.
+  readAt            DateTime?      @map("read_at")
+  createdAt         DateTime       @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  patient Patient? @relation(fields: [patientId], references: [id])
+
+  @@unique([tenantId, providerMessageId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, readAt])
+  @@index([patientId])
+  @@map("inbound_messages")
 }

@@ -460,9 +460,13 @@ async function seedSchedules(tenantId: string): Promise<number> {
     return alreadySeeded;
   }
 
+  // Ordena por criação (não por nome) para `professionals[1]` ser o segundo
+  // profissional como cadastrado na seed — com ordenação por nome o "Dr.
+  // Paulo" vinha antes da "Dra. Helena" e a grade restrita caía na pessoa
+  // errada, deixando a dona da clínica sem horário livre.
   const professionals = await prisma.professional.findMany({
     where: { tenantId },
-    orderBy: { name: 'asc' },
+    orderBy: { createdAt: 'asc' },
   });
 
   const restricted = professionals[1];

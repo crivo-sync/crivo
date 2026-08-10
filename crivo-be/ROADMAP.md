@@ -2,7 +2,12 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-05 (Fase 1 completa: importador CSV entregue; predição e website seguem mapeados). Análise competitiva baseada em material público dos sites e comparativos de mercado consultados em 30/07/2026 — preços não reconfirmados desde então.
+> Última atualização: 2026-08-06 (webhook de entrada + reenvio manual entregues).
+> **Fase 1 não está completa**: seguem abertos os templates editáveis, a
+> confirmação por resposta e a caixa de entrada — e a Meta foi adiada por custo,
+> então o WhatsApp roda em Evolution com risco de banimento assumido.
+> Análise competitiva baseada em material público consultado em 30/07/2026 —
+> preços não reconfirmados desde então.
 
 ---
 
@@ -15,7 +20,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
-| `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas e painel da fila — **mas ainda sem credencial da Meta**, então só roda em `fake`/`evolution` (dev) |
+| `messaging` | 🟢 Lembrete D-1, confirmação pelo paciente (página + link), retry, lista de falhas com **reenvio manual**, painel da fila e **webhook de entrada** (06/08/2026). ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos). A mensagem do paciente é gravada mas **ainda não lida** (sem confirmação por resposta nem caixa de entrada) |
 | `prediction` | ⚪ **Não iniciado — zero linha de código.** Não é dívida escondida, é feature não começada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
 | `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
 | `billing` | ⚪ Não iniciado |
@@ -39,7 +44,7 @@ Esse episódio não é anedota: é o resumo do mercado.
 **O que isso significa para o Crivo:**
 
 - **Confiabilidade é feature, não detalhe de infraestrutura.** Um concorrente com feature list maior e WhatsApp instável perde para um com menos features e envio que não cai.
-- **Usar a Meta Cloud API oficial desde o início é decisão de produto**, não preferência técnica. É mais caro por conversa, mas é o que impede o cenário "número banido, agenda parada".
+- **A Meta Cloud API oficial segue sendo o destino**, mas ⚠️ **não é o presente**: em 05/08/2026 a adoção foi adiada por custo (a Meta cobra por conversa, e não há caixa para isso ainda). O provider de produção até lá é o `evolution` — exatamente a categoria de solução que o parágrafo acima descreve como frágil. É uma dívida assumida de olhos abertos, não um esquecimento: enquanto durar, o cenário "número banido, agenda parada" é um risco real do produto, e o argumento de venda "confiabilidade de entrega" não pode ser feito com honestidade.
 - **Precisa de fallback explícito.** Se a mensagem não entrega, o sistema tem que avisar a recepção e gerar uma lista de "ligar para estes pacientes" — em vez de falhar em silêncio, que foi o que aconteceu na consulta.
 - **O custo do WhatsApp precisa estar no modelo de cobrança desde o dia 1** (franquia + excedente). Se embutirmos tudo na mensalidade, ou perdemos margem ou repetimos o "ficou pesado demais".
 
@@ -144,12 +149,27 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Mensagens com IA (DeepSeek), opcional por clínica** (30/07/2026) — reescreve o lembrete com tom natural, mantendo nome/data/hora/link validados literalmente; qualquer falha ou omissão cai no template fixo. Ver [README → Mensagens com IA](./README.md#mensagens-com-ia-opcional-por-clínica)
    - [x] **Aviso imediato ao marcar a consulta** (04/08/2026) — quem agenda com dias de antecedência recebe na hora um "sua consulta foi marcada" já com o link de confirmação, e o lembrete D-1 continua. Só dispara quando o D-1 ainda está longe, para não mandar duas mensagens seguidas
    - [x] **Status ao vivo no painel** (04/08/2026) — Agenda e Mensagens se reconsultam a cada 20s (`LIVE_REFETCH_INTERVAL_MS`), já que o paciente confirma pelo WhatsApp, fora do sistema
-   - [ ] 🐞 **Reagendar não refaz o lembrete** — `RescheduleAppointmentUseCase` muda `startsAt` mas não toca na fila. O lembrete antigo continua agendado para o D-1 da data original **e com a data antiga no texto**: o paciente recebe a informação errada. O docstring de `ScheduleAppointmentReminderUseCase` afirma que é "chamado na criação e no reagendamento", mas só a criação chama
-   - [ ] **Credenciais da Meta** — `META_WHATSAPP_TOKEN`/`META_WHATSAPP_PHONE_NUMBER_ID` seguem vazios; hoje só `evolution` (dev) e `fake` funcionam de verdade
+   - [x] 🐞 **Reagendar refaz o lembrete** (04/08/2026) — antes `RescheduleAppointmentUseCase` mudava `startsAt` sem tocar na fila, e o lembrete antigo saía no D-1 da data original **com a data velha no texto**. Agora `reschedule()` cancela o que está pendente e reagenda com os dados atuais. São duas camadas de propósito: a remoção da fila (por `jobId` fixo) é *best-effort*, e o guard de `CANCELLED` no `MessageProcessor` é o que de fato impede o envio errado se o job já tiver saído da fila
+   - [ ] **Credenciais da Meta** — 🅿️ **adiado por custo** (05/08/2026). A Meta cobra por conversa e a decisão é esperar caixa; até lá o provider de produção é `evolution`. Ver [Risco: Evolution em produção](#riscos) — a decisão original deste documento era o oposto, e o risco de banimento continua valendo
    - [ ] Templates editáveis por clínica (hoje o template *fixo* — usado quando a IA está desligada ou falha — é único e fica no código)
    - [ ] Template aprovado pela Meta — texto livre só funciona dentro da janela de 24h
-   - [ ] Webhook de status de entrega (`DELIVERED`) e de resposta do paciente
-   - [ ] Reenvio manual a partir da lista de falhas (o Bull Board já permite retry manual, mas é ferramenta de dev — a recepção precisa de um botão na tela de Mensagens)
+   - [x] **Webhook de entrada — mensagem do paciente** (05/08/2026) — `POST /webhooks/inbound/:tenantId/:token` grava em `inbound_messages` e vincula ao paciente pelo telefone. É a fundação do Chat Center: até aqui a mensageria era só de saída, sem nenhum caminho de volta. Decisões que não são óbvias:
+     - **Tabela separada de `messages`** — aquela é registro de envio (fila, tentativas, agendamento, destino); nada disso existe na entrada, e espremer as duas deixaria metade das colunas sempre nulas
+     - **Autenticação por segredo no caminho** (`INBOUND_WEBHOOK_TOKEN`, comparado com `timingSafeEqual`) — o provider não faz login. Sem a env var configurada o endpoint recusa tudo, porque um webhook aberto aceita qualquer um injetando mensagem no nome de um paciente
+     - **`tenantId` na URL** — a Evolution é uma instância por clínica e o payload não diz de quem é; derivar do telefone destino misturaria clínicas que usem o mesmo número
+     - **Idempotente por `(tenantId, providerMessageId)`** — o WhatsApp reentrega o webhook quando não recebe 200 a tempo; sem o índice único a conversa duplicaria
+     - **Descarta de propósito**: `fromMe` (é o nosso próprio lembrete voltando), grupos (`@g.us`), e mídia sem legenda — hoje o Crivo só lê texto
+     - **Número desconhecido é gravado mesmo assim**, sem vínculo: perder o contato de quem ainda não é paciente seria perder justamente o lead. Telefone que bate com dois cadastros também fica sem vínculo — atribuir à pessoa errada é pior que não atribuir
+     - Testado contra a API real: token inválido → 401, evento irrelevante → ignorado, paciente cadastrado → vinculado, reentrega do mesmo id → não duplica, número desconhecido → gravado sem vínculo. 11 testes unitários do parser do payload
+   - [ ] **Confirmação por resposta** — hoje a mensagem do paciente é só registrada; responder "SIM" ainda não muda o status do agendamento (o link `/c/:token` continua sendo o caminho)
+   - [ ] **Caixa de entrada / tela de conversa** — `inbound_messages` já acumula o histórico, mas não há tela: a recepção ainda não vê o que o paciente respondeu
+   - [ ] Webhook de status de entrega (`DELIVERED`)
+   - [x] **Reenvio manual a partir da lista de falhas** (06/08/2026) — `POST /messages/:id/resend`, com ação na tela de Mensagens. Antes o retry só existia no Bull Board, ferramenta de dev protegida por Basic Auth que expõe a fila inteira; a lista "ligar para estes pacientes" era um beco sem saída. Detalhes que não são óbvios:
+     - **Só aceita `FAILED`** — reenviar uma `SENT` duplicaria a mensagem no WhatsApp do paciente, e uma `PENDING` já está na fila. Nos dois casos recusa com 400 em vez de criar um segundo envio silencioso
+     - **Remove o job antigo antes de reenfileirar** — `SEND_JOB_OPTIONS` usa `removeOnFail: false`, então o job falho continua na fila com o mesmo `jobId`, e o BullMQ **ignora** um `add` com id repetido. Sem o `remove`, a tela mostraria sucesso sem nada ter saído
+     - **Checa o tenant, não só o id** — é o que impede uma clínica de disparar mensagem de outra sabendo o UUID
+     - A ação fica no menu de três pontos da linha (padrão das demais tabelas do painel) e só aparece na aba de falhas — histórico é registro, não fila de ação
+     - Testado contra a API real: `FAILED` → 204 e a mensagem volta a `PENDING` com tentativas zeradas; reenviar a mesma de novo → 400; id inexistente → 404; worker reprocessa (tentativas sobem)
    - [ ] Segundo lembrete (D-3) e escalonamento por risco (depende de `prediction`)
 2. **Prontuário básico** — 🟢 **entregue em 04/08/2026** (anamnese + evolução)
    - [x] Novo papel `PROFESSIONAL`: prontuário é dado sensível de saúde (LGPD Art. 11) e a recepção (`STAFF`) não tem necessidade clínica de lê-lo. `@Roles(ADMIN, PROFESSIONAL)` no controller inteiro, para que rota nova nasça restrita
@@ -230,24 +250,28 @@ O que existe é o **dado bruto sendo acumulado** desde o início, de propósito.
 | Horário e dia | `startsAt` | Primeiro horário da manhã e véspera de feriado têm perfil de falta diferente |
 | Procedimento e preço | `procedureId`, `priceInCents` | Ticket alto e procedimento eletivo têm risco diferente de retorno de rotina |
 
-### Volume real (04/08/2026, banco de desenvolvimento)
+### Volume real (06/08/2026, banco de desenvolvimento)
 
 ```
-total       59
-CANCELLED   21
-SCHEDULED   13
-COMPLETED   11
-CONFIRMED    9
-NO_SHOW      5     ← a classe que interessa prever
-confirmedAt 17
+total       35
+SCHEDULED   15
+COMPLETED   10
+NO_SHOW      4     ← a classe que interessa prever
+CONFIRMED    4
+CANCELLED    2
+confirmedAt  4
 ```
 
-**Isso não treina modelo nenhum.** Cinco exemplos positivos não sustentam
-nem uma regressão logística simples, e pior: **os números estão poluídos**.
-Boa parte dos `CANCELLED` veio de agendamento de teste criado e cancelado
-durante o desenvolvimento, não de comportamento real de paciente. Antes de
-qualquer treino sério, o dado de teste precisa sair — ou o modelo vai
-aprender o padrão do desenvolvedor, não o do paciente.
+**Isso não treina modelo nenhum.** Quatro exemplos positivos não sustentam
+nem uma regressão logística simples, e pior: **é dado de seed, não de
+paciente**. Os `NO_SHOW` foram escritos por um `plan` fixo em `seed.ts`, não
+por alguém que faltou — um modelo treinado aqui aprenderia o padrão do
+desenvolvedor. Antes de qualquer treino sério, é preciso volume real de
+clínica em produção.
+
+> O volume caiu de 59 para 35 desde 04/08 porque o banco foi reseedado
+> durante o desenvolvimento. Isso reforça o ponto: enquanto o histórico for
+> seed, ele se apaga a cada `SEED_TYPE=clean` e não acumula nada.
 
 ### O caminho realista
 
@@ -316,14 +340,14 @@ Quatro observações:
 | Risco | Mitigação |
 | --- | --- |
 | Concorrente já tem produto no ar e nós não | Focar Fase 1 e não dispersar em features de Fase 3 |
-| Predição sem dado suficiente para treinar | Começar com regra determinística. **Hoje há só 5 `NO_SHOW` no banco de dev** — não treina nada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
-| Dado de teste poluindo o histórico de predição | Boa parte dos 21 `CANCELLED` é agendamento criado/cancelado em teste, não comportamento de paciente. Marcar ou limpar antes de qualquer treino — senão o modelo aprende o padrão do desenvolvedor |
+| Predição sem dado suficiente para treinar | Começar com regra determinística. **Hoje há só 4 `NO_SHOW` no banco de dev** (06/08/2026) — não treina nada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
+| Dado de teste poluindo o histórico de predição | Todo o histórico atual vem do `seed.ts`, não de comportamento de paciente — e some a cada `SEED_TYPE=clean`. Só serve para desenvolver a regra; treinar exige volume real de produção |
 | Expor preço no Stripe antes de validar | O checkout congela publicamente uma tabela que este documento classifica como hipótese acima do mercado. Validar preço **antes** de ligar o pagamento |
 | Multi-unidade quebrar o isolamento por tenant | `TenantContextGuard` assume um tenant por token. Hierarquia (`Organization` → `Tenant`) precisa ser desenhada antes, não adaptada depois — é onde vazamento entre clínicas apareceria |
 | Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
 | Migração de clínica que já usa concorrente | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar |
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
-| Tentação de usar API não oficial para baratear | **Decidido: Meta Cloud API oficial.** Banimento é permanente e sem recurso — perderíamos a agenda do cliente junto com o número |
+| **Evolution API em produção** (decidido em 05/08/2026 por custo) | ⚠️ **Risco aceito, não mitigado.** Banimento é permanente e sem recurso — perderíamos o número junto com a agenda do cliente. Mitigações possíveis enquanto durar: número dedicado (nunca o pessoal do dono), volume baixo, opt-in real do paciente, e a lista de falhas já existente para a recepção ligar. Migrar para a Meta assim que houver caixa é o plano, e o código já é plugável (`MESSAGING_PROVIDER`), então a troca é de env var, não de refactor |
 | Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |
 | Custo do DeepSeek por mensagem (feature de IA opcional) | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano |
 | IA alucinar ou distorcer um dado da mensagem | **Mitigado por design:** prompt restringe a redigir, nunca a decidir fato; validação pós-geração confere nome/data/hora/link literalmente antes de aceitar o texto — se algo faltar, cai no template fixo |

@@ -2,7 +2,8 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-02 (rev. 2).
+> Última atualização: 2026-08-06 (rev. 3 — Quadro da agenda, formato pt-BR nos
+> calendários, cascata no agendamento, reenvio manual e erros em português).
 
 ---
 
@@ -16,15 +17,15 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
 | `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `agenda` (appointments) | 🟢 Tabela + criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
+| `agenda` (appointments) | 🟢 Duas visões: **Lista** (tabela) e **Quadro** (calendário `@mui/x-scheduler`). Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `mensagens` (messaging) | 🟢 Histórico + aba de falhas. Só leitura, aberto a ADMIN e STAFF |
+| `mensagens` (messaging) | 🟢 Histórico + aba de falhas, **com reenvio manual** e leitura do texto completo. Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
 | `configuracoes` (tenants/me) | 🟢 Leitura para todos, edição restrita a ADMIN |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
-A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` (home do admin) ainda é um placeholder.
+A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
 ---
 
@@ -163,9 +164,29 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Achado ao implementar**: existia uma rota órfã `/painel/dashboard` com um componente stub vazio (`<>Dashboard</>`) e um item de menu "Dashboard" apontando pra ela — resquício de uma tentativa anterior interrompida, nunca ligada a nada real. Removidos os dois; o item de menu agora se chama "Painel" e aponta para a home de verdade (`/painel`). `SidebarNav` precisou de uma exceção na lógica de rota ativa (`item.href === "/painel" ? pathname === item.href : ...`), já que `/painel` é prefixo de toda rota do dashboard e ficaria sempre marcado como ativo sem isso.
   - **Gráficos** (`@mui/x-charts`, já instalado na mesma versão major de `x-data-grid`/`x-date-pickers`, 9.10.1): `GET /dashboard/analytics` novo (`GetDashboardAnalyticsUseCase`), separado de `summary` de propósito — `summary` é "o que fazer agora" (listas acionáveis), `analytics` é "tendência dos últimos 7 dias" (agregados para gráfico, sem paginação). Sem SQL raw: busca os agendamentos do período via `AppointmentRepository.findMany` (`perPage` alto, teto de segurança 1000) e agrega em memória no use case — mantém a regra do projeto de nenhuma query fora da camada de infra, e o volume de uma clínica em 7 dias não justifica `groupBy`/`$queryRaw` no banco. Três gráficos na home: `AppointmentsByDayChart` (BarChart, agendamentos por dia — todos os 7 dias aparecem no eixo mesmo com `count: 0`, um dia vazio é informação, não deveria "sumir"), `StatusPieChart` (PieChart/donut, distribuição de status — precisou de um mapa de hex próprio, `STATUS_HEX_COLORS`, porque `STATUS_COLORS` de `appointments/status.ts` usa nomes semânticos do MUI tipo `"info"`/`"success"` para `<Chip color="...">`, que um `PieChart` não aceita como cor de série), `RevenueByProcedureChart` (BarChart horizontal, soma de `priceInCents` só de agendamentos `COMPLETED`, formatado com `formatCentsToBRL` já existente). Sem `@Roles`: ADMIN e STAFF veem os mesmos gráficos.
 
+### Entregue em 05–06/08/2026
+
+- ~~**Quadro da agenda**~~ — ✅ calendário (`@mui/x-scheduler` 9.0.0-beta.7) ao lado da visão Lista, colorido por profissional e filtrável pelo painel de Recursos. Somente leitura de propósito: marcar continua pelo formulário validado, que já aplica expediente, grade e duração — clique-para-criar duplicaria essas regras num segundo lugar.
+  - **Faixas "não atende"** (`off-hours.ts`) — espaço vazio no Quadro era lido como horário livre. A conta é a mesma do backend (expediente ∩ grade − bloqueios); se divergir, o Quadro volta a prometer horário que o formulário recusa. Só aparecem com **um** profissional visível: numa grade compartilhada, cinza não diz de quem é.
+  - **Grade derivada do expediente** — `viewConfig` usava 7h–20h fixo enquanto a clínica abre 08:00–18:00, e a hora extra virava faixa cinza que não representava decisão nenhuma. Agora vem de `tenant.businessHours*`.
+  - **Rótulos das pontas** — o `DayTimeGrid` omite o primeiro rótulo de propósito (`index === 0 ? null : …`) e não tem célula para o último, então a grade 08:00–18:00 exibia um eixo de 09:00 a 17:00. Repostos por CSS na primeira célula, usando a variável `--hour-height` do próprio pacote.
+- ~~**Formato brasileiro nos calendários**~~ — ✅ `ampm: false` no scheduler (14:00, não 2:00 PM) e `dayOfWeekFormatter` no tema. O `weekdaysMin` do dayjs pt-br é `["Do","2ª","3ª",…]`, e o MUI renderizava isso como "D 2 3 4 5 6 S" — número, não dia. Corrigido em `MuiDateCalendar` para valer em todo calendário do painel.
+- ~~**Grade do profissional no cadastro**~~ — ✅ `WeeklyGridEditor` extraído (só UI, sem API) e reusado no dialog de Horários e no cadastro. No cadastro salva em dois passos (cria → grava a grade); falha no segundo passo **não** desfaz o cadastro, e o snackbar diz o que ficou faltando.
+  - `TimePicker` no lugar de `<input type="time">`, limitado ao expediente (`minTime`/`maxTime`) — a lista ia de 00h a 23h numa clínica que abre às 08:00, e o backend recusaria no salvamento.
+  - "+ Faixa" desabilitado quando não sobra expediente: a faixa nova nascia fora do horário (19:00→19:30 numa clínica que fecha às 18:00).
+- ~~**Cascata no formulário de agendamento**~~ — ✅ Paciente → Profissional → Procedimento → Dia, cada um `disabled` até o anterior existir. O campo Dia depende dos dois: sem eles não dá para saber quais dias desabilitar.
+  - **Dias fora da grade desabilitados no calendário** + "Este profissional atende segundas." antes de escolher. Antes a recusa só aparecia depois de selecionar, o que fazia a tela parecer quebrada quando na verdade a regra estava certa.
+  - **Chips de horário mostram início → fim** ("08:00 → 08:30"). A legenda em letra miúda não era lida antes dos chips, e uma lista de 15 em 15 min passava a impressão de consultas de 15 min.
+- ~~**Reenvio manual de mensagem**~~ — ✅ ação no menu de três pontos da aba de falhas (`POST /messages/:id/resend`). Antes o retry só existia no Bull Board, ferramenta de dev.
+- ~~**Ver mensagem**~~ — ✅ dialog com o corpo completo em `pre-line` (o texto tem emoji, quebras reais e o link de confirmação). A coluna "Mensagem" saiu da tabela: truncada não servia para ler.
+- ~~**Erros de envio em português**~~ — ✅ `error-messages.ts` traduz o `lastError` cru do provider para o que a recepção precisa saber. `Cannot read properties of undefined (reading 'onWhatsApp')` virou "O WhatsApp da clínica está desconectado" + o que fazer. Cada regra responde **o que aconteceu** e **de quem é a ação** — em "acesso recusado" reenviar não adianta; em "queda de rede" reenviar é o certo. O texto cru fica atrás de "Detalhe técnico": traduzir na exibição (e não na gravação) preserva o diagnóstico.
+- ~~**Badge de falhas no menu**~~ — ✅ contagem no ícone de Mensagens. Fica no ícone, não no rótulo: com a sidebar recolhida o texto tem `opacity: 0` e o badge sumiria junto.
+- ~~**Filtros em grid**~~ — ✅ o tema define `fullWidth` como padrão do `TextField`, o que vencia o `minWidth` e empilhava os filtros numa coluna. Grid dá a cada campo sua coluna.
+
 ### Fase 3 — Qualidade
 
 - **Não há infraestrutura de teste no projeto** (sem Vitest/Jest, sem Testing Library, sem script `test`). O `SKILLS.md` marca testes como critério de aceitação obrigatório, então hoje **nenhuma feature atende ao próprio padrão** que documentamos. Configurar a base é pré-requisito para o resto desta fase.
+  - Ficou mais caro em 06/08: `error-messages.ts` é lógica pura com sete regras de casamento por regex — exatamente o tipo de código que teste cobre bem, e que hoje só foi validado rodando os padrões à mão.
 - Testes para `auth` (actions, hooks) e `patients` (o molde — testá-lo primeiro define o padrão para as demais).
 - Testes para `SidebarNav` (filtragem por role) e `UserMenu`.
 
