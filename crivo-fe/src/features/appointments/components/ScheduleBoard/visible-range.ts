@@ -30,13 +30,33 @@ export type VisibleRange = { from: Date; to: Date };
  * Sempre a semana inteira (segunda a domingo) mesmo na visão "dia", para não
  * refazer a consulta a cada troca de dia dentro da mesma semana.
  */
-export function getVisibleRange(visibleDate: Date, view: BoardView): VisibleRange {
+export function getVisibleRange(
+  visibleDate: Date,
+  view: BoardView,
+): VisibleRange {
   const date = dayjs(visibleDate);
 
   if (view === "day") {
-    return { from: date.startOf("day").toDate(), to: date.endOf("day").toDate() };
+    return {
+      from: date.startOf("day").toDate(),
+      to: date.endOf("day").toDate(),
+    };
   }
 
   const start = startOfWeekMonday(date);
   return { from: start.toDate(), to: start.add(6, "day").endOf("day").toDate() };
+}
+
+/**
+ * Um `Date` por dia desenhado na grade — é sobre eles que os blocos "não
+ * atende" são calculados. Deriva da mesma janela usada na busca, para que
+ * marcação e dados nunca discordem sobre quais dias estão na tela.
+ */
+export function getVisibleDays(visibleDate: Date, view: BoardView): Date[] {
+  const { from } = getVisibleRange(visibleDate, view);
+  const total = view === "day" ? 1 : 7;
+
+  return Array.from({ length: total }, (_, index) =>
+    dayjs(from).add(index, "day").toDate(),
+  );
 }
