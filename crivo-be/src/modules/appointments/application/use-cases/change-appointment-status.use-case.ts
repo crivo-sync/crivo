@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 
+import { ScheduleAppointmentReminderUseCase } from 'src/modules/messaging/application/use-cases/schedule-appointment-reminder.use-case';
 import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
@@ -46,6 +47,7 @@ export class ChangeAppointmentStatusUseCase {
   constructor(
     @Inject(APPOINTMENT_REPOSITORY)
     private readonly appointmentRepository: AppointmentRepository,
+    private readonly scheduleReminder: ScheduleAppointmentReminderUseCase,
   ) {}
 
   async execute({
@@ -93,6 +95,15 @@ export class ChangeAppointmentStatusUseCase {
       changes.cancelReason = cancelReason ?? null;
     }
 
-    return this.appointmentRepository.update(id, changes);
+    const updated = await this.appointmentRepository.update(id, changes);
+
+    // Lembrete de consulta cancelada é pior do que nenhum aviso: o paciente
+    // que desmarcou pode aparecer na clínica. Só cancela o que ainda não
+    // saiu — o que já foi enviado é histórico.
+    if (status === AppointmentStatus.CANCELLED) {
+      await this.scheduleReminder.cancelScheduled(id);
+    }
+
+    return updated;
   }
 }
