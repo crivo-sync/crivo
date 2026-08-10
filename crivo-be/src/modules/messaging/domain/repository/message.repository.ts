@@ -52,6 +52,12 @@ export type MessageRepository = {
   markSent(id: string, data: MarkSentData): Promise<void>;
   markFailed(id: string, error: string): Promise<void>;
   incrementAttempts(id: string): Promise<void>;
+  /**
+   * Devolve uma mensagem FAILED para PENDING, para o reenvio manual da
+   * recepção. Zera `attempts` porque a fila reconta as tentativas do job
+   * novo — manter o contador antigo faria o retry parar antes da hora.
+   */
+  resetForRetry(id: string): Promise<void>;
   /** Total de mensagens enviadas no período — base da franquia de cobrança. */
   countSentInPeriod(tenantId: string, from: Date, to: Date): Promise<number>;
 };
