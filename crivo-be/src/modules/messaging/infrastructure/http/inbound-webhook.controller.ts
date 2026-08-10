@@ -73,7 +73,11 @@ export class InboundWebhookController {
       sentAt: message.sentAt,
     });
 
-    return { stored: result.stored };
+    return {
+      stored: result.stored,
+      intent: result.intent,
+      confirmed: result.confirmed,
+    };
   }
 
   private assertToken(token: string): void {
