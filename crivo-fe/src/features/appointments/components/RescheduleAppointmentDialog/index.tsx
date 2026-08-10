@@ -65,6 +65,12 @@ export const RescheduleAppointmentDialog = ({
 
   const selectedProfessionalId = watch("professionalId");
 
+  // Reagendar pode trocar de profissional, e cada um tem a sua grade — os
+  // dias liberados no calendário precisam seguir quem está selecionado agora.
+  const selectedProfessional = professionals.find(
+    (professional) => professional.id === selectedProfessionalId,
+  );
+
   const onSubmit = handleSubmit(async (values) => {
     if (!appointment) return;
 
@@ -114,6 +120,7 @@ export const RescheduleAppointmentDialog = ({
                     procedureDurationMinutes={
                       appointment?.procedure.durationMinutes
                     }
+                    professionalSchedules={selectedProfessional?.schedules}
                   />
                 )}
               />
