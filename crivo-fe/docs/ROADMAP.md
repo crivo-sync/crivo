@@ -26,7 +26,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🔴 Nenhum (sem infra) |
+| Testes automatizados | 🟡 **17 testes E2E (Playwright)** cobrindo login, permissões, agendamento e as telas novas. Ainda **sem teste unitário** — `error-messages.ts` e a prévia de templates seguem descobertos |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
@@ -201,8 +201,8 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
 
 ### Fase 3 — Qualidade
 
-- **Não há infraestrutura de teste no projeto** (sem Vitest/Jest, sem Testing Library, sem script `test`). O `SKILLS.md` marca testes como critério de aceitação obrigatório, então hoje **nenhuma feature atende ao próprio padrão** que documentamos. Configurar a base é pré-requisito para o resto desta fase.
-  - Ficou mais caro em 06/08: `error-messages.ts` é lógica pura com sete regras de casamento por regex — exatamente o tipo de código que teste cobre bem, e que hoje só foi validado rodando os padrões à mão.
+- ~~**Não há infraestrutura de teste no projeto**~~ — ✅ **parcialmente resolvido em 10/08/2026**: Playwright com 17 testes E2E (`e2e/`, ver `e2e/README.md`). Rodam contra o backend real, não contra mocks — os dois bugs que motivaram a suíte nasceram na costura entre as pontas. Validado com **três execuções seguidas** sem falha, o que é o teste de verdade: a primeira versão tinha um teste instável (passava sozinho, falhava na suíte), e teste instável é pior que teste ausente.
+  - **Ainda falta o teste unitário.** `error-messages.ts` (sete regras de regex) e a prévia de marcadores em `MessageTemplates` continuam validados só à mão. São lógica pura, o tipo que E2E cobre mal e teste unitário cobre bem.
 - Testes para `auth` (actions, hooks) e `patients` (o molde — testá-lo primeiro define o padrão para as demais).
 - Testes para `SidebarNav` (filtragem por role) e `UserMenu`.
 
