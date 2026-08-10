@@ -1,9 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { MessagingProvider } from '@prisma/client';
 import {
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
   IsEmail,
+  IsEnum,
   IsHexColor,
   IsInt,
   IsOptional,
@@ -59,6 +61,17 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsBoolean()
   aiMessagesEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    enum: MessagingProvider,
+    description:
+      'Por onde o WhatsApp desta clínica sai. As credenciais ficam em variáveis ' +
+      'de ambiente do servidor — aqui escolhe-se apenas o caminho. ' +
+      'Ausente = usa o padrão do servidor (MESSAGING_PROVIDER).',
+  })
+  @IsOptional()
+  @IsEnum(MessagingProvider)
+  messagingProvider?: MessagingProvider;
 
   @ApiPropertyOptional({
     example: 480,
