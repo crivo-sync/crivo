@@ -10,7 +10,8 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import dayjs from "dayjs";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import dayjs, { type Dayjs } from "dayjs";
 
 import {
   useAddTimeOff,
@@ -23,23 +24,38 @@ export const TimeOffList = ({ professionalId }: { professionalId: string }) => {
   const addTimeOff = useAddTimeOff(professionalId);
   const removeTimeOff = useRemoveTimeOff(professionalId);
 
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const [startsAt, setStartsAt] = useState<Dayjs | null>(null);
+  const [endsAt, setEndsAt] = useState<Dayjs | null>(null);
   const [reason, setReason] = useState("");
 
-  const canSubmit = startsAt && endsAt && !addTimeOff.isPending;
+  /**
+   * `isValid()` é obrigatório, não zelo: enquanto a pessoa digita a data o
+   * `value` é um `Dayjs` **inválido** (não `null`), e chamar `.toISOString()`
+   * nele lança `RangeError`. Sem esta checagem o botão habilitaria no meio da
+   * digitação e o envio quebraria em silêncio.
+   */
+  const validRange =
+    startsAt?.isValid() && endsAt?.isValid()
+      ? { startsAt, endsAt }
+      : null;
+
+  const isRangeInverted =
+    !!validRange && !validRange.endsAt.isAfter(validRange.startsAt);
+
+  const canSubmit = !!validRange && !isRangeInverted && !addTimeOff.isPending;
 
   const handleAdd = async () => {
+    if (!validRange || isRangeInverted) return;
+
     try {
       await addTimeOff.mutateAsync({
-        // `datetime-local` devolve hora local sem fuso; o `Date` interpreta
-        // como local e o ISO leva o offset correto para o servidor.
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
+        // `Dayjs` guarda hora local; o ISO leva o offset correto ao servidor.
+        startsAt: validRange.startsAt.toISOString(),
+        endsAt: validRange.endsAt.toISOString(),
         reason: reason || undefined,
       });
-      setStartsAt("");
-      setEndsAt("");
+      setStartsAt(null);
+      setEndsAt(null);
       setReason("");
     } catch {
       // Erro já exibido pelo snackbar — inclusive o de conflito com
@@ -51,21 +67,35 @@ export const TimeOffList = ({ professionalId }: { professionalId: string }) => {
     <Stack spacing={3}>
       <Stack spacing={1.5}>
         <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
-          <TextField
-            type="datetime-local"
+          <DateTimePicker
             label="Início"
             value={startsAt}
-            onChange={(event) => setStartsAt(event.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1, minWidth: 190 }}
+            onChange={setStartsAt}
+            disablePast
+            format="DD/MM/YYYY HH:mm"
+            // `ampm: false` → 14:00 em vez de 2:00 PM, como o resto do painel.
+            ampm={false}
+            slotProps={{ textField: { sx: { flex: 1, minWidth: 190 } } }}
           />
-          <TextField
-            type="datetime-local"
+          <DateTimePicker
             label="Fim"
             value={endsAt}
-            onChange={(event) => setEndsAt(event.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1, minWidth: 190 }}
+            onChange={setEndsAt}
+            disablePast
+            // O fim nunca pode ser antes do início — barrar no calendário
+            // evita o 400 do backend por intervalo invertido.
+            minDateTime={startsAt?.isValid() ? startsAt : undefined}
+            format="DD/MM/YYYY HH:mm"
+            ampm={false}
+            slotProps={{
+              textField: {
+                sx: { flex: 1, minWidth: 190 },
+                error: isRangeInverted,
+                helperText: isRangeInverted
+                  ? "O fim precisa ser depois do início."
+                  : undefined,
+              },
+            }}
           />
         </Stack>
         <TextField
