@@ -17,8 +17,11 @@ marca consulta, não para quem programa.
 6. [Remarcar e cancelar](#6-remarcar-e-cancelar)
 7. [As mensagens de WhatsApp](#7-as-mensagens-de-whatsapp)
 8. [Quando uma mensagem falha](#8-quando-uma-mensagem-falha)
-9. [O que só o administrador faz](#9-o-que-só-o-administrador-faz)
-10. [Perguntas rápidas](#10-perguntas-rápidas)
+9. [O que o paciente respondeu (Recebidas)](#9-o-que-o-paciente-respondeu-recebidas)
+10. [Risco de falta: para quem ligar hoje](#10-risco-de-falta-para-quem-ligar-hoje)
+11. [Lista de espera: aproveitar as vagas](#11-lista-de-espera-aproveitar-as-vagas)
+12. [O que só o administrador faz](#12-o-que-só-o-administrador-faz)
+13. [Perguntas rápidas](#13-perguntas-rápidas)
 
 ---
 
@@ -31,11 +34,11 @@ No menu da esquerda você tem:
 | Menu | Para que serve |
 | ---- | -------------- |
 | **Painel** | Resumo do dia — é a primeira tela |
-| **Agenda** | Onde você marca, remarca e cancela |
+| **Agenda** | Onde você marca, remarca e cancela. Tem quatro abas: *Lista*, *Quadro*, *Risco de falta* e *Lista de espera* |
 | **Pacientes** | Cadastro de quem é atendido |
 | **Profissionais** | Quem atende e em que horários |
 | **Procedimentos** | O catálogo de serviços, com duração e preço |
-| **Mensagens** | O que o sistema enviou por WhatsApp |
+| **Mensagens** | O que o sistema enviou, o que falhou e o que o paciente respondeu. O número vermelho no ícone é quantas falhas esperam você |
 | **Configurações** | Dados da clínica |
 
 ---
@@ -200,7 +203,11 @@ Na **Agenda**, clique nos três pontinhos da linha:
 - **Concluir** — depois do atendimento.
 - **Marcar falta** — veja a diferença na [seção 5](#5-os-status-da-agenda).
 - **Cancelar** — pede o motivo. Escreva algo útil ("paciente remarcou",
-  "profissional adoeceu"): isso fica no histórico.
+  "profissional adoeceu"): isso fica no histórico. Os lembretes que ainda
+  não saíram são descartados, então o paciente que desmarcou **não recebe
+  aviso de uma consulta que não existe mais**. Logo depois, o sistema abre
+  uma janela com quem da lista de espera serve para aquele horário — ver
+  [seção 11](#11-lista-de-espera-aproveitar-as-vagas).
 
 Consulta já **concluída, cancelada ou com falta** não pode ser reagendada —
 nesse caso, marque uma nova.
@@ -218,15 +225,44 @@ Consulta marcada
       ├─ Marcou com alguns dias de antecedência?
       │  └─ Sai NA HORA: "Sua consulta foi marcada… já pode confirmar"
       │
-      ├─ Um dia antes: sai o LEMBRETE
+      ├─ LEMBRETE(S) — quantos depende do risco de o paciente faltar
       │
-      └─ Paciente toca no link e confirma
-         └─ Status vira "Confirmado" na sua tela, sozinho
-            e ele recebe "Presença confirmada ✅"
+      └─ Paciente confirma de duas formas:
+         ├─ tocando no link, ou
+         └─ respondendo "sim" no próprio WhatsApp
+            └─ Status vira "Confirmado" na sua tela, sozinho
+               e ele recebe "Presença confirmada ✅"
 ```
 
 Se a consulta for para daqui a poucas horas, sai só o lembrete — não faz
 sentido mandar duas mensagens quase iguais seguidas.
+
+### Quem recebe mais lembrete
+
+O sistema não trata todo mundo igual. Quem tem mais chance de faltar recebe
+mais aviso:
+
+| Risco do paciente | Lembretes que ele recebe |
+| --- | --- |
+| Alto | **Dois**: 3 dias antes e 1 dia antes |
+| Médio | Um, 2 dias antes |
+| Baixo | Um, 1 dia antes |
+
+O lembrete mais cedo existe para **te dar tempo de reagir**: se o paciente
+de risco alto não responder em três dias, você ainda consegue ligar ou
+oferecer a vaga para outra pessoa.
+
+Quem sempre comparece recebe menos mensagem de propósito — insistir com
+quem nunca falta ensina o paciente a ignorar o WhatsApp da clínica.
+
+### O paciente pode responder no WhatsApp
+
+Ele não precisa abrir o link. Se responder **"sim"**, **"confirmo"**,
+**"ok"** ou parecido, o sistema entende e marca como Confirmado sozinho.
+
+Se ele escrever qualquer outra coisa — "posso levar minha filha?", "dá para
+remarcar?" — o sistema **não arrisca adivinhar**. A mensagem vai para
+**Mensagens → Recebidas** para você ler (ver seção 8).
 
 Em **Mensagens → Histórico** você vê tudo que saiu: quando, para quem, o
 texto e o status (*Enviada*, *Pendente*, *Falhou*).
@@ -243,19 +279,107 @@ não aparecer — não porque quis faltar, mas porque não soube.
 
 **O que fazer:**
 
-1. Vá em **Mensagens** → aba **Falhas — ligar para o paciente** (ou clique
-   direto na tarja vermelha do Painel).
+1. Vá em **Mensagens** → aba **Falhas — ligar para o paciente** (o número
+   no ícone do menu já mostra quantas estão pendentes).
 2. A lista mostra o nome, o telefone e **quando falhou**.
-3. **Ligue para essas pessoas.** É o único caminho.
-4. Se confirmar por telefone, volte na Agenda e marque **Confirmar**.
+3. **Leia o motivo** — ele aparece em português e diz o que fazer.
+4. Se der para tentar de novo, use **⋮ → Reenviar mensagem**.
+5. Se não, **ligue**. Confirmando por telefone, volte na Agenda e marque
+   **Confirmar**.
 
-> Motivos comuns: número errado no cadastro, paciente sem WhatsApp, ou
-> instabilidade momentânea. Se o mesmo paciente falha sempre, confira o
-> telefone no cadastro dele.
+### Os motivos e o que fazer com cada um
+
+| O que aparece | O que significa | O que fazer |
+| --- | --- | --- |
+| O WhatsApp da clínica está desconectado | Ninguém está recebendo mensagem | Avise o responsável para reconectar. **Reenviar não adianta** enquanto isso |
+| Este número não tem WhatsApp | O telefone do cadastro não tem conta | Confira o número no cadastro e ligue |
+| Não conseguimos falar com o serviço | Queda momentânea | Tente **Reenviar** em alguns minutos |
+| O acesso ao WhatsApp foi recusado | Problema de configuração | Avise o suporte. Reenviar não resolve |
+| Muitas mensagens em pouco tempo | Limite temporário | Aguarde alguns minutos |
+
+> Quer ver o texto exato que o paciente deveria ter recebido? **⋮ → Ver
+> mensagem**. Útil quando você liga e precisa repetir a informação.
 
 ---
 
-## 9. O que só o administrador faz
+## 9. O que o paciente respondeu (Recebidas)
+
+Quando o paciente escreve no WhatsApp da clínica, a mensagem aparece em
+**Mensagens → aba Recebidas**.
+
+O sistema já classifica cada uma:
+
+| Etiqueta | O que é | Precisa de você? |
+| --- | --- | --- |
+| **Confirmou** | Respondeu "sim" e o sistema já marcou como Confirmado | Não |
+| **Quer cancelar** | Pediu para desmarcar ou remarcar | **Sim** — cancelar é decisão da clínica, o sistema não faz sozinho |
+| **Precisa ler** | Qualquer outra coisa | **Sim** |
+
+As não lidas ficam em **negrito e com fundo destacado**. Depois de tratar,
+use **⋮ → Marcar como lida** (ou "Marcar todas" quando limpar a fila).
+
+> As confirmações automáticas já entram como lidas — a aba mostra só o que
+> realmente precisa de alguém.
+
+Número que não está no cadastro aparece como **"Não cadastrado"**. Não é
+erro: costuma ser paciente novo procurando a clínica.
+
+---
+
+## 10. Risco de falta: para quem ligar hoje
+
+**Agenda → aba Risco de falta** mostra os próximos agendamentos ordenados
+por chance de o paciente faltar — **os mais arriscados primeiro**.
+
+Cada paciente vem com o motivo:
+
+- *Já faltou uma vez* — o sinal mais forte
+- *Ainda não confirmou presença*
+- *Primeira consulta na clínica*
+- *Primeiro horário da manhã*
+- *Compareceu às últimas consultas* — este **reduz** o risco
+
+**Os motivos existem para você discordar.** Se o sistema diz "risco alto"
+porque é primeira consulta, mas você conhece a paciente e sabe que ela vem,
+confie no que você sabe.
+
+> Os pacientes de risco alto **já recebem lembrete extra automaticamente**.
+> A ligação é reforço, não obrigação.
+
+---
+
+## 11. Lista de espera: aproveitar as vagas
+
+**Agenda → aba Lista de espera** guarda quem quer ser avisado se abrir vaga.
+
+### Colocar alguém na fila
+
+**Adicionar à espera** → escolha paciente e procedimento. Os campos abaixo
+são opcionais e **valem a pena deixar em branco**:
+
+- **Profissional**: em branco = aceita qualquer um → **mais chance de
+  encaixe**
+- **Datas**: em branco = aceita qualquer data
+- **Observações**: "só de manhã", "avisar pelo fixo"
+
+### Quando abre uma vaga
+
+Ao **cancelar** um agendamento, o sistema abre sozinho uma janela com quem
+da fila serve para aquele horário — **na ordem de chegada**. Você não
+precisa procurar.
+
+Clique em **Avisar** e o paciente recebe a mensagem no WhatsApp.
+
+> **Pode avisar mais de um.** A mensagem diz que a vaga é de quem responder
+> primeiro. Avisar só o primeiro da fila costuma custar a vaga: se ele
+> demorar a ver o celular, o horário se perde.
+
+O sistema **só sugere** — quem avisa é você. Ele não sabe que a dona Maria
+pediu para não ser ligada de manhã.
+
+---
+
+## 12. O que só o administrador faz
 
 Você consegue **ver**, mas não alterar:
 
@@ -279,7 +403,7 @@ pode ser acessado por quem tem necessidade clínica.
 
 ---
 
-## 10. Perguntas rápidas
+## 13. Perguntas rápidas
 
 **Marquei e o paciente diz que não recebeu nada.**
 Confira em *Mensagens → Histórico* se saiu. Se estiver *Pendente*, o
@@ -287,6 +411,18 @@ lembrete ainda vai sair (ele sai um dia antes). Se estiver *Falhou*, ligue.
 
 **O paciente confirmou por telefone. Preciso fazer algo?**
 Sim: Agenda → três pontinhos → **Confirmar**. Assim o histórico fica certo.
+
+**O paciente respondeu "sim" no WhatsApp. Preciso confirmar na mão?**
+Não. O sistema entende e marca sozinho. Se ele escrever outra coisa, a
+mensagem vai para *Mensagens → Recebidas* para você ler.
+
+**Por que um paciente recebeu dois lembretes e outro só um?**
+Quem tem mais chance de faltar recebe mais aviso — ver
+[seção 7](#7-as-mensagens-de-whatsapp). Não é erro.
+
+**Cancelei uma consulta. Como aviso quem está esperando vaga?**
+O sistema abre a janela sozinho logo após o cancelamento, com quem serve
+para aquele horário. Basta clicar em **Avisar**.
 
 **Preciso marcar duas pessoas no mesmo horário com o mesmo profissional.**
 O sistema não deixa, de propósito — é o que evita a agenda dupla. Se for

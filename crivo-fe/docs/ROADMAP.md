@@ -2,8 +2,9 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-06 (rev. 3 — Quadro da agenda, formato pt-BR nos
-> calendários, cascata no agendamento, reenvio manual e erros em português).
+> Última atualização: 2026-08-10 (rev. 7 — caixa de entrada, erros em
+> português, escolha do provider, editor de templates, tela de risco, lista
+> de espera e oferta de vaga ao cancelar).
 
 ---
 
@@ -17,12 +18,14 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
 | `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `agenda` (appointments) | 🟢 Duas visões: **Lista** (tabela) e **Quadro** (calendário `@mui/x-scheduler`). Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
+| `agenda` (appointments) | 🟢 Quatro visões: **Lista** (tabela), **Quadro** (calendário `@mui/x-scheduler`), **Risco de falta** (predição) e **Lista de espera**. Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `mensagens` (messaging) | 🟢 Histórico + aba de falhas, **com reenvio manual** e leitura do texto completo. Aberto a ADMIN e STAFF |
+| `mensagens` (messaging) | 🟢 Três abas: **Histórico**, **Falhas** (com reenvio manual e erro em português) e **Recebidas** (caixa de entrada do que o paciente respondeu). Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
 | `configuracoes` (tenants/me) | 🟢 Duas abas: **Dados da clínica** (leitura para todos, edição ADMIN) e **Mensagens automáticas** (editor de templates, só ADMIN) |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
+| `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
+| `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
 | Testes automatizados | 🔴 Nenhum (sem infra) |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
@@ -182,6 +185,19 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
 - ~~**Erros de envio em português**~~ — ✅ `error-messages.ts` traduz o `lastError` cru do provider para o que a recepção precisa saber. `Cannot read properties of undefined (reading 'onWhatsApp')` virou "O WhatsApp da clínica está desconectado" + o que fazer. Cada regra responde **o que aconteceu** e **de quem é a ação** — em "acesso recusado" reenviar não adianta; em "queda de rede" reenviar é o certo. O texto cru fica atrás de "Detalhe técnico": traduzir na exibição (e não na gravação) preserva o diagnóstico.
 - ~~**Badge de falhas no menu**~~ — ✅ contagem no ícone de Mensagens. Fica no ícone, não no rótulo: com a sidebar recolhida o texto tem `opacity: 0` e o badge sumiria junto.
 - ~~**Filtros em grid**~~ — ✅ o tema define `fullWidth` como padrão do `TextField`, o que vencia o `minWidth` e empilhava os filtros numa coluna. Grid dá a cada campo sua coluna.
+
+### Entregue em 10/08/2026
+
+- ~~**Caixa de entrada (aba "Recebidas")**~~ — ✅ o que o paciente respondeu, com a leitura do sistema ao lado (`Confirmou` / `Quer cancelar` / `Precisa ler`). Confirmação automática já nasce lida, então a aba mostra só o que precisa de gente; não lidas em negrito e fundo destacado. `unreadTotal` vem fora do `meta` da paginação porque conta o tenant inteiro, não a página nem o filtro.
+- ~~**Erros de envio em português**~~ — ✅ `error-messages.ts` traduz o `lastError` cru. `Cannot read properties of undefined (reading 'onWhatsApp')` virou "O WhatsApp da clínica está desconectado" + o que fazer. Cada regra responde **o que aconteceu** e **de quem é a ação** — em "acesso recusado" reenviar não adianta; em "queda de rede" reenviar é o certo. O texto cru fica atrás de "Detalhe técnico".
+- ~~**Badge de falhas no menu**~~ — ✅ contagem no **ícone** de Mensagens, não no rótulo: com a sidebar recolhida o texto tem `opacity: 0` e o badge sumiria junto.
+- ~~**Escolha do provider de WhatsApp**~~ — ✅ seletor em Configurações (`FAKE`/`EVOLUTION`/`META`, ou o padrão do servidor). A tela explica a consequência de cada um — o não oficial arrisca o número da clínica, e o simulado não envia nada.
+- ~~**Editor de templates**~~ — ✅ aba "Mensagens automáticas", com marcadores clicáveis e pré-visualização. **A prévia mostra o que o paciente recebe *agora***: com a personalização desligada exibe o texto padrão, não o rascunho no editor. A substituição é duplicada no front só para a prévia (pedir ao servidor a cada tecla seria uma requisição por caractere); validado que casa com o backend nos casos de borda.
+- ~~**Tela de risco de falta**~~ — ✅ terceira aba da Agenda (`/painel/agenda/risco`), lendo `GET /prediction/no-show/upcoming`. **Ordenada por risco, não por horário**: responde "para quem eu ligo hoje?", e a recepção tem tempo limitado. Cada card mostra **os motivos** (`factors`), não só a faixa — "risco alto" sozinho é um número que ninguém tem como checar nem discordar. Aba, e não rota isolada, porque é a mesma agenda vista de outro ângulo; abas são rotas de verdade (URL compartilhável, botão voltar funciona).
+- ~~**Lista de espera**~~ — ✅ quarta aba da Agenda (`/painel/agenda/espera`). Tabela por ordem de chegada + dialog de inclusão. **"Qualquer um" e "Qualquer data" aparecem escritos**, não como célula vazia: vazio parece dado faltando, quando na verdade é o caso que aumenta a chance de encaixe. A ação "marcar como oferecida" só aparece para quem está `WAITING` — nos outros estados seria um item inerte no menu.
+- ~~**Oferta de vaga ao cancelar**~~ — ✅ cancelar um agendamento abre um dialog com os candidatos da fila, com botão "Avisar" que manda a mensagem no WhatsApp. É o que fecha o ciclo da lista de espera: antes ela dependia de a recepção lembrar de abrir outra tela e cruzar procedimento e horário na mão. A posição na fila (`1º`, `2º`) aparece em cada card — sem ela a ordem parece arbitrária. O texto avisa que "a vaga fica para quem responder primeiro", porque a mesma vaga costuma ser oferecida a mais de uma pessoa.
+- ~~**Manual da recepção atualizado**~~ — ✅ `docs/MANUAL-RECEPCAO.md` cobria só até a Fase 1. Ganhou três seções novas (Recebidas, Risco de falta, Lista de espera), a tabela de "o que fazer com cada erro de envio", a explicação de por que um paciente recebe dois lembretes e outro um, e o aviso de que responder "sim" no WhatsApp já confirma sozinho. Escrito para quem atende o telefone, não para quem programa — o teste de ponta a ponta mostrou que o sistema funciona, mas ninguém tinha documentado *como operá-lo*.
+- **Débito registrado**: a duplicação da substituição de marcadores (`MessageTemplates/index.tsx` vs `template-renderer.ts` no backend) é consciente, mas é o tipo de coisa que diverge em silêncio. Se o formato dos marcadores mudar, os dois lados precisam mudar juntos.
 
 ### Fase 3 — Qualidade
 
