@@ -11,8 +11,18 @@ import {
   UpdateProfessionalData,
 } from '../../domain/repository/professional.repository';
 
-const PROCEDURES_INCLUDE = {
+/**
+ * Grade semanal inclusa na listagem de propósito: o Quadro precisa mostrar
+ * "quando cada profissional atende" na mesma tela, e buscar por profissional
+ * seria N+1 requests por troca de dia. Sem grade cadastrada o array vem
+ * vazio — quem consome já trata vazio como "atende o expediente da clínica".
+ */
+const PROFESSIONAL_INCLUDE = {
   procedures: { select: { id: true, name: true } },
+  schedules: {
+    select: { weekday: true, startMinutes: true, endMinutes: true },
+    orderBy: { weekday: 'asc' },
+  },
 } satisfies Prisma.ProfessionalInclude;
 
 @Injectable()
@@ -42,7 +52,7 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.professional.findMany({
         where,
-        include: PROCEDURES_INCLUDE,
+        include: PROFESSIONAL_INCLUDE,
         orderBy: { name: 'asc' },
         skip: (page - 1) * perPage,
         take: perPage,
@@ -59,7 +69,7 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
   ): Promise<ProfessionalWithProcedures | null> {
     return this.prisma.professional.findFirst({
       where: { id, tenantId, deletedAt: null },
-      include: PROCEDURES_INCLUDE,
+      include: PROFESSIONAL_INCLUDE,
     });
   }
 
@@ -70,7 +80,7 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
         ...rest,
         procedures: { connect: procedureIds?.map((id) => ({ id })) ?? [] },
       },
-      include: PROCEDURES_INCLUDE,
+      include: PROFESSIONAL_INCLUDE,
     });
   }
 
@@ -87,7 +97,7 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
           ? { procedures: { set: procedureIds.map((id) => ({ id })) } }
           : {}),
       },
-      include: PROCEDURES_INCLUDE,
+      include: PROFESSIONAL_INCLUDE,
     });
   }
 
