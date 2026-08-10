@@ -19,11 +19,14 @@ import { MessageProcessor } from './infrastructure/queue/message.processor';
 import { MESSAGING_QUEUE } from './infrastructure/queue/messaging.queue';
 import { MessageController } from './infrastructure/http/message.controller';
 import { ConfirmationController } from './infrastructure/http/confirmation.controller';
+import { InboundWebhookController } from './infrastructure/http/inbound-webhook.controller';
 import { MessageTemplateService } from './application/services/message-template.service';
 import { MessageComposerService } from './application/services/message-composer.service';
 import { ScheduleAppointmentReminderUseCase } from './application/use-cases/schedule-appointment-reminder.use-case';
 import { ConfirmByTokenUseCase } from './application/use-cases/confirm-by-token.use-case';
 import { GetMessagesUseCase } from './application/use-cases/get-messages.use-case';
+import { ReceiveInboundMessageUseCase } from './application/use-cases/receive-inbound-message.use-case';
+import { ResendMessageUseCase } from './application/use-cases/resend-message.use-case';
 
 @Module({
   imports: [
@@ -66,7 +69,11 @@ import { GetMessagesUseCase } from './application/use-cases/get-messages.use-cas
       adapter: BullMQAdapter,
     }),
   ],
-  controllers: [MessageController, ConfirmationController],
+  controllers: [
+    MessageController,
+    ConfirmationController,
+    InboundWebhookController,
+  ],
   providers: [
     {
       provide: MESSAGE_REPOSITORY,
@@ -122,6 +129,8 @@ import { GetMessagesUseCase } from './application/use-cases/get-messages.use-cas
     ScheduleAppointmentReminderUseCase,
     ConfirmByTokenUseCase,
     GetMessagesUseCase,
+    ReceiveInboundMessageUseCase,
+    ResendMessageUseCase,
   ],
   exports: [ScheduleAppointmentReminderUseCase, MESSAGE_REPOSITORY],
 })
