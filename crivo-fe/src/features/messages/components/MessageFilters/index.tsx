@@ -46,7 +46,21 @@ export const MessageFilters = ({
   };
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+    // Grid, não flex: o tema define `fullWidth` como padrão do TextField, e
+    // com flex isso vence o `minWidth` — cada campo esticava para 100% e a
+    // barra virava uma coluna de filtros empilhados. O grid dá a cada um a
+    // sua coluna e deixa o `fullWidth` preencher só ela.
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(3, minmax(0, 1fr)) auto",
+        },
+        alignItems: "center",
+        gap: 1.5,
+      }}
+    >
       <TextField
         select
         label="Status"
@@ -54,7 +68,6 @@ export const MessageFilters = ({
         onChange={(event) =>
           onChange({ status: event.target.value || null, page: "1" })
         }
-        sx={{ minWidth: 170 }}
       >
         <MenuItem value="">Todos</MenuItem>
         {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -68,7 +81,6 @@ export const MessageFilters = ({
         label="De"
         value={from ? dayjs(from) : null}
         onChange={handleDateChange("from")}
-        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       <DatePicker
@@ -76,7 +88,6 @@ export const MessageFilters = ({
         value={to ? dayjs(to) : null}
         onChange={handleDateChange("to")}
         minDate={from ? dayjs(from) : undefined}
-        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       {hasFilters && (
