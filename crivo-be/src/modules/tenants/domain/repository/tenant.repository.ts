@@ -1,4 +1,4 @@
-import { Tenant } from '@prisma/client';
+import { MessagingProvider, Tenant } from '@prisma/client';
 
 export type UpdateTenantData = {
   name?: string;
@@ -9,6 +9,8 @@ export type UpdateTenantData = {
   email?: string | null;
   address?: string | null;
   aiMessagesEnabled?: boolean;
+  /** Nulo volta ao padrão do servidor (`MESSAGING_PROVIDER`). */
+  messagingProvider?: MessagingProvider | null;
   businessHoursStart?: number;
   businessHoursEnd?: number;
   businessDays?: number[];
