@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ReplyIntent } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { ConfirmByReplyUseCase } from './confirm-by-reply.use-case';
 
 export type ReceiveInboundMessageInput = {
   tenantId: string;
@@ -18,13 +20,20 @@ export type ReceiveInboundMessageResult = {
   /** `false` quando o webhook reentregou um evento já registrado. */
   stored: boolean;
   patientId: string | null;
+  /** O que o sistema entendeu do texto. */
+  intent?: ReplyIntent;
+  /** `true` quando esta resposta confirmou um agendamento. */
+  confirmed?: boolean;
 };
 
 @Injectable()
 export class ReceiveInboundMessageUseCase {
   private readonly logger = new Logger(ReceiveInboundMessageUseCase.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly confirmByReply: ConfirmByReplyUseCase,
+  ) {}
 
   async execute(
     input: ReceiveInboundMessageInput,
@@ -51,7 +60,33 @@ export class ReceiveInboundMessageUseCase {
         } — ${created.id}`,
       );
 
-      return { stored: true, patientId };
+      // Interpretar SÓ depois de gravar: o `create` acima é o que barra a
+      // reentrega do webhook (índice único em `providerMessageId`). Se a
+      // confirmação viesse antes, o mesmo evento repetido confirmaria de novo
+      // e dispararia um segundo recibo para o paciente.
+      const reply = await this.confirmByReply.execute({
+        tenantId: input.tenantId,
+        patientId,
+        body: input.body,
+      });
+
+      await this.prisma.inboundMessage.update({
+        where: { id: created.id },
+        data: {
+          intent: reply.intent,
+          appointmentId: reply.appointmentId,
+          // Uma confirmação automática não precisa de leitura humana; o resto
+          // continua na caixa de entrada esperando a recepção.
+          readAt: reply.confirmed ? new Date() : null,
+        },
+      });
+
+      return {
+        stored: true,
+        patientId,
+        intent: reply.intent,
+        confirmed: reply.confirmed,
+      };
     } catch (error) {
       // Reentrega do mesmo evento: o WhatsApp repete o webhook quando não
       // recebe 200 a tempo. Cair no índice único é o comportamento
