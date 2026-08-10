@@ -3,10 +3,7 @@ import { Inject, Logger } from '@nestjs/common';
 import { MessageStatus } from '@prisma/client';
 import { Job } from 'bullmq';
 
-import {
-  MESSAGE_PROVIDER,
-  type MessageProvider,
-} from '../../domain/provider/message-provider';
+import { MessageProviderResolver } from '../../application/services/message-provider-resolver.service';
 import {
   MESSAGE_REPOSITORY,
   type MessageRepository,
@@ -25,8 +22,10 @@ export class MessageProcessor extends WorkerHost {
   constructor(
     @Inject(MESSAGE_REPOSITORY)
     private readonly messageRepository: MessageRepository,
-    @Inject(MESSAGE_PROVIDER)
-    private readonly provider: MessageProvider,
+    // Resolvido por mensagem, não injetado fixo: cada clínica pode estar num
+    // provider diferente, e a escolha muda em runtime pela tela de
+    // Configurações — um provider injetado no boot ficaria congelado.
+    private readonly providerResolver: MessageProviderResolver,
   ) {
     super();
   }
@@ -49,6 +48,12 @@ export class MessageProcessor extends WorkerHost {
       return { outcome: 'skipped', reason: 'mensagem não existe mais' };
     }
 
+    // Resolvido pelo tenant da mensagem: duas clínicas podem estar em
+    // providers diferentes, e o job só sabe o `messageId`.
+    const provider = await this.providerResolver.resolveForTenant(
+      message.tenantId,
+    );
+
     // Contexto de negócio no log do job: quem é o paciente e de qual
     // atendimento. Sem isso o dev só vê um uuid e precisa ir ao banco.
     await this.trace(
@@ -59,7 +64,7 @@ export class MessageProcessor extends WorkerHost {
         `paciente=${message.appointment?.patient.name ?? '—'}`,
         `telefone=${message.toPhone}`,
         `atendimento=${message.appointmentId ?? '—'}`,
-        `provider=${this.provider.name}`,
+        `provider=${provider.name}`,
       ].join(' · '),
     );
 
@@ -86,14 +91,14 @@ export class MessageProcessor extends WorkerHost {
     await this.messageRepository.incrementAttempts(message.id);
 
     const startedAt = Date.now();
-    const result = await this.provider.send({
+    const result = await provider.send({
       toPhone: message.toPhone,
       body: message.body,
     });
     const elapsed = Date.now() - startedAt;
 
     await this.messageRepository.markSent(message.id, {
-      provider: this.provider.name,
+      provider: provider.name,
       providerMessageId: result.providerMessageId,
     });
 
@@ -103,12 +108,12 @@ export class MessageProcessor extends WorkerHost {
     );
 
     this.logger.log(
-      `[${this.provider.name}] ${message.type} → ${message.toPhone} (${elapsed}ms)`,
+      `[${provider.name}] ${message.type} → ${message.toPhone} (${elapsed}ms)`,
     );
 
     return {
       outcome: 'sent',
-      provider: this.provider.name,
+      provider: provider.name,
       toPhone: message.toPhone,
       type: message.type,
       providerMessageId: result.providerMessageId ?? null,
