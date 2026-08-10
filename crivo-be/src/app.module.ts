@@ -10,6 +10,8 @@ import { ProfessionalsModule } from './modules/professionals/professionals.modul
 import { ProceduresModule } from './modules/procedures/procedures.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { PredictionModule } from './modules/prediction/prediction.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 
@@ -82,6 +84,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     MessagingModule,
     MedicalRecordsModule,
     DashboardModule,
+    PredictionModule,
+    WaitlistModule,
   ],
   controllers: [],
   providers: [],
