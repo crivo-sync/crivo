@@ -58,8 +58,25 @@ export const AppointmentFilters = ({
   };
 
   return (
+    // Grid, não flex: o tema define `fullWidth` como padrão do TextField e
+    // isso vence o `minWidth` num container flex. Cada filtro ganha uma
+    // coluna de largura igual, e a lixeira ocupa só o que precisa.
     <Box
-      sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(2, minmax(0, 1fr))",
+          md: "repeat(3, minmax(0, 1fr))",
+          xl: "repeat(5, minmax(0, 1fr)) auto",
+        },
+        alignItems: "center",
+        gap: 1.5,
+        // Cresce dentro da barra para o botão de ação ficar ao lado, não
+        // empurrado para a linha de baixo.
+        flex: 1,
+        minWidth: 0,
+      }}
     >
       <TextField
         select
@@ -68,7 +85,6 @@ export const AppointmentFilters = ({
         onChange={(event) =>
           onChange({ professionalId: event.target.value || null, page: "1" })
         }
-        sx={{ minWidth: 200 }}
       >
         <MenuItem value="">Todos</MenuItem>
         {professionals.map((professional) => (
@@ -85,7 +101,6 @@ export const AppointmentFilters = ({
         onChange={(event) =>
           onChange({ patientId: event.target.value || null, page: "1" })
         }
-        sx={{ minWidth: 200 }}
       >
         <MenuItem value="">Todos</MenuItem>
         {patients.map((patient) => (
@@ -102,7 +117,6 @@ export const AppointmentFilters = ({
         onChange={(event) =>
           onChange({ status: event.target.value || null, page: "1" })
         }
-        sx={{ minWidth: 170 }}
       >
         <MenuItem value="">Todos</MenuItem>
         {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -116,7 +130,6 @@ export const AppointmentFilters = ({
         label="De"
         value={from ? dayjs(from) : null}
         onChange={handleDateChange("from")}
-        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       <DatePicker
@@ -124,7 +137,6 @@ export const AppointmentFilters = ({
         value={to ? dayjs(to) : null}
         onChange={handleDateChange("to")}
         minDate={from ? dayjs(from) : undefined}
-        slotProps={{ textField: { sx: { minWidth: 170 } } }}
       />
 
       {hasFilters && (
