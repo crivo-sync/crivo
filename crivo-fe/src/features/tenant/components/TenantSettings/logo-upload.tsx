@@ -10,10 +10,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { useSnackbar } from "@/components/providers/snackbar-provider";
-import {
-  IMAGE_ACCEPT_ATTRIBUTE,
-  validateImageFile,
-} from "@/lib/image-upload";
+import { IMAGE_ACCEPT_ATTRIBUTE, validateImageFile } from "@/lib/image-upload";
 import { useUploadLogo } from "../../hooks/use-upload-logo";
 
 type LogoUploadProps = {
@@ -49,7 +46,7 @@ export const LogoUpload = ({ logoUrl, disabled = false }: LogoUploadProps) => {
       <Stack
         spacing={2}
         sx={{
-          flexDirection: "row",
+          flexDirection: "column",
           alignItems: "center",
           flexWrap: "wrap",
           rowGap: 1.5,
@@ -60,7 +57,7 @@ export const LogoUpload = ({ logoUrl, disabled = false }: LogoUploadProps) => {
         <Box
           sx={{
             position: "relative",
-            width: 140,
+            width: "100%",
             height: 72,
             flexShrink: 0,
             display: "flex",
@@ -109,6 +106,7 @@ export const LogoUpload = ({ logoUrl, disabled = false }: LogoUploadProps) => {
         {!disabled && (
           <Stack spacing={0.5} sx={{ alignItems: "flex-start", minWidth: 0 }}>
             <Button
+              fullWidth
               variant="outlined"
               size="small"
               startIcon={<UploadOutlinedIcon />}
