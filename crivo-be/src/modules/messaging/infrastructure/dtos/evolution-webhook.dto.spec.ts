@@ -110,7 +110,9 @@ describe('extractInboundMessage', () => {
     // A doc mostra MESSAGES_UPSERT, mas a Evolution já emitiu
     // "messages.upsert" em versões diferentes — normalizar evita perder
     // mensagem por causa de caixa.
-    expect(extractInboundMessage(payload({}, 'messages_upsert'))).not.toBeNull();
+    expect(
+      extractInboundMessage(payload({}, 'messages_upsert')),
+    ).not.toBeNull();
   });
 
   it('remove espaço em volta do texto', () => {
