@@ -33,6 +33,21 @@ const SLOT_STEP_MINUTES = 15;
 /** Teto de segurança: nenhum profissional tem tanto agendamento num dia. */
 const MAX_APPOINTMENTS_IN_DAY = 200;
 
+/**
+ * Por que o dia não tem horário livre. Sem isso a recepção só vê
+ * "nada disponível" e conclui que há bug — na prática a causa é quase sempre
+ * a grade do profissional ou o dia já ter passado.
+ */
+export type NoSlotsReason =
+  /** Um bloqueio (férias, congresso) cobre o dia. */
+  | 'TIME_OFF'
+  /** O profissional tem grade, mas não atende neste dia da semana. */
+  | 'NOT_WORKING_DAY'
+  /** Havia janela, mas o último início possível já passou. */
+  | 'WINDOW_PASSED'
+  /** Havia janela e ainda há tempo, mas todos os horários estão ocupados. */
+  | 'ALL_BUSY';
+
 @Injectable()
 export class GetAvailabilityUseCase {
   constructor(
@@ -172,11 +187,71 @@ export class GetAvailabilityUseCase {
       slots.push({ startsAt: start, endsAt: end });
     }
 
+    // Quando não sobra nada, a recepção merece saber o motivo — "não tem
+    // horário" sem explicação é lido como bug (e não é: é a grade da Dra.
+    // Helena atendendo só de manhã, o dia já ter passado etc.).
+    const weekday = dayStart.getDay();
+    const dayWindows = availability.schedules.filter(
+      (window) => window.weekday === weekday,
+    );
+    const dayTimeOff = availability.timeOff.find(
+      (block) => dayStart < block.endsAt && dayEnd > block.startsAt,
+    );
+
+    let noSlotsReason: NoSlotsReason | undefined;
+    if (slots.length === 0) {
+      if (dayTimeOff) {
+        noSlotsReason = 'TIME_OFF';
+      } else if (availability.schedules.length > 0 && dayWindows.length === 0) {
+        noSlotsReason = 'NOT_WORKING_DAY';
+      } else {
+        // Sem grade o profissional herda o expediente da clínica; com grade,
+        // o último início possível é o fim da janela menos a duração.
+        const lastStartMinutes =
+          dayWindows.length > 0
+            ? Math.max(
+                ...dayWindows.map(
+                  (window) => window.endMinutes - procedure.durationMinutes,
+                ),
+              )
+            : config.businessHoursEnd - procedure.durationMinutes;
+
+        // Último início em tempo absoluto: se já passou, o dia acabou para
+        // este profissional (hoje à tarde com janela só de manhã, ou um dia
+        // passado inteiro). Se ainda não passou, sobrava tempo e o vazio é
+        // agenda cheia.
+        const lastStart = new Date(dayStart);
+        lastStart.setHours(
+          Math.floor(lastStartMinutes / 60),
+          lastStartMinutes % 60,
+          0,
+          0,
+        );
+
+        noSlotsReason =
+          lastStart.getTime() <= now ? 'WINDOW_PASSED' : 'ALL_BUSY';
+      }
+    }
+
     return {
       date: dayStart,
       durationMinutes: procedure.durationMinutes,
       slots,
       closed: false,
+      noSlotsReason,
+      // Grade do profissional para o dia consultado — o cliente formata
+      // "atende quarta das 08:00 às 12:00" sem precisar de outra chamada.
+      scheduleWindows: dayWindows.map((window) => ({
+        startMinutes: window.startMinutes,
+        endMinutes: window.endMinutes,
+      })),
+      timeOff: dayTimeOff
+        ? {
+            startsAt: dayTimeOff.startsAt,
+            endsAt: dayTimeOff.endsAt,
+            reason: dayTimeOff.reason,
+          }
+        : null,
     };
   }
 }
