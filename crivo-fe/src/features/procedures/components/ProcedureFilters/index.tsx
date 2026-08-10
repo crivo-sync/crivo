@@ -15,7 +15,8 @@ type ProcedureFiltersProps = {
 
 export const ProcedureFilters = ({ control, onClear }: ProcedureFiltersProps) => {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    // `flex: 1` para acompanhar o espaço livre — ver PatientFilters.
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
       <Controller
         control={control}
         name="search"
@@ -23,7 +24,6 @@ export const ProcedureFilters = ({ control, onClear }: ProcedureFiltersProps) =>
           <TextField
             {...field}
             placeholder="Buscar por nome ou descrição"
-            sx={{ width: 500, maxWidth: "100%" }}
             slotProps={{
               input: {
                 startAdornment: (
