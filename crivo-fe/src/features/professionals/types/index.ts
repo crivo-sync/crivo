@@ -10,6 +10,17 @@ export type Professional = {
   createdAt: string;
   /** Procedimentos que este profissional realiza. Vazio = realiza todos. */
   procedures: { id: string; name: string }[];
+  /**
+   * Grade semanal (0=domingo … 6=sábado, minutos desde a meia-noite).
+   * Opcional porque o backend só passou a devolver junto com a listagem —
+   * versões antigas do servidor não enviam o campo, e ausência significa a
+   * mesma coisa que array vazio: atende no expediente da clínica.
+   */
+  schedules?: {
+    weekday: number;
+    startMinutes: number;
+    endMinutes: number;
+  }[];
 };
 
 export type PaginationMeta = {
