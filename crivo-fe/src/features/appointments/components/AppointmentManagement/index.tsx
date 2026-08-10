@@ -63,9 +63,7 @@ export const AppointmentManagement = () => {
   };
 
   if (error) {
-    return (
-      <ErrorServer message={error.message} onRetry={() => refetch()} />
-    );
+    return <ErrorServer message={error.message} onRetry={() => refetch()} />;
   }
 
   return (
@@ -73,13 +71,14 @@ export const AppointmentManagement = () => {
       elevation={1}
       sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}
     >
+      {/* `alignItems: flex-start` porque os filtros quebram em várias linhas
+          em telas menores — com "center" o botão flutuaria no meio delas. */}
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          alignItems: { xs: "stretch", lg: "flex-start" },
+          flexDirection: { xs: "column", lg: "row" },
           gap: 2,
-          flexWrap: "wrap",
         }}
       >
         <AppointmentFilters
@@ -97,6 +96,9 @@ export const AppointmentManagement = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setFormOpen(true)}
+          // `flexShrink: 0` para o texto não quebrar quando os filtros
+          // crescem; a altura casa com a dos campos "small" do tema.
+          sx={{ flexShrink: 0, height: 40 }}
         >
           Novo agendamento
         </Button>
@@ -114,14 +116,14 @@ export const AppointmentManagement = () => {
       {/* Montados só quando abertos: os dois buscam pacientes, profissionais,
           procedimentos e a clínica ao montar — com eles sempre no ar, toda
           visita à agenda pagava essas requisições sem nem abrir o formulário. */}
-      {formOpen && (
-        <AppointmentFormDialog open onOpenChange={setFormOpen} />
-      )}
+      {formOpen && <AppointmentFormDialog open onOpenChange={setFormOpen} />}
 
       {reschedulingAppointment && (
         <RescheduleAppointmentDialog
           open
-          onOpenChange={(open) => !open && setReschedulingAppointment(undefined)}
+          onOpenChange={(open) =>
+            !open && setReschedulingAppointment(undefined)
+          }
           appointment={reschedulingAppointment}
         />
       )}
