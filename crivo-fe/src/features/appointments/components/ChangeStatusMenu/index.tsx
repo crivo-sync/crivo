@@ -18,6 +18,12 @@ type PendingChange = { appointment: Appointment; status: AppointmentStatus };
 type ChangeStatusMenuProps = {
   pending?: PendingChange;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Chamado quando o cancelamento é confirmado. Existe para a tela oferecer
+   * a vaga à lista de espera na hora — sem isso a recepção precisa lembrar
+   * de conferir a fila, e na prática a vaga evapora.
+   */
+  onCancelled?: (appointmentId: string) => void;
 };
 
 /**
@@ -29,6 +35,7 @@ type ChangeStatusMenuProps = {
 export const ChangeStatusMenu = ({
   pending,
   onOpenChange,
+  onCancelled,
 }: ChangeStatusMenuProps) => {
   const changeStatus = useChangeAppointmentStatus();
   const [cancelReason, setCancelReason] = useState("");
@@ -42,6 +49,10 @@ export const ChangeStatusMenu = ({
       });
       setCancelReason("");
       onOpenChange(false);
+
+      if (pending.status === "CANCELLED") {
+        onCancelled?.(pending.appointment.id);
+      }
     } catch {
       // Erro já exibido pelo snackbar via onError do hook.
     }
