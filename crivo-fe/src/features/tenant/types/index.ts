@@ -1,3 +1,6 @@
+/** Caminho de envio do WhatsApp. Credenciais ficam no servidor. */
+export type MessagingProvider = "FAKE" | "EVOLUTION" | "META";
+
 export type Tenant = {
   id: string;
   name: string;
@@ -10,6 +13,11 @@ export type Tenant = {
   email: string | null;
   address: string | null;
   aiMessagesEnabled: boolean;
+  /**
+   * Por onde o WhatsApp desta clínica sai. `null` = usa o padrão do
+   * servidor; as credenciais ficam em variáveis de ambiente, não aqui.
+   */
+  messagingProvider: MessagingProvider | null;
   /** Abertura da clínica em minutos desde a meia-noite (480 = 08:00). */
   businessHoursStart: number;
   /** Fechamento da clínica em minutos desde a meia-noite (1080 = 18:00). */
