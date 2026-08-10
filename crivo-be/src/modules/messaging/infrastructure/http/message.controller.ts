@@ -1,6 +1,15 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -13,13 +22,17 @@ import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.gua
 import { QueryMessagesDto } from '../dtos/query-messages.dto';
 import { MessageResponseDto } from '../dtos/message-response.dto';
 import { GetMessagesUseCase } from '../../application/use-cases/get-messages.use-case';
+import { ResendMessageUseCase } from '../../application/use-cases/resend-message.use-case';
 
 @ApiTags('Mensagens')
 @ApiBearerAuth()
 @Controller('messages')
 @UseGuards(JwtAuthGuard, TenantContextGuard)
 export class MessageController {
-  constructor(private readonly getMessages: GetMessagesUseCase) {}
+  constructor(
+    private readonly getMessages: GetMessagesUseCase,
+    private readonly resendMessage: ResendMessageUseCase,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Histórico de mensagens enviadas pela clínica' })
@@ -65,5 +78,19 @@ export class MessageController {
       perPage: query.perPage,
       total,
     });
+  }
+
+  @Post(':id/resend')
+  @HttpCode(204)
+  @ApiOperation({
+    summary:
+      'Reenvia uma mensagem que falhou — devolve à fila com as tentativas zeradas',
+  })
+  @ApiNoContentResponse()
+  async resend(
+    @Tenant('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.resendMessage.execute(id, tenantId);
   }
 }
