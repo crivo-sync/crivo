@@ -9,7 +9,7 @@ import { ptBR as datePickersPtBR } from "@mui/x-date-pickers/locales";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-import { muiTheme } from "@/config/mui-theme";
+import { muiTheme } from "@/theme/mui-theme";
 import { SnackbarProvider } from "./snackbar-provider";
 
 type MuiProviderProps = {
