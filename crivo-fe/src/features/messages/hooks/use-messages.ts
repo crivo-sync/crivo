@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { LIVE_REFETCH_INTERVAL_MS } from "@/config/realtime";
+import { LIVE_REFETCH_INTERVAL_MS } from "@/lib/realtime";
 import { getMessagesAction } from "../actions/get-messages-action";
 import type { MessagesQueryParams } from "../schemas/messages-query-params";
 
