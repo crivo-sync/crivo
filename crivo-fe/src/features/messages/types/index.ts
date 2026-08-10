@@ -33,6 +33,31 @@ export type Message = {
   } | null;
 };
 
+/** O que o backend entendeu da resposta do paciente. */
+export type ReplyIntent = "CONFIRM" | "CANCEL" | "UNKNOWN";
+
+/** Mensagem que o paciente enviou para a clínica. */
+export type InboundMessage = {
+  id: string;
+  channel: "WHATSAPP";
+  fromPhone: string;
+  body: string;
+  intent: ReplyIntent;
+  sentAt: string;
+  readAt: string | null;
+  /** Nulo quando o número não bate com nenhum cadastro. */
+  patient: { id: string; name: string; phone: string } | null;
+  appointment: { id: string; startsAt: string } | null;
+};
+
+/**
+ * A listagem de recebidas traz `unreadTotal` além da paginação: é a contagem
+ * do tenant inteiro (não da página nem do filtro), usada no badge do menu.
+ */
+export type InboundMessagesResponse = PaginatedResponse<InboundMessage> & {
+  unreadTotal: number;
+};
+
 export type PaginationMeta = {
   page: number;
   perPage: number;
