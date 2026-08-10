@@ -27,3 +27,22 @@ const PALETTE: SchedulerEventColor[] = [
 export function colorForIndex(index: number): SchedulerEventColor {
   return PALETTE[index % PALETTE.length];
 }
+
+/** Nome da paleta do scheduler → cor concreta (para a legenda do Quadro). */
+const PALETTE_HEX: Record<SchedulerEventColor, string> = {
+  grey: "#757575",
+  blue: "#1976d2",
+  green: "#2e7d32",
+  purple: "#7b1fa2",
+  orange: "#ed6c02",
+  teal: "#00796b",
+  pink: "#c2185b",
+  indigo: "#3f51b5",
+  amber: "#ff8f00",
+  lime: "#9e9d24",
+  red: "#d32f2f",
+};
+
+export function colorHexForIndex(index: number): string {
+  return PALETTE_HEX[colorForIndex(index)];
+}
