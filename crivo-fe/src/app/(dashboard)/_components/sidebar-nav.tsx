@@ -10,6 +10,7 @@ import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import Badge from "@mui/material/Badge";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -18,6 +19,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Tooltip from "@mui/material/Tooltip";
 import type { SvgIconComponent } from "@mui/icons-material";
 
+import { useFailedMessages } from "@/features/messages/hooks/use-failed-messages";
 import type { NavIconName, NavItem } from "../_data/nav-items";
 
 const ICONS: Record<NavIconName, SvgIconComponent> = {
@@ -44,6 +46,17 @@ type SidebarNavProps = {
 export const SidebarNav = ({ items, open }: SidebarNavProps) => {
   const pathname = usePathname();
 
+  /**
+   * Contagem de mensagens que falharam, no menu.
+   *
+   * O alerta "ligue para estes pacientes" só existia dentro do Painel e da
+   * tela de Mensagens — quem estava em Agenda ou Pacientes não descobria que
+   * alguém ficou sem aviso. `perPage: 1` porque só o `meta.total` interessa
+   * aqui; o hook já se reconsulta sozinho (`LIVE_REFETCH_INTERVAL_MS`).
+   */
+  const { meta } = useFailedMessages({ page: 1, perPage: 1 });
+  const failedCount = meta?.total ?? 0;
+
   return (
     <List>
       {items.map((item) => {
@@ -54,6 +67,10 @@ export const SidebarNav = ({ items, open }: SidebarNavProps) => {
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = ICONS[item.icon];
+        // O badge fica no ÍCONE, não no texto: com a sidebar recolhida o
+        // rótulo tem `opacity: 0`, e um badge ali sumiria junto — justamente
+        // quando o menu estreito é a única pista na tela.
+        const badgeCount = item.href === "/painel/mensagens" ? failedCount : 0;
 
         return (
           <ListItem key={item.href} disablePadding sx={{ display: "block" }}>
@@ -76,7 +93,15 @@ export const SidebarNav = ({ items, open }: SidebarNavProps) => {
                     open ? { mr: 3 } : { mr: "auto" },
                   ]}
                 >
-                  <Icon />
+                  <Badge
+                    badgeContent={badgeCount}
+                    color="error"
+                    // Zero não vira bolinha vazia: `badgeContent={0}` some
+                    // sozinho no MUI, então nenhum item sem falha ganha marca.
+                    max={99}
+                  >
+                    <Icon />
+                  </Badge>
                 </ListItemIcon>
                 <ListItemText
                   primary={item.label}
