@@ -97,7 +97,11 @@ export const ProfessionalManagement = () => {
 
       {canManage && (
         <>
+          {/* A `key` remonta o dialog a cada abertura, zerando o rascunho da
+              grade sem um efeito de limpeza — que o React Compiler acusa
+              como render em cascata. */}
           <ProfessionalFormDialog
+            key={`${editingProfessional?.id ?? "new"}-${formOpen}`}
             open={formOpen}
             onOpenChange={setFormOpen}
             professional={editingProfessional}
