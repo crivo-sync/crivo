@@ -13,7 +13,10 @@ import {
   MESSAGE_REPOSITORY,
   type MessageRepository,
 } from '../../domain/repository/message.repository';
-import { MESSAGING_QUEUE, SEND_JOB_OPTIONS } from '../../infrastructure/queue/messaging.queue';
+import {
+  MESSAGING_QUEUE,
+  SEND_JOB_OPTIONS,
+} from '../../infrastructure/queue/messaging.queue';
 
 /**
  * Reenvio manual de uma mensagem que falhou.
