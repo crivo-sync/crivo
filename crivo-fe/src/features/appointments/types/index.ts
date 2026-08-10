@@ -31,7 +31,19 @@ export type Availability = {
   slots: AvailabilitySlot[];
   /** `true` quando a clínica não atende nesse dia da semana. */
   closed: boolean;
+  /** Por que o dia está sem horários — só presente quando `slots` é vazio. */
+  noSlotsReason?: NoSlotsReason;
+  /** Grade do profissional para o dia consultado (minutos desde a meia-noite). */
+  scheduleWindows: { startMinutes: number; endMinutes: number }[];
+  /** Bloqueio que cobre o dia, se houver. */
+  timeOff: { startsAt: string; endsAt: string; reason: string | null } | null;
 };
+
+export type NoSlotsReason =
+  | "TIME_OFF"
+  | "NOT_WORKING_DAY"
+  | "WINDOW_PASSED"
+  | "ALL_BUSY";
 
 export type PaginationMeta = {
   page: number;
