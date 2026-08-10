@@ -9,6 +9,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
@@ -43,6 +44,19 @@ const minutesToDayjs = (minutes: number | undefined) =>
 const dayjsToMinutes = (value: dayjs.Dayjs) =>
   value.hour() * 60 + value.minute();
 
+/**
+ * A escolha tem consequência real e a tela precisa dizer qual: o não oficial
+ * é mais barato mas arrisca o número da clínica, e "simulado" não envia nada
+ * — quem marcar sem entender acha que avisou o paciente e não avisou.
+ */
+const PROVIDER_HINTS: Record<string, string> = {
+  DEFAULT: "Usa a configuração padrão do sistema.",
+  META: "Canal oficial do WhatsApp. Cobra por mensagem enviada e não corre risco de bloqueio.",
+  EVOLUTION:
+    "Mais barato, mas o WhatsApp não autoriza esse tipo de conexão — o número da clínica pode ser bloqueado em definitivo.",
+  FAKE: "Nada é enviado de verdade. Use apenas para testes e demonstrações.",
+};
+
 const EMPTY_VALUES: UpdateTenantSchema = {
   name: "",
   primaryColor: "",
@@ -51,6 +65,7 @@ const EMPTY_VALUES: UpdateTenantSchema = {
   email: "",
   address: "",
   aiMessagesEnabled: false,
+  messagingProvider: "",
   businessHoursStart: DEFAULT_BUSINESS_HOURS_START,
   businessHoursEnd: DEFAULT_BUSINESS_HOURS_END,
   businessDays: DEFAULT_BUSINESS_DAYS,
@@ -79,6 +94,8 @@ export const TenantSettings = () => {
       email: tenant.email ?? "",
       address: tenant.address ?? "",
       aiMessagesEnabled: tenant.aiMessagesEnabled,
+      // `null` no banco = "padrão do sistema", que no select é a opção "".
+      messagingProvider: tenant.messagingProvider ?? "",
       businessHoursStart:
         tenant.businessHoursStart ?? DEFAULT_BUSINESS_HOURS_START,
       businessHoursEnd: tenant.businessHoursEnd ?? DEFAULT_BUSINESS_HOURS_END,
@@ -88,7 +105,12 @@ export const TenantSettings = () => {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await updateTenant.mutateAsync(values);
+      await updateTenant.mutateAsync({
+        ...values,
+        // "" é o "padrão do sistema" do select; o backend espera `null` para
+        // voltar a herdar a configuração do servidor.
+        messagingProvider: values.messagingProvider || null,
+      });
     } catch {
       // Erro já exibido pelo snackbar via onError do hook.
     }
@@ -338,6 +360,40 @@ export const TenantSettings = () => {
                 )}
               />
             </Stack>
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
+              Envio de WhatsApp
+            </Typography>
+
+            <Controller
+              control={control}
+              name="messagingProvider"
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  select
+                  id="messagingProvider"
+                  label="Como as mensagens são enviadas"
+                  value={field.value ?? ""}
+                  disabled={!canManage}
+                  error={!!fieldState.error}
+                  helperText={
+                    fieldState.error?.message ??
+                    PROVIDER_HINTS[field.value || "DEFAULT"]
+                  }
+                >
+                  {/* "" = herda o padrão do servidor. É o estado de quem
+                      nunca escolheu, e precisa continuar alcançável para a
+                      clínica poder voltar atrás. */}
+                  <MenuItem value="">Padrão do sistema</MenuItem>
+                  <MenuItem value="META">WhatsApp oficial (Meta)</MenuItem>
+                  <MenuItem value="EVOLUTION">WhatsApp não oficial</MenuItem>
+                  <MenuItem value="FAKE">Simulado (não envia)</MenuItem>
+                </TextField>
+              )}
+            />
           </Box>
 
           <Controller
