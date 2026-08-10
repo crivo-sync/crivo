@@ -11,6 +11,11 @@ type MessagesTableProps = {
   meta?: PaginationMeta;
   loading?: boolean;
   onUpdateParams: (updates: Record<string, string | null>) => void;
+  /** Só a aba de falhas passa — o histórico não tem ação de reenvio. */
+  onResend?: (message: Message) => void;
+  /** Abre o corpo completo; vale nas duas abas. */
+  onView?: (message: Message) => void;
+  resendingId?: string;
 };
 
 export const MessagesTable = ({
@@ -18,8 +23,14 @@ export const MessagesTable = ({
   meta,
   loading,
   onUpdateParams,
+  onResend,
+  onView,
+  resendingId,
 }: MessagesTableProps) => {
-  const columns = useMemo(() => buildMessageColumns(), []);
+  const columns = useMemo(
+    () => buildMessageColumns({ onResend, onView, resendingId }),
+    [onResend, onView, resendingId],
+  );
 
   return (
     <AppDataGrid
