@@ -82,17 +82,17 @@ export function buildProfessionalColumns({
           showInMenu
         />,
         <GridActionsCellItem
-          key="schedule"
-          icon={<ScheduleOutlinedIcon />}
-          label="Horários e bloqueios"
-          onClick={() => onManageSchedule(row)}
-          showInMenu
-        />,
-        <GridActionsCellItem
           key="delete"
           icon={<DeleteOutlinedIcon />}
           label="Remover"
           onClick={() => onDelete(row)}
+          showInMenu
+        />,
+        <GridActionsCellItem
+          key="schedule"
+          icon={<ScheduleOutlinedIcon />}
+          label="Horários e bloqueios"
+          onClick={() => onManageSchedule(row)}
           showInMenu
         />,
       ],
