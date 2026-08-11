@@ -14,7 +14,7 @@ const footerLinks = {
     { label: "Sobre", href: "/#produto" },
     { label: "Diferenciais", href: "/#diferenciais" },
     { label: "Depoimentos", href: "/#depoimentos" },
-    { label: "Contato", href: "/#contato" },
+    { label: "Comece grátis", href: "/cadastro" },
   ],
 };
 

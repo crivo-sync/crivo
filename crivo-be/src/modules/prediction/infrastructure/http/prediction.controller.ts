@@ -6,7 +6,9 @@ import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { AssessAppointmentRiskUseCase } from '../../application/assess-appointment-risk.use-case';
+import { MeasureRuleAccuracyUseCase } from '../../application/measure-rule-accuracy.use-case';
 
 export class QueryUpcomingRiskDto {
   @IsOptional()
@@ -33,9 +35,24 @@ export class QueryUpcomingRiskDto {
 @ApiTags('Predição')
 @ApiBearerAuth()
 @Controller('prediction')
-@UseGuards(JwtAuthGuard, TenantContextGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
 export class PredictionController {
-  constructor(private readonly assessRisk: AssessAppointmentRiskUseCase) {}
+  constructor(
+    private readonly assessRisk: AssessAppointmentRiskUseCase,
+    private readonly measureAccuracy: MeasureRuleAccuracyUseCase,
+  ) {}
+
+  @Get('no-show/accuracy')
+  @ApiOperation({
+    summary:
+      'Compara o risco previsto com o que aconteceu — diz se os pesos estão certos',
+  })
+  async accuracy(
+    @Tenant('tenantId') tenantId: string,
+    @Query('days') days?: string,
+  ) {
+    return this.measureAccuracy.execute(tenantId, Number(days) || 180);
+  }
 
   @Get('no-show/upcoming')
   @ApiOperation({

@@ -27,6 +27,12 @@ export default async function DashboardLayout({
   // a expirar, backend fora do ar), o painel continua funcionando sem ele.
   const tenantResult = await getTenantAction();
   const tenantName = tenantResult.success ? tenantResult.data.name : null;
+  const trial = tenantResult.success
+    ? {
+        status: tenantResult.data.subscriptionStatus,
+        endsAt: tenantResult.data.trialEndsAt,
+      }
+    : null;
 
   return (
     <MuiProvider>
@@ -42,6 +48,7 @@ export default async function DashboardLayout({
             navItems={visibleItems}
             displayName={session.displayName ?? "Minha conta"}
             tenantName={tenantName}
+            trial={trial}
           >
             {children}
           </DashboardShell>

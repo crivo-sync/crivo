@@ -9,9 +9,10 @@ import { GetProcedureByIdUseCase } from './application/use-cases/get-procedure-b
 import { CreateProcedureUseCase } from './application/use-cases/create-procedure.use-case';
 import { UpdateProcedureUseCase } from './application/use-cases/update-procedure.use-case';
 import { DeleteProcedureUseCase } from './application/use-cases/delete-procedure.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [ProcedureController],
   providers: [
     {

@@ -2,10 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
-import {
-  assessNoShowRisk,
-  type RiskAssessment,
-} from '../domain/no-show-risk';
+import { assessNoShowRisk, type RiskAssessment } from '../domain/no-show-risk';
 
 export type AppointmentRisk = RiskAssessment & {
   appointmentId: string;
@@ -89,7 +86,10 @@ export class AssessAppointmentRiskUseCase {
     );
 
     return assessed
-      .sort((a, b) => b.score - a.score || a.startsAt.getTime() - b.startsAt.getTime())
+      .sort(
+        (a, b) =>
+          b.score - a.score || a.startsAt.getTime() - b.startsAt.getTime(),
+      )
       .slice(0, options.limit ?? 50);
   }
 
@@ -115,7 +115,10 @@ export class AssessAppointmentRiskUseCase {
     const history = new Map<string, { noShows: number; completed: number }>();
 
     for (const row of rows) {
-      const current = history.get(row.patientId) ?? { noShows: 0, completed: 0 };
+      const current = history.get(row.patientId) ?? {
+        noShows: 0,
+        completed: 0,
+      };
 
       if (row.status === AppointmentStatus.NO_SHOW) {
         current.noShows = row._count;

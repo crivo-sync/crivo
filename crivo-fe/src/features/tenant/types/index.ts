@@ -1,6 +1,15 @@
 /** Caminho de envio do WhatsApp. Credenciais ficam no servidor. */
 export type MessagingProvider = "FAKE" | "EVOLUTION" | "META";
 
+/** Só `TRIALING` e `EXPIRED` acontecem hoje — os demais existem no backend
+ * para quando o Stripe entrar. */
+export type SubscriptionStatus =
+  | "TRIALING"
+  | "ACTIVE"
+  | "PAST_DUE"
+  | "CANCELED"
+  | "EXPIRED";
+
 export type Tenant = {
   id: string;
   name: string;
@@ -24,6 +33,8 @@ export type Tenant = {
   businessHoursEnd: number;
   /** Dias de funcionamento na convenção `Date.getDay()` (0 = domingo). */
   businessDays: number[];
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
   createdAt: string;
   updatedAt: string;
 };

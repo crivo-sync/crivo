@@ -8,9 +8,10 @@ import { GetTenantUseCase } from './application/use-cases/get-tenant.use-case';
 import { UpdateTenantUseCase } from './application/use-cases/update-tenant.use-case';
 import { GetTenantBrandingUseCase } from './application/use-cases/get-tenant-branding.use-case';
 import { UpdateTenantLogoUseCase } from './application/use-cases/update-tenant-logo.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [TenantController],
   providers: [
     {

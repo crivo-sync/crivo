@@ -5,8 +5,12 @@ import Link from "next/link";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { PRICING_PLANS } from "../_data/pricing-plans";
 import { PricingCard } from "./pricing-card";
+import { FreeTrialCard } from "./free-trial-card";
 
 export const PricingTeaser = () => {
+  // O trial saiu da grade e virou o card "Comece grátis" (FreeTrialCard) abaixo.
+  const paidPlans = PRICING_PLANS.filter((plan) => plan.tier !== "trial");
+
   return (
     <section
       id="planos"
@@ -49,25 +53,34 @@ export const PricingTeaser = () => {
 
           <ScrollReveal direction="up" delay={250} duration={850}>
             <p className="mt-5 text-lg leading-relaxed text-gray-600">
-              Cobrança por profissional ativo, nunca por agendamento. Mude de
-              plano quando quiser.
+              Cobrança por profissional ativo, nunca por agendamento. 14 dias de
+              teste grátis em qualquer plano.
             </p>
           </ScrollReveal>
         </div>
 
         {/* Plan cards */}
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {PRICING_PLANS.map((plan, idx) => (
-            <ScrollReveal key={plan.name} direction="up" delay={idx * 100} duration={700}>
+          {paidPlans.map((plan, idx) => (
+            <ScrollReveal
+              key={plan.name}
+              direction="up"
+              delay={idx * 100}
+              duration={700}
+            >
               <PricingCard plan={plan} compact />
             </ScrollReveal>
           ))}
         </div>
 
+        <FreeTrialCard />
+
         {/* Comparison link */}
-        <ScrollReveal direction="up" delay={380} duration={700}>
+        <ScrollReveal direction="up" delay={450} duration={700}>
           <div className="mt-8 text-center">
-            <p className="mb-1 text-sm text-gray-500">Quer ver tudo lado a lado?</p>
+            <p className="mb-1 text-sm text-gray-500">
+              Quer ver tudo lado a lado?
+            </p>
             <Link
               href="/planos"
               className="text-sm text-indigo-600 underline underline-offset-4 transition-colors hover:text-indigo-500"

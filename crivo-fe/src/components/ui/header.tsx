@@ -50,7 +50,7 @@ export const Header = () => {
         </nav>
 
         <Link
-          href="/teste-gratis"
+          href="/cadastro"
           className="rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(79,70,229,0.25)] transition-all duration-300 hover:bg-indigo-500 hover:shadow-[0_0_45px_rgba(79,70,229,0.4)]"
         >
           Comece grátis

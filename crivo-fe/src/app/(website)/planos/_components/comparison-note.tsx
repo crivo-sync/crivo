@@ -6,6 +6,8 @@ import { ScrollReveal } from "@/components/ui/scroll-reveal";
 
 type FeatureRow = {
   label: string;
+  /** No teste tudo fica liberado — é sempre `true`, de propósito. */
+  trial: boolean;
   essencial: boolean;
   clinica: boolean;
   rede: boolean;
@@ -17,18 +19,21 @@ const GROUPS: { group: string; rows: FeatureRow[] }[] = [
     rows: [
       {
         label: "Agenda com controle de conflito de horário",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
       },
       {
         label: "Cadastro completo de pacientes",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
       },
       {
-        label: "Preço e duração derivados do procedimento",
+        label: "Agendamento online pelo paciente",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
@@ -39,25 +44,36 @@ const GROUPS: { group: string; rows: FeatureRow[] }[] = [
     group: "Mensageria",
     rows: [
       {
-        label: "Lembretes automáticos de WhatsApp (D-1)",
+        label: "Lembretes automáticos de WhatsApp",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
       },
       {
-        label: "Confirmação de presença por link",
+        label: "Confirmação por link ou respondendo no WhatsApp",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
       },
       {
         label: "Retry automático + lista de falhas",
+        trial: true,
         essencial: true,
         clinica: true,
         rede: true,
       },
       {
         label: "Mensagens reescritas por IA (opcional)",
+        trial: true,
+        essencial: false,
+        clinica: true,
+        rede: true,
+      },
+      {
+        label: "Textos das mensagens personalizáveis",
+        trial: true,
         essencial: false,
         clinica: true,
         rede: true,
@@ -69,18 +85,21 @@ const GROUPS: { group: string; rows: FeatureRow[] }[] = [
     rows: [
       {
         label: "Predição de risco de no-show",
+        trial: true,
         essencial: false,
         clinica: true,
         rede: true,
       },
       {
-        label: "Reativação inteligente de pacientes",
+        label: "Lembrete extra para quem tende a faltar",
+        trial: true,
         essencial: false,
         clinica: true,
         rede: true,
       },
       {
-        label: "Painel de métricas de ocupação",
+        label: "Lista de espera com aviso automático",
+        trial: true,
         essencial: false,
         clinica: true,
         rede: true,
@@ -92,26 +111,29 @@ const GROUPS: { group: string; rows: FeatureRow[] }[] = [
     rows: [
       {
         label: "Gestão multi-unidade",
+        trial: true,
         essencial: false,
         clinica: false,
         rede: true,
       },
       {
         label: "Relatórios consolidados",
+        trial: true,
         essencial: false,
         clinica: false,
         rede: true,
       },
-      { label: "Suporte prioritário", essencial: false, clinica: false, rede: true },
-      { label: "Onboarding assistido", essencial: false, clinica: false, rede: true },
+      { label: "Suporte prioritário", trial: true, essencial: false, clinica: false, rede: true },
+      { label: "Onboarding assistido", trial: true, essencial: false, clinica: false, rede: true },
     ],
   },
 ];
 
 const COLUMNS = [
-  { key: "essencial" as const, label: "Essencial", accent: "text-teal-300" },
-  { key: "clinica" as const, label: "Clínica", accent: "text-amber-300" },
-  { key: "rede" as const, label: "Rede", accent: "text-indigo-300" },
+  { key: "trial" as const, label: "Teste", accent: "text-emerald-700" },
+  { key: "essencial" as const, label: "Essencial", accent: "text-indigo-600" },
+  { key: "clinica" as const, label: "Clínica", accent: "text-indigo-600" },
+  { key: "rede" as const, label: "Rede", accent: "text-indigo-600" },
 ];
 
 const Cell = ({ included }: { included: boolean }) =>
@@ -167,7 +189,7 @@ export const ComparisonNote = () => {
           className="overflow-hidden rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent backdrop-blur-sm"
         >
           <div className="overflow-x-auto">
-            <table className="w-full min-w-140 border-collapse text-sm">
+            <table className="w-full min-w-160 border-collapse text-sm">
               <thead>
                 <tr className="border-b border-black/10">
                   <th className="px-6 py-4 text-left text-xs font-semibold tracking-wider text-gray-500 uppercase">
@@ -188,7 +210,7 @@ export const ComparisonNote = () => {
                   <Fragment key={group.group}>
                     <tr className="bg-black/1.5">
                       <td
-                        colSpan={4}
+                        colSpan={COLUMNS.length + 1}
                         className="px-6 py-2.5 text-[11px] font-bold tracking-wider text-gray-500 uppercase"
                       >
                         {group.group}
@@ -200,15 +222,11 @@ export const ComparisonNote = () => {
                         className="border-b border-black/5 transition-colors last:border-0 hover:bg-black/1.5"
                       >
                         <td className="px-6 py-3.5 text-gray-700">{row.label}</td>
-                        <td className="px-4 py-3.5">
-                          <Cell included={row.essencial} />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <Cell included={row.clinica} />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <Cell included={row.rede} />
-                        </td>
+                        {COLUMNS.map((col) => (
+                          <td key={col.key} className="px-4 py-3.5">
+                            <Cell included={row[col.key]} />
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </Fragment>
@@ -222,16 +240,17 @@ export const ComparisonNote = () => {
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {[
             {
-              title: "Sem plano gratuito",
-              description: "WhatsApp e predição têm custo real por clínica",
+              title: "Teste antes de pagar",
+              description: "14 dias com tudo liberado, sem pedir cartão",
+            },
+            {
+              title: "O teste não é plano grátis",
+              description:
+                "depois dos 14 dias você escolhe um plano — WhatsApp e predição têm custo real por clínica",
             },
             {
               title: "Preço por profissional",
               description: "não por agendamento — conta previsível todo mês",
-            },
-            {
-              title: "Upgrade simples",
-              description: "mude de plano conforme a clínica cresce",
             },
           ].map((note, idx) => (
             <ScrollReveal key={note.title} direction="up" delay={idx * 80} duration={700}>

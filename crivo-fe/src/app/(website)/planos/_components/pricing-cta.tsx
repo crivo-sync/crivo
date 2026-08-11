@@ -33,15 +33,15 @@ export const PricingCta = () => {
 
         <ScrollReveal direction="up" delay={150} duration={800}>
           <p className="mt-5 text-lg leading-relaxed text-gray-600">
-            Fale com o time do Crivo e veja o plano certo para o tamanho da sua
-            clínica.
+            Crie sua conta e teste o plano certo para o tamanho da sua
+            clínica — 14 dias grátis, direto no painel.
           </p>
         </ScrollReveal>
 
         <ScrollReveal direction="up" delay={250} duration={700}>
           <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
             <Link
-              href="/#contato"
+              href="/cadastro"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-10 py-4 text-base font-semibold text-white shadow-[0_0_40px_rgba(79,70,229,0.3)] transition-all duration-300 hover:bg-indigo-500 hover:shadow-[0_0_60px_rgba(79,70,229,0.4)]"
             >
               <svg
@@ -56,10 +56,10 @@ export const PricingCta = () => {
               Comece grátis
             </Link>
             <Link
-              href="/#contato"
+              href="/login"
               className="inline-flex items-center justify-center rounded-full border border-black/20 px-10 py-4 text-base font-semibold text-gray-900 transition-all duration-300 hover:bg-black/5"
             >
-              Falar com especialista
+              Já sou cliente
             </Link>
           </div>
         </ScrollReveal>

@@ -25,6 +25,7 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { UpdateTenantDto } from '../dtos/update-tenant.dto';
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
@@ -54,13 +55,16 @@ export class TenantController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, TenantContextGuard)
   @ApiOperation({ summary: 'Dados da clínica autenticada' })
+  // Sem TrialGuard de propósito: é daqui que o painel lê `trialEndsAt` para
+  // avisar a clínica. Bloquear esta rota também deixaria quem já expirou
+  // sem forma de descobrir por quê.
   async me(@Tenant('tenantId') tenantId: string) {
     return this.getTenant.execute(tenantId);
   }
 
   @Patch('me')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
   @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Atualiza os dados e a identidade visual da clínica',
@@ -74,7 +78,7 @@ export class TenantController {
 
   @Post('me/logo')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
   @Roles(Role.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')

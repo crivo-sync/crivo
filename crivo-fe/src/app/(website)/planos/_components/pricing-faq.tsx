@@ -8,12 +8,12 @@ const FAQS = [
   {
     question: "Preciso de cartão de crédito para testar?",
     answer:
-      "Não. Você fala com o time, a gente configura sua clínica e você testa antes de qualquer cobrança. Ainda estamos definindo a duração exata do período de teste — fale com o time para saber as condições atuais.",
+      "Não. Qualquer plano começa com 14 dias de teste grátis, com o produto inteiro liberado, e não pedimos cartão em nenhum momento do cadastro.",
   },
   {
-    question: "Quando a predição de no-show fica disponível?",
+    question: "O que acontece depois dos 14 dias?",
     answer:
-      "A predição é o diferencial do Crivo e está em desenvolvimento — hoje entra a partir do plano Clínica assim que liberada, começando com regras simples de risco antes de virar um modelo de IA completo.",
+      "O acesso ao painel é bloqueado até a assinatura ser regularizada. Os valores acima seguem em fase de validação com clientes reais — avisamos com antecedência antes de qualquer cobrança de verdade.",
   },
   {
     question: "Como funciona a cobrança por profissional?",
@@ -21,9 +21,9 @@ const FAQS = [
       "Você paga por profissional ativo na sua conta, não por agendamento. O plano Clínica inclui até 3 profissionais e cobra R$ 49 por profissional extra. Profissional inativo no mês não entra na conta.",
   },
   {
-    question: "Dá para trocar de plano depois?",
+    question: "A predição de risco de falta já funciona no teste?",
     answer:
-      "Sim. A ideia é que o plano acompanhe o crescimento da clínica — upgrade e downgrade estão sendo modelados junto com o módulo financeiro.",
+      "Sim, desde o primeiro dia em qualquer plano que a inclua. Não é um recurso liberado depois — fica disponível durante todo o trial.",
   },
   {
     question: "O que acontece se eu passar do limite de profissionais do plano?",
@@ -33,7 +33,7 @@ const FAQS = [
   {
     question: "O WhatsApp é oficial?",
     answer:
-      "Sim, sempre. O Crivo usa exclusivamente a API oficial da Meta (WhatsApp Cloud API). Soluções não-oficiais levam a banimento permanente do número da clínica — por isso nunca trabalhamos com elas.",
+      "Você escolhe: o Crivo suporta a API oficial da Meta (WhatsApp Cloud API) e também uma camada não oficial mais barata, com o aviso claro de que ela arrisca o número da clínica.",
   },
 ];
 

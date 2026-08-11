@@ -85,9 +85,9 @@ describe('assessNoShowRisk', () => {
       });
 
       expect(comHistorico.score).toBeLessThan(semHistorico.score);
-      expect(codes({ ...BASE, hasConfirmed: false, previousCompleted: 5 })).toContain(
-        'RELIABLE_HISTORY',
-      );
+      expect(
+        codes({ ...BASE, hasConfirmed: false, previousCompleted: 5 }),
+      ).toContain('RELIABLE_HISTORY');
     });
 
     it('uma falta anterior já cancela o desconto', () => {

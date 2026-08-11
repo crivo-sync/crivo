@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type PricingTier = "essencial" | "clinica" | "rede";
+export type PricingTier = "trial" | "essencial" | "clinica" | "rede";
 
 export type PricingFeature = {
   text: string;
@@ -55,30 +55,52 @@ const PLAN_ACCENT: Record<
     popular: boolean;
   }
 > = {
+  /**
+   * Uma família de cor só (o índigo da marca), variando **intensidade** em
+   * vez de matiz — decisão de 10/08/2026: três matizes lado a lado (teal,
+   * âmbar, índigo) fazem a página parecer três produtos, e o amarelo do
+   * "Mais popular" puxava mais atenção que o próprio preço. O plano
+   * recomendado é o único com fundo sólido, os outros ficam em contorno.
+   */
+  /**
+   * O trial é o único card que não é um plano pago — ganha a cor de
+   * "positivo/grátis" (esmeralda, a mesma dos checks de feature) em vez do
+   * índigo dos planos. Fica distinto sem competir com o destaque sólido do
+   * "Mais popular", que segue sendo o único de fundo preenchido.
+   */
+  trial: {
+    border: "border-emerald-500/30",
+    hoverBorder: "hover:border-emerald-500/50",
+    badge: "text-emerald-700 bg-emerald-500/10 border-emerald-500/25",
+    cta: "bg-white text-emerald-700 border border-emerald-600/30 hover:border-emerald-600 hover:bg-emerald-50",
+    glow: "shadow-[0_0_40px_rgba(16,185,129,0.06)]",
+    badgeLabel: "Comece por aqui",
+    popular: false,
+  },
   essencial: {
-    border: "border-teal-500/30",
-    hoverBorder: "hover:border-teal-500/50",
-    badge: "text-teal-300 bg-teal-500/10 border-teal-500/30",
-    cta: "bg-teal-600 hover:bg-teal-500 text-white",
-    glow: "shadow-[0_0_40px_rgba(20,184,166,0.08)]",
+    border: "border-black/10",
+    hoverBorder: "hover:border-indigo-500/40",
+    badge: "text-indigo-600 bg-indigo-500/8 border-indigo-500/20",
+    cta: "bg-white text-indigo-700 border border-indigo-600/30 hover:border-indigo-600 hover:bg-indigo-50",
+    glow: "shadow-[0_0_40px_rgba(79,70,229,0.04)]",
     badgeLabel: null,
     popular: false,
   },
   clinica: {
-    border: "border-amber-500/40",
-    hoverBorder: "hover:border-amber-500/60",
-    badge: "text-amber-300 bg-amber-500/10 border-amber-500/30",
-    cta: "bg-amber-500 hover:bg-amber-400 text-black",
-    glow: "shadow-[0_0_60px_rgba(245,158,11,0.15)]",
+    border: "border-indigo-600/50",
+    hoverBorder: "hover:border-indigo-600/70",
+    badge: "text-indigo-700 bg-indigo-500/10 border-indigo-500/30",
+    cta: "bg-indigo-600 hover:bg-indigo-500 text-white",
+    glow: "shadow-[0_0_60px_rgba(79,70,229,0.18)]",
     badgeLabel: "Mais popular",
     popular: true,
   },
   rede: {
-    border: "border-indigo-500/40",
-    hoverBorder: "hover:border-indigo-500/60",
-    badge: "text-indigo-300 bg-indigo-500/10 border-indigo-500/30",
-    cta: "bg-indigo-600 hover:bg-indigo-500 text-white",
-    glow: "shadow-[0_0_60px_rgba(99,102,241,0.15)]",
+    border: "border-black/10",
+    hoverBorder: "hover:border-indigo-500/40",
+    badge: "text-indigo-600 bg-indigo-500/8 border-indigo-500/20",
+    cta: "bg-white text-indigo-700 border border-indigo-600/30 hover:border-indigo-600 hover:bg-indigo-50",
+    glow: "shadow-[0_0_40px_rgba(79,70,229,0.04)]",
     badgeLabel: null,
     popular: false,
   },

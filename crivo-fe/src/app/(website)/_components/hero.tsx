@@ -1,11 +1,18 @@
 import Link from "next/link";
 
-import { ContactForm } from "./contact-form";
+import { RegisterCta } from "./register-cta";
 
+/**
+ * Números que o produto de fato entrega — conferidos contra o backend, não
+ * escritos por impressão:
+ * - `REMINDER_HOURS_BY_RISK`: risco alto recebe 72h **e** 24h antes
+ * - `SEND_JOB_OPTIONS.attempts: 4`
+ * - `ConfirmByTokenUseCase` (link) e `ConfirmByReplyUseCase` ("sim")
+ */
 const STATS = [
-  { value: "24h", label: "janela de lembrete automático" },
+  { value: "3x", label: "mais lembrete para quem tende a faltar" },
   { value: "4x", label: "reenvio antes de desistir" },
-  { value: "0 apps", label: "paciente confirma pelo link" },
+  { value: "0 apps", label: "confirma pelo link ou respondendo" },
 ];
 
 export const Hero = () => {
@@ -42,7 +49,7 @@ export const Hero = () => {
 
           <div className="flex flex-col gap-4 pt-8 sm:flex-row">
             <Link
-              href="#contato"
+              href="/cadastro"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-[0_0_40px_rgba(79,70,229,0.3)] transition-all duration-300 hover:bg-indigo-500 hover:shadow-[0_0_60px_rgba(79,70,229,0.4)]"
             >
               <span>→</span>
@@ -70,11 +77,8 @@ export const Hero = () => {
           </div>
         </div>
 
-        <div
-          id="contato"
-          className="rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent p-7 shadow-2xl backdrop-blur-xl scroll-mt-24"
-        >
-          <ContactForm />
+        <div className="rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent p-7 shadow-2xl backdrop-blur-xl">
+          <RegisterCta />
         </div>
       </div>
     </section>

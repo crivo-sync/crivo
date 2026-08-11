@@ -13,9 +13,10 @@ import { GetMeUseCase } from './application/use-cases/get-me.use-case';
 import { UpdateMeUseCase } from './application/use-cases/update-me.use-case';
 import { ChangePasswordUseCase } from './application/use-cases/change-password.use-case';
 import { UpdateAvatarUseCase } from './application/use-cases/update-avatar.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule, CloudinaryModule],
+  imports: [PrismaModule, CloudinaryModule, GuardsModule],
   // MeController (`/users/me`) precisa ser registrado ANTES de UserController
   // (`/users/:id`): o Nest resolve rotas na ordem de registro dos
   // controllers, e `:id` casaria com o literal "me" primeiro se viesse antes.

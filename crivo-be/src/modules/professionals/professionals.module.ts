@@ -12,9 +12,10 @@ import { DeleteProfessionalUseCase } from './application/use-cases/delete-profes
 import { ReplaceScheduleUseCase } from './application/use-cases/replace-schedule.use-case';
 import { ManageTimeOffUseCase } from './application/use-cases/manage-time-off.use-case';
 import { ProfessionalScheduleController } from './infrastructure/http/professional-schedule.controller';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [ProfessionalController, ProfessionalScheduleController],
   providers: [
     {

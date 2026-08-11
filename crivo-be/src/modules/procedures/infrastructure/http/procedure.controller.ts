@@ -27,6 +27,7 @@ import { paginated } from 'src/shared/dtos/paginated-response.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { CreateProcedureDto } from '../dtos/create-procedure.dto';
 import { UpdateProcedureDto } from '../dtos/update-procedure.dto';
 import { ProcedureResponseDto } from '../dtos/procedure-response.dto';
@@ -39,7 +40,7 @@ import { DeleteProcedureUseCase } from '../../application/use-cases/delete-proce
 @ApiTags('Procedimentos')
 @ApiBearerAuth()
 @Controller('procedures')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
 export class ProcedureController {
   constructor(
     private readonly getProcedures: GetProceduresUseCase,

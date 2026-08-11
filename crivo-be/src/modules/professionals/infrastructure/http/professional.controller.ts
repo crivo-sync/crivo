@@ -27,6 +27,7 @@ import { paginated } from 'src/shared/dtos/paginated-response.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { CreateProfessionalDto } from '../dtos/create-professional.dto';
 import { UpdateProfessionalDto } from '../dtos/update-professional.dto';
 import { ProfessionalResponseDto } from '../dtos/professional-response.dto';
@@ -39,7 +40,7 @@ import { DeleteProfessionalUseCase } from '../../application/use-cases/delete-pr
 @ApiTags('Profissionais')
 @ApiBearerAuth()
 @Controller('professionals')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
 export class ProfessionalController {
   constructor(
     private readonly getProfessionals: GetProfessionalsUseCase,

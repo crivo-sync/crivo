@@ -24,6 +24,7 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import {
   CreateTimeOffDto,
   ReplaceScheduleDto,
@@ -41,7 +42,7 @@ import { ManageTimeOffUseCase } from '../../application/use-cases/manage-time-of
 @ApiTags('Profissionais')
 @ApiBearerAuth()
 @Controller('professionals/:professionalId')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
 export class ProfessionalScheduleController {
   constructor(
     private readonly replaceSchedule: ReplaceScheduleUseCase,

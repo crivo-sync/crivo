@@ -21,9 +21,11 @@ import {
 } from "@mui/material/styles";
 
 import { LogoMark } from "@/components/ui/logo";
+import type { SubscriptionStatus } from "@/features/tenant/types";
 import type { NavItem } from "../_data/nav-items";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBarUserMenu } from "./top-bar-user-menu";
+import { TrialBanner } from "./trial-banner";
 import { UserMenu } from "./user-menu";
 
 const drawerWidth = 260;
@@ -116,6 +118,8 @@ type DashboardShellProps = {
   displayName: string;
   /** `null` quando a busca da clínica falha — o header some sem quebrar a página. */
   tenantName: string | null;
+  /** `null` pelo mesmo motivo que `tenantName` — sem dado, sem banner. */
+  trial: { status: SubscriptionStatus; endsAt: string } | null;
   children: React.ReactNode;
 };
 
@@ -127,6 +131,7 @@ export const DashboardShell = ({
   navItems,
   displayName,
   tenantName,
+  trial,
   children,
 }: DashboardShellProps) => {
   const theme = useTheme();
@@ -197,6 +202,7 @@ export const DashboardShell = ({
 
       <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
         <DrawerHeader />
+        {trial && <TrialBanner status={trial.status} endsAt={trial.endsAt} />}
         {children}
       </Box>
     </Box>

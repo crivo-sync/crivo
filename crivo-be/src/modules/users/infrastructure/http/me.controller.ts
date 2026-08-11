@@ -23,6 +23,7 @@ import {
 import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { assertValidImageUpload } from 'src/shared/validation/image-upload';
 import { ChangePasswordDto } from '../dtos/change-password.dto';
 import { UpdateMeDto } from '../dtos/update-me.dto';
@@ -43,7 +44,7 @@ import { UpdateAvatarUseCase } from '../../application/use-cases/update-avatar.u
 @ApiTags('Usuários')
 @ApiBearerAuth()
 @Controller('users/me')
-@UseGuards(JwtAuthGuard, TenantContextGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
 export class MeController {
   constructor(
     private readonly getMe: GetMeUseCase,

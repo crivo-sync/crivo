@@ -105,12 +105,12 @@ test.describe("Novo agendamento", () => {
     await page.getByRole("option").first().click();
     await dialog.getByLabel("Procedimento").click();
     await page.getByRole("option").first().click();
-    await preencherDia(dialog, proximoDiaUtil(9));
 
-    await dialog
-      .getByRole("button", { name: /\d{2}:\d{2} → \d{2}:\d{2}/ })
-      .first()
-      .click();
+    // Procura um dia com vaga em vez de fixar um: a agenda do seed enche com
+    // o uso repetido da suíte, e um dia lotado faria o teste falhar por dado
+    // saturado — não por regressão. É o que a recepção faria também.
+    const horario = await primeiroDiaComVaga(dialog, page);
+    await horario.click();
     await dialog.getByRole("button", { name: "Agendar" }).click();
 
     // O dialog fecha — sinal de que o backend aceitou.
@@ -138,6 +138,32 @@ test.describe("Novo agendamento", () => {
  */
 const campoDia = (dialog: Locator) =>
   dialog.getByRole("spinbutton", { name: "Dia" });
+
+/**
+ * Avança pelos próximos dias úteis até achar um com horário livre.
+ *
+ * Devolve o primeiro chip disponível. Falha com mensagem explícita se a
+ * agenda estiver cheia em todas as tentativas — assim a causa fica clara em
+ * vez de aparecer como timeout de clique.
+ */
+async function primeiroDiaComVaga(dialog: Locator, page: Page): Promise<Locator> {
+  for (let offset = 3; offset <= 30; offset += 1) {
+    await preencherDia(dialog, proximoDiaUtil(offset));
+
+    const chips = dialog.getByRole("button", {
+      name: /\d{2}:\d{2} → \d{2}:\d{2}/,
+    });
+
+    // Espera curta: o dia sem vaga responde rápido, e um timeout longo aqui
+    // multiplicaria por 28 tentativas.
+    await page.waitForTimeout(400);
+    if ((await chips.count()) > 0) return chips.first();
+  }
+
+  throw new Error(
+    "Nenhum dia útil com vaga nos próximos 30 dias — a agenda do seed pode estar saturada. Rode `npm run prisma:seed:clean && npm run prisma:seed` no crivo-be.",
+  );
+}
 
 /**
  * Digita a data no campo segmentado do MUI.

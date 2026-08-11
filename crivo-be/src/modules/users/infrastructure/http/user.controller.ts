@@ -21,6 +21,7 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
@@ -31,7 +32,7 @@ import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-c
 @ApiTags('Usuários')
 @ApiBearerAuth()
 @Controller('users')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
 @Roles(Role.ADMIN)
 export class UserController {
   constructor(

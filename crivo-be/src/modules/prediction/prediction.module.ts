@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
 import { AssessAppointmentRiskUseCase } from './application/assess-appointment-risk.use-case';
+import { MeasureRuleAccuracyUseCase } from './application/measure-rule-accuracy.use-case';
 import { PredictionController } from './infrastructure/http/prediction.controller';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 /**
  * Risco de falta (no-show).
@@ -16,9 +18,9 @@ import { PredictionController } from './infrastructure/http/prediction.controlle
  * método ganha dono e sobe para o repositório.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [PredictionController],
-  providers: [AssessAppointmentRiskUseCase],
-  exports: [AssessAppointmentRiskUseCase],
+  providers: [AssessAppointmentRiskUseCase, MeasureRuleAccuracyUseCase],
+  exports: [AssessAppointmentRiskUseCase, MeasureRuleAccuracyUseCase],
 })
 export class PredictionModule {}

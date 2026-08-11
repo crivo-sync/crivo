@@ -7,6 +7,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { MESSAGING_QUEUE } from '../messaging/infrastructure/queue/messaging.queue';
 import { ManageWaitlistUseCase } from './application/manage-waitlist.use-case';
 import { WaitlistController } from './infrastructure/http/waitlist.controller';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 /**
  * Lista de espera: quem quer uma vaga que ainda não existe.
@@ -22,6 +23,7 @@ import { WaitlistController } from './infrastructure/http/waitlist.controller';
     // mensagens. `messaging` não importa `waitlist`, então não há ciclo.
     MessagingModule,
     BullModule.registerQueue({ name: MESSAGING_QUEUE }),
+    GuardsModule,
   ],
   controllers: [WaitlistController],
   providers: [ManageWaitlistUseCase],
