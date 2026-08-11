@@ -46,6 +46,13 @@ model Tenant {
   /// Default seg–sex.
   businessDays Int[] @default([1, 2, 3, 4, 5]) @map("business_days")
 
+  /// Hoje existe um único plano (trial de 14 dias, sem cartão) — por isso o
+  /// billing vive como campos do próprio Tenant, não em `Plan`/`Subscription`
+  /// separados. Quando o Stripe entrar com planos pagos de verdade, isso
+  /// deve virar um model próprio; até lá seria estrutura sem uso.
+  subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
+  trialEndsAt        DateTime           @map("trial_ends_at")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -64,6 +71,18 @@ model Tenant {
   timeOff          ProfessionalTimeOff[]
 
   @@map("tenants")
+}
+
+/// Status do trial/assinatura da clínica. Hoje só `TRIALING` e `EXPIRED`
+/// são atingidos pelo código — os demais (`ACTIVE`, `PAST_DUE`, `CANCELED`)
+/// já estão aqui prontos para quando o Stripe entrar, mesmo padrão do
+/// snap-financial, para não exigir migration de enum na hora da virada.
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
 }
 
 enum Role {
@@ -301,6 +320,14 @@ model Procedure {
   @@map("procedures")
 }
 
+/// De onde veio o agendamento.
+enum AppointmentOrigin {
+  /// Marcado por alguém da clínica, pelo painel.
+  STAFF
+  /// Marcado pelo próprio paciente, na página pública.
+  ONLINE
+}
+
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
@@ -377,6 +404,10 @@ model Appointment {
   startsAt          DateTime          @map("starts_at")
   endsAt            DateTime          @map("ends_at")
   status            AppointmentStatus @default(SCHEDULED)
+  /// Quem marcou. `ONLINE` é o paciente pelo site — a recepção precisa
+  /// distinguir para conferir horário nobre ocupado por alguém que ela não
+  /// atendeu, e para saber que aquele cadastro veio sem triagem.
+  origin            AppointmentOrigin @default(STAFF)
   notes             String?
   /// Preço praticado no ato — copiado do procedimento, pois o preço de tabela
   /// muda com o tempo e o histórico não pode mudar junto.

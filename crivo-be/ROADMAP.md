@@ -33,7 +33,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
 | `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada, reenvio manual, templates editáveis por clínica e provider selecionável. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
-| `prediction` | 🟡 **Regra + ação + tela** (10/08/2026) — risco por fatores explicados, escalonamento automático de lembretes por faixa e aba "Risco de falta" na Agenda. Falta **medir a regra** contra o que aconteceu (é o que diz se os pesos estão certos) e o modelo estatístico, que depende de volume real. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
+| `prediction` | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção |
 | `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
 | `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
 | `billing` | ⚪ Não iniciado |
@@ -103,7 +103,7 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | Confirmação de consulta pelo paciente | ✅ | ✅ página pública `/c/:token` + botão (04/08/2026) | — |
 | Prontuário eletrônico / anamnese | ✅ Ficha digital | ✅ anamnese + evolução (04/08/2026); sem anexos | — |
 | Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
-| Agendamento online pelo paciente | ✅ 24h, sem app | ❌ | 🟠 Alta |
+| Agendamento online pelo paciente | ✅ 24h, sem app | 🟡 backend pronto (10/08/2026); falta a página | 🟠 Alta |
 | Lista de espera / preenchimento de lacunas | ✅ | ✅ com sugestão automática ao cancelar e oferta por WhatsApp (10/08/2026) | — |
 | Recall pós-procedimento | ✅ automático | ❌ (base do "reativação inteligente", Fase 2) | 🟠 Alta |
 | Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ (há faturamento por procedimento, não fluxo de caixa) | 🟠 Alta |
@@ -259,7 +259,14 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - Isto fecha também o item "segundo lembrete (D-3)" que estava listado em `messaging` esperando `prediction`
    - [x] **Tela de risco** (10/08/2026) — `/painel/agenda/risco`, terceira aba da Agenda. Ordenada por risco (não por horário): responde "para quem eu ligo hoje?". Cada card mostra **os motivos**, não só a faixa — "risco alto" sozinho é um número que a recepção não tem como checar nem discordar. Aberta a STAFF: agir sobre o risco é trabalho da recepção
    - [ ] **Ação por faixa — lista de espera** — risco alto deveria liberar a vaga para outro paciente antes. Depende da lista de espera (item 5)
-   - [ ] **Medir a regra contra o que aconteceu** — comparar risco previsto × falta real é o que gera o rótulo limpo que um modelo precisaria, e o que diz se os pesos estão errados
+   - [x] **Medir a regra contra o que aconteceu** (10/08/2026) — `GET /prediction/no-show/accuracy?days=180` compara o risco previsto com o desfecho real, por faixa. Decisões:
+     - **Reconstrói o risco COMO ERA antes de cada consulta** — usar o histórico de hoje seria trapaça: uma consulta de março seria avaliada sabendo das faltas de abril, e a regra pareceria muito melhor do que é. Só conta o que já tinha acontecido antes de `startsAt`, inclusive descartando `confirmedAt` posterior à consulta
+     - **Só desfecho conhecido** (`COMPLETED`/`NO_SHOW`) — incluir `SCHEDULED` como "não faltou" contaria o futuro a favor da regra
+     - **Se recusa a concluir com amostra pequena** — abaixo de 30 casos devolve `separates: null` e um veredito dizendo que os números são indicação, não conclusão. Um "33% de falta" apresentado como fato levaria a mexer nos pesos com base em ruído
+     - **`separates: null` quando falta amostra numa ponta** — responder `false` sugeriria que a regra falhou, quando ela nem chegou a ser testada
+     - **O veredito vem do backend**, não da tela: quem lê o número precisa da mesma ressalva em qualquer lugar
+     - 7 testes, incluindo um que compara dois cenários (falta antes × falta depois) para provar que a ordem temporal é respeitada — se a falta futura vazasse, os dois dariam o mesmo resultado
+     - **Estado hoje**: 7 atendimentos com desfecho no banco de dev — amostra insuficiente, e a medição diz isso. Validada com 140 casos sintéticos: HIGH 33,3% × LOW 0%, `separates: true`
 5. **Lista de espera** — preenche a lacuna quando o risco se concretiza
    - [x] **Backend** (10/08/2026) — tabela `waitlist_entries` e `GET/POST /waitlist`, `GET /waitlist/candidates/:appointmentId`, `PATCH :id/offered`, `DELETE :id`. Decisões:
      - **Sugere, não oferece sozinho** — mandar mensagem automática ao primeiro da fila parece eficiente, mas remarcar tem contexto que o sistema não tem ("essa paciente pediu para não ligar de manhã"), e oferta errada gasta conversa paga. A recepção decide; `PATCH :id/offered` registra que ela avisou
@@ -280,6 +287,15 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - Verificado o ciclo inteiro ao vivo: cancelar → 1 candidato sugerido → "Avisar" → `OFFERED` + mensagem `WAITLIST_OFFER` na fila com o texto correto
 6. **Reativação inteligente de pacientes** — quem não volta há X meses, segmentado por procedimento e ticket. Depende do mesmo histórico da predição; sem `billing` não dá para medir se o retorno pagou o disparo
 7. **Agendamento online** — página pública por subdomínio (o branding já existe)
+   - [x] **Backend** (10/08/2026) — `GET /public/:subdomain/booking-options`, `GET .../availability` e `POST .../bookings`. Sem autenticação: a clínica vem do subdomínio. Decisões:
+     - **Reserva direto** (decisão do produto): o horário some da agenda na hora e o paciente recebe confirmação imediata — é o que ele espera de "agendamento 24h". A recepção vê a origem e cancela se precisar
+     - **`Appointment.origin`** (`STAFF`/`ONLINE`) — a recepção precisa distinguir horário nobre ocupado por alguém que ela não atendeu, e saber que aquele cadastro entrou sem triagem
+     - **Reusa `CreateAppointmentUseCase` e `GetAvailabilityUseCase`** do painel, em vez de reimplementar. Duplicar as regras de expediente/grade/conflito garantiria divergência — e a rota pública é justamente a que não pode falhar em silêncio
+     - **Todo id é conferido contra o subdomínio** — sem isso, alguém marcaria na clínica A com o id de um profissional da B. Verificado: 404
+     - **Resposta enxuta de propósito** — a página é aberta na internet; não devolve telefone/e-mail de profissional nem id interno de paciente
+     - **Paciente é reusado pelo telefone** — evita duplicar a mesma pessoa a cada agendamento e preserva o histórico de faltas que alimenta a predição
+     - Verificado ao vivo **sem token**: opções → 11 vagas → agendamento criado com `origin: ONLINE`, paciente cadastrado e **2 lembretes** disparados (a predição classificou como risco alto). Recusas corretas: clínica inexistente (404), profissional de outra clínica (404), horário ocupado (409), passado e telefone inválido (400)
+   - [ ] **Página pública** (crivo-fe) — o backend está pronto; falta a tela que o paciente acessa
 
 ### Fase 3 — Monetização e retenção
 
@@ -371,8 +387,11 @@ clínica em produção.
    ruim. Cada condição soma pontos e o resultado vira faixa (baixo/médio/alto).
 2. **Agir por faixa**, que é o diferencial real — não o número. Risco alto:
    confirmar mais cedo, insistir mais, liberar para lista de espera antes.
-3. **Medir a regra** contra o que de fato aconteceu. Isso gera o rótulo
-   limpo que um modelo precisaria depois.
+3. **Medir a regra** contra o que de fato aconteceu — ✅ construído em
+   10/08/2026 (`GET /prediction/no-show/accuracy`). O mecanismo existe e
+   reconstrói o risco como era **antes** de cada consulta, sem deixar o
+   futuro vazar. O que falta agora não é código: é **volume real**. Com 7
+   atendimentos concluídos, a própria medição se recusa a concluir.
 4. **Só então trocar por modelo estatístico**, quando houver volume real de
    clínica em produção — não com dado de seed.
 
@@ -389,8 +408,12 @@ contato. Duas lacunas mapeadas:
 
 | Item | Situação | Observação |
 | --- | --- | --- |
+| **Textos do site desalinhados do produto** | ✅ corrigido em 10/08/2026 — o site prometia reativação de pacientes e painel de ocupação, que não existem, e omitia lista de espera e agendamento online, que existem. Auditar o site contra o backend precisa virar hábito a cada feature nova |
+| **Cadastro self-service (`/cadastro`)** | ✅ entregue em 11/08/2026 — o formulário de contato ("falamos em até 1 dia útil") virou CTA para uma página de cadastro real. Usa `POST /auth/register`, que já existia mas não devolvia token; o frontend contorna chamando login em seguida com as mesmas credenciais, sem mudar o backend. Todo CTA "Comece grátis" do site (inclusive o antigo "Rede — Falar com vendas") aponta para lá — decisão explícita de manter **inteiramente automático**, sem etapa manual de vendas |
+| **Trial real (14 dias, sem cartão)** | ✅ entregue em 11/08/2026 — deixou de ser só copy. `Tenant.subscriptionStatus`/`trialEndsAt` gravados na hora do cadastro; `TrialGuard` bloqueia (403) todo controller autenticado do painel quando vence, exceto `GET /tenants/me` (de propósito — é de lá que o painel lê a data para avisar a clínica). Sem cron: o guard checa `trialEndsAt` em request-time e marca `EXPIRED` no banco de forma preguiçosa, no primeiro request depois do vencimento. Frontend mostra banner nos últimos 3 dias e mensagem clara quando bloqueado (`crivo-fe/src/app/(dashboard)/_components/trial-banner.tsx`) |
+| **`/planos` com 4 colunas (Teste + 3 planos)** | ✅ entregue em 11/08/2026 — a grade abre com um card de **Teste grátis** (14 dias, sem cartão) seguido de Essencial (R$ 149), Clínica (R$ 289 + R$ 49/profissional extra) e Rede (sob consulta), no mesmo padrão visual do Snap Financial. Os valores seguem sendo **hipótese não validada** (ver abaixo) e o rodapé da grade diz isso; nenhum CTA leva a checkout — todos vão para `/cadastro`, que inicia o trial. A página chegou a ser reduzida a um card único de trial no mesmo dia, revertido a pedido do dono do produto. Features inexistentes ("Reativação inteligente", "Painel de métricas de ocupação") **não** voltaram: a auditoria de 10/08 segue valendo |
 | **Chat com IA (DeepSeek)** | ⚪ Não iniciado | Atendimento/qualificação do visitante na landing. O `DeepSeekTextGenerator` já existe em `messaging`, mas serve outro propósito (reescrever lembrete) — chat exige conversa com estado, histórico e contenção de escopo, é integração nova |
-| **Planos reais com Stripe** | ⚪ Não iniciado | Hoje `_data/pricing-plans.ts` é conteúdo estático e o CTA não leva a checkout. Depende de `billing` (Fase 3) — e, antes disso, de **validar o preço**: os valores publicados seguem sendo hipótese não testada (ver abaixo) |
+| **Planos pagos com Stripe** | ⚪ Não iniciado | **Só existe um plano funcionando de verdade** (o trial de 14 dias): as colunas Essencial/Clínica/Rede em `_data/pricing-plans.ts` são conteúdo estático, sem checkout por trás — todo CTA leva a `/cadastro`, que inicia trial independente da coluna clicada, e nada no backend distingue um tenant "Clínica" de um "Essencial". Enquanto o Stripe não entra, o risco é a página prometer um plano que o cadastro não entrega. Quando os planos e as chaves forem criados (manualmente, pelo dono do produto), o billing entra sobre a mesma base: `Tenant.subscriptionStatus`/`trialEndsAt` viram o ponto de partida para um upgrade que sai de `TRIALING` e entra em `ACTIVE` via webhook — mesmo padrão do snap-financial (`mapStripeStatus`), sem precisar remodelar o schema. Falta ainda o vínculo tenant↔plano (hoje inexistente) |
 
 > ⚠️ Ligar o Stripe congela publicamente uma tabela de preços que este mesmo
 > documento classifica como não validada e acima da entrada do mercado.
@@ -421,7 +444,7 @@ Quatro observações:
 - [ ] Migrar de assento para **faixas fechadas** (mais previsível e competitivo acima de 4 profissionais)?
 - [ ] Criar plano de entrada (~R$ 59-89) para autônomo, com franquia menor de mensagens?
 - [ ] Franquia de conversas por plano e preço do excedente
-- [ ] Duração do trial e se exige cartão
+- [ ] Duração do trial e se exige cartão — direção já tomada (14 dias, sem cartão, já na copy do cadastro em 11/08/2026), falta implementar a expiração de verdade
 - [ ] Validar com clínicas reais — os preços do README seguem sendo **hipótese não validada**
 
 ---

@@ -584,10 +584,13 @@ async function full() {
       seedTenant;
 
     // Upsert por subdomain: rodar o seed duas vezes não duplica nada.
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
     const tenant = await prisma.tenant.upsert({
       where: { subdomain: tenantData.subdomain },
       update: tenantData,
-      create: tenantData,
+      create: { ...tenantData, trialEndsAt },
     });
 
     for (const user of users) {
