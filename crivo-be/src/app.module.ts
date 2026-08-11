@@ -12,6 +12,7 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { PredictionModule } from './modules/prediction/prediction.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { PublicBookingModule } from './modules/public-booking/public-booking.module';
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 
@@ -86,6 +87,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     DashboardModule,
     PredictionModule,
     WaitlistModule,
+    PublicBookingModule,
   ],
   controllers: [],
   providers: [],
