@@ -14,6 +14,7 @@ import { Roles } from 'src/shared/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { ManageTemplatesUseCase } from '../../application/use-cases/manage-templates.use-case';
 import { TEMPLATE_PLACEHOLDERS } from '../../application/services/template-renderer';
 
@@ -41,14 +42,15 @@ export class SaveTemplateDto {
 @ApiTags('Templates de mensagem')
 @ApiBearerAuth()
 @Controller('message-templates')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
 @Roles(Role.ADMIN)
 export class MessageTemplateController {
   constructor(private readonly manageTemplates: ManageTemplatesUseCase) {}
 
   @Get()
   @ApiOperation({
-    summary: 'Textos das mensagens automáticas (com o padrão quando não há personalização)',
+    summary:
+      'Textos das mensagens automáticas (com o padrão quando não há personalização)',
   })
   @ApiOkResponse()
   async findAll(@Tenant('tenantId') tenantId: string) {
