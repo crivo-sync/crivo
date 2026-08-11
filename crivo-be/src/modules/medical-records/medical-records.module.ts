@@ -9,9 +9,10 @@ import { GetAnamnesisUseCase } from './application/use-cases/get-anamnesis.use-c
 import { UpsertAnamnesisUseCase } from './application/use-cases/upsert-anamnesis.use-case';
 import { GetClinicalNotesUseCase } from './application/use-cases/get-clinical-notes.use-case';
 import { CreateClinicalNoteUseCase } from './application/use-cases/create-clinical-note.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [MedicalRecordController],
   providers: [
     {
