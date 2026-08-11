@@ -32,6 +32,7 @@ import { paginated } from 'src/shared/dtos/paginated-response.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { assertValidCsvUpload } from 'src/shared/validation/csv-upload';
 import { CreatePatientDto } from '../dtos/create-patient.dto';
 import { ImportPatientsResponseDto } from '../dtos/import-patients.dto';
@@ -47,7 +48,7 @@ import { ImportPatientsUseCase } from '../../application/use-cases/import-patien
 @ApiTags('Pacientes')
 @ApiBearerAuth()
 @Controller('patients')
-@UseGuards(JwtAuthGuard, TenantContextGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
 export class PatientController {
   constructor(
     private readonly getPatients: GetPatientsUseCase,

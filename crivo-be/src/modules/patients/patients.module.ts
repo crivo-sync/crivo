@@ -11,9 +11,10 @@ import { UpdatePatientUseCase } from './application/use-cases/update-patient.use
 import { DeletePatientUseCase } from './application/use-cases/delete-patient.use-case';
 import { ImportPatientsUseCase } from './application/use-cases/import-patients.use-case';
 import { PatientCsvService } from './application/services/patient-csv.service';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GuardsModule],
   controllers: [PatientController],
   providers: [
     {
