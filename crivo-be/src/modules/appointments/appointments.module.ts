@@ -13,9 +13,10 @@ import { ChangeAppointmentStatusUseCase } from './application/use-cases/change-a
 import { BusinessHoursService } from './application/services/business-hours.service';
 import { ProfessionalAvailabilityService } from './application/services/professional-availability.service';
 import { GetAvailabilityUseCase } from './application/use-cases/get-availability.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
-  imports: [PrismaModule, MessagingModule],
+  imports: [PrismaModule, MessagingModule, GuardsModule],
   controllers: [AppointmentController],
   providers: [
     {
@@ -31,6 +32,13 @@ import { GetAvailabilityUseCase } from './application/use-cases/get-availability
     ProfessionalAvailabilityService,
     GetAvailabilityUseCase,
   ],
-  exports: [APPOINTMENT_REPOSITORY],
+  // `CreateAppointmentUseCase` e `GetAvailabilityUseCase` são exportados para
+  // o agendamento online reusar as MESMAS regras de agenda do painel — uma
+  // segunda implementação na rota pública divergiria da primeira.
+  exports: [
+    APPOINTMENT_REPOSITORY,
+    CreateAppointmentUseCase,
+    GetAvailabilityUseCase,
+  ],
 })
 export class AppointmentsModule {}
