@@ -13,6 +13,10 @@ export type RegisterInput = {
 
 const SALT_ROUNDS = 10;
 
+/// Único plano hoje: 14 dias de trial, sem cartão. Planos pagos e preço
+/// entram depois, manualmente, quando o Stripe estiver configurado.
+const TRIAL_DAYS = 14;
+
 @Injectable()
 export class RegisterUseCase {
   constructor(private readonly prisma: PrismaService) {}
@@ -35,11 +39,15 @@ export class RegisterUseCase {
 
     const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
 
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+
     return this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           name: input.tenantName,
           subdomain: input.subdomain,
+          trialEndsAt,
         },
       });
 
