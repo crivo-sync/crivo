@@ -17,6 +17,7 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { paginated } from 'src/shared/dtos/paginated-response.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { GetInboundMessagesUseCase } from '../../application/use-cases/get-inbound-messages.use-case';
 import { InboundMessageResponseDto } from '../dtos/inbound-message-response.dto';
 import { QueryInboundMessagesDto } from '../dtos/query-inbound-messages.dto';
@@ -30,7 +31,7 @@ import { QueryInboundMessagesDto } from '../dtos/query-inbound-messages.dto';
 @ApiTags('Mensagens recebidas')
 @ApiBearerAuth()
 @Controller('inbound-messages')
-@UseGuards(JwtAuthGuard, TenantContextGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
 export class InboundMessageController {
   constructor(private readonly getInbound: GetInboundMessagesUseCase) {}
 
