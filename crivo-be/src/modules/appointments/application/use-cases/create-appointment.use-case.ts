@@ -1,3 +1,4 @@
+import { AppointmentOrigin } from '@prisma/client';
 import {
   BadRequestException,
   ConflictException,
@@ -22,6 +23,8 @@ export type CreateAppointmentInput = {
   procedureId: string;
   startsAt: Date;
   notes?: string;
+  /** `ONLINE` quando veio da página pública. Default `STAFF`. */
+  origin?: AppointmentOrigin;
 };
 
 @Injectable()
@@ -140,6 +143,7 @@ export class CreateAppointmentUseCase {
       // Congela o preço praticado: a tabela pode mudar, o histórico não.
       priceInCents: procedure.priceInCents,
       notes: input.notes ?? null,
+      origin: input.origin,
     });
 
     await this.scheduleReminder.execute(appointment.id);
