@@ -35,6 +35,7 @@ import { ConfirmByReplyUseCase } from './application/use-cases/confirm-by-reply.
 import { GetInboundMessagesUseCase } from './application/use-cases/get-inbound-messages.use-case';
 import { ManageTemplatesUseCase } from './application/use-cases/manage-templates.use-case';
 import { ResendMessageUseCase } from './application/use-cases/resend-message.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ResendMessageUseCase } from './application/use-cases/resend-message.use
     // O cronograma de lembretes depende da faixa de risco. `prediction` não
     // importa `messaging`, então não há ciclo.
     PredictionModule,
+    GuardsModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
