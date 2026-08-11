@@ -1,4 +1,8 @@
-import { Appointment, AppointmentStatus } from '@prisma/client';
+import {
+  Appointment,
+  AppointmentStatus,
+  AppointmentOrigin,
+} from '@prisma/client';
 
 export type CreateAppointmentData = {
   tenantId: string;
@@ -9,6 +13,7 @@ export type CreateAppointmentData = {
   endsAt: Date;
   priceInCents: number;
   notes?: string | null;
+  origin?: AppointmentOrigin;
 };
 
 export type UpdateAppointmentData = {

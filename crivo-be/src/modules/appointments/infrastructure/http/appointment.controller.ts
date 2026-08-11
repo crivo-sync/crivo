@@ -20,6 +20,7 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { paginated } from 'src/shared/dtos/paginated-response.dto';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
+import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { CreateAppointmentDto } from '../dtos/create-appointment.dto';
 import { RescheduleAppointmentDto } from '../dtos/reschedule-appointment.dto';
 import { ChangeAppointmentStatusDto } from '../dtos/change-status.dto';
@@ -36,7 +37,7 @@ import { GetAvailabilityUseCase } from '../../application/use-cases/get-availabi
 @ApiTags('Agendamentos')
 @ApiBearerAuth()
 @Controller('appointments')
-@UseGuards(JwtAuthGuard, TenantContextGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
 export class AppointmentController {
   constructor(
     private readonly getAppointments: GetAppointmentsUseCase,
