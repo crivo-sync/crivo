@@ -8,6 +8,7 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { DashboardController } from './infrastructure/http/dashboard.controller';
 import { GetDashboardSummaryUseCase } from './application/use-cases/get-dashboard-summary.use-case';
 import { GetDashboardAnalyticsUseCase } from './application/use-cases/get-dashboard-analytics.use-case';
+import { GuardsModule } from '../../shared/guards/guards.module';
 
 /**
  * Não tem repository/Prisma próprio — só agrega dados que já existem em
@@ -22,6 +23,7 @@ import { GetDashboardAnalyticsUseCase } from './application/use-cases/get-dashbo
     ProfessionalsModule,
     ProceduresModule,
     MessagingModule,
+    GuardsModule,
   ],
   controllers: [DashboardController],
   providers: [GetDashboardSummaryUseCase, GetDashboardAnalyticsUseCase],
