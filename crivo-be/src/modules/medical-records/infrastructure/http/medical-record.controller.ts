@@ -25,6 +25,8 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
 import { TrialGuard } from 'src/shared/guards/trial.guard';
+import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
+import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
 import { CreateClinicalNoteDto } from '../dtos/create-clinical-note.dto';
 import { UpsertAnamnesisDto } from '../dtos/upsert-anamnesis.dto';
 import {
@@ -46,7 +48,14 @@ import { CreateClinicalNoteUseCase } from '../../application/use-cases/create-cl
 @ApiTags('Prontuário')
 @ApiBearerAuth()
 @Controller('patients/:patientId')
-@UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard, TrialGuard)
+@UseGuards(
+  JwtAuthGuard,
+  TenantContextGuard,
+  RolesGuard,
+  TrialGuard,
+  PlanFeatureGuard,
+)
+@RequiresPlanFeature('hasMedicalRecords')
 @Roles(Role.ADMIN, Role.PROFESSIONAL)
 export class MedicalRecordController {
   constructor(
