@@ -1,140 +1,10 @@
 "use client";
 
-import { Fragment } from "react";
+import Skeleton from "@mui/material/Skeleton";
 
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
-
-type FeatureRow = {
-  label: string;
-  /** No teste tudo fica liberado — é sempre `true`, de propósito. */
-  trial: boolean;
-  essencial: boolean;
-  clinica: boolean;
-  rede: boolean;
-};
-
-const GROUPS: { group: string; rows: FeatureRow[] }[] = [
-  {
-    group: "Agenda",
-    rows: [
-      {
-        label: "Agenda com controle de conflito de horário",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Cadastro completo de pacientes",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Agendamento online pelo paciente",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-    ],
-  },
-  {
-    group: "Mensageria",
-    rows: [
-      {
-        label: "Lembretes automáticos de WhatsApp",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Confirmação por link ou respondendo no WhatsApp",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Retry automático + lista de falhas",
-        trial: true,
-        essencial: true,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Mensagens reescritas por IA (opcional)",
-        trial: true,
-        essencial: false,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Textos das mensagens personalizáveis",
-        trial: true,
-        essencial: false,
-        clinica: true,
-        rede: true,
-      },
-    ],
-  },
-  {
-    group: "Predição",
-    rows: [
-      {
-        label: "Predição de risco de no-show",
-        trial: true,
-        essencial: false,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Lembrete extra para quem tende a faltar",
-        trial: true,
-        essencial: false,
-        clinica: true,
-        rede: true,
-      },
-      {
-        label: "Lista de espera com aviso automático",
-        trial: true,
-        essencial: false,
-        clinica: true,
-        rede: true,
-      },
-    ],
-  },
-  {
-    group: "Operação",
-    rows: [
-      {
-        label: "Gestão multi-unidade",
-        trial: true,
-        essencial: false,
-        clinica: false,
-        rede: true,
-      },
-      {
-        label: "Relatórios consolidados",
-        trial: true,
-        essencial: false,
-        clinica: false,
-        rede: true,
-      },
-      { label: "Suporte prioritário", trial: true, essencial: false, clinica: false, rede: true },
-      { label: "Onboarding assistido", trial: true, essencial: false, clinica: false, rede: true },
-    ],
-  },
-];
-
-const COLUMNS = [
-  { key: "trial" as const, label: "Teste", accent: "text-emerald-700" },
-  { key: "essencial" as const, label: "Essencial", accent: "text-indigo-600" },
-  { key: "clinica" as const, label: "Clínica", accent: "text-indigo-600" },
-  { key: "rede" as const, label: "Rede", accent: "text-indigo-600" },
-];
+import { planComparableFeatures } from "@/features/billing/plan-features";
+import { usePlans } from "@/features/billing/hooks/use-plans";
 
 const Cell = ({ included }: { included: boolean }) =>
   included ? (
@@ -159,7 +29,34 @@ const Cell = ({ included }: { included: boolean }) =>
     </svg>
   );
 
+/**
+ * Tabela montada a partir de `GET /plans`, não de uma cópia hardcoded.
+ *
+ * Antes as linhas viviam aqui à mão e divergiam do banco a cada feature
+ * nova — a tabela chegou a não citar prontuário nem painel enquanto os
+ * planos já os diferenciavam. Como as linhas vêm de
+ * `planComparableFeatures`, a mesma fonte dos cards, as duas nunca mais
+ * discordam.
+ */
 export const ComparisonNote = () => {
+  const { plans, isLoading } = usePlans();
+
+  // Os rótulos são os mesmos para todo plano (só o `included` muda), então
+  // o primeiro serve de eixo das linhas.
+  const rowLabels = plans[0]
+    ? planComparableFeatures(plans[0]).map((f) => f.text)
+    : [];
+  const includedByPlan = plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    // Só o número (ou "Ilimitados") — a coluna já se chama "Profissionais".
+    professionals:
+      plan.maxProfessionals === null ? "Ilimitados" : String(plan.maxProfessionals),
+    included: new Map(
+      planComparableFeatures(plan).map((line) => [line.text, line.included]),
+    ),
+  }));
+
   return (
     <section className="relative overflow-hidden px-6 pt-20 text-gray-900">
       <div className="pointer-events-none absolute top-1/2 left-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-indigo-600/3 blur-[140px]" />
@@ -182,59 +79,76 @@ export const ComparisonNote = () => {
           </ScrollReveal>
         </div>
 
-        <ScrollReveal
-          direction="up"
-          delay={200}
-          duration={800}
-          className="overflow-hidden rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent backdrop-blur-sm"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-160 border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-black/10">
-                  <th className="px-6 py-4 text-left text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                    Recurso
-                  </th>
-                  {COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className={`px-4 py-4 text-center text-sm font-bold ${col.accent}`}
-                    >
-                      {col.label}
+        {isLoading ? (
+          <Skeleton variant="rounded" height={420} sx={{ borderRadius: 6 }} />
+        ) : (
+          <ScrollReveal
+            direction="up"
+            delay={200}
+            duration={800}
+            className="overflow-hidden rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent backdrop-blur-sm"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-160 border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-black/10">
+                    <th className="px-6 py-4 text-left text-xs font-semibold tracking-wider text-gray-500 uppercase">
+                      Recurso
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {GROUPS.map((group) => (
-                  <Fragment key={group.group}>
-                    <tr className="bg-black/1.5">
-                      <td
-                        colSpan={COLUMNS.length + 1}
-                        className="px-6 py-2.5 text-[11px] font-bold tracking-wider text-gray-500 uppercase"
+                    <th className="px-4 py-4 text-center text-sm font-bold text-emerald-700">
+                      Teste
+                    </th>
+                    {includedByPlan.map((plan) => (
+                      <th
+                        key={plan.id}
+                        className="px-4 py-4 text-center text-sm font-bold text-indigo-600"
                       >
-                        {group.group}
-                      </td>
-                    </tr>
-                    {group.rows.map((row) => (
-                      <tr
-                        key={row.label}
-                        className="border-b border-black/5 transition-colors last:border-0 hover:bg-black/1.5"
-                      >
-                        <td className="px-6 py-3.5 text-gray-700">{row.label}</td>
-                        {COLUMNS.map((col) => (
-                          <td key={col.key} className="px-4 py-3.5">
-                            <Cell included={row[col.key]} />
-                          </td>
-                        ))}
-                      </tr>
+                        {plan.name}
+                      </th>
                     ))}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ScrollReveal>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Limite de profissionais é valor, não sim/não — mostra o
+                      número de cada plano. Com ✓/✗ o "Até 2" ficaria marcado
+                      no Básico e riscado nos maiores, lendo ao contrário. */}
+                  <tr className="border-b border-black/5 transition-colors hover:bg-black/1.5">
+                    <td className="px-6 py-3.5 text-gray-700">Profissionais</td>
+                    <td className="px-4 py-3.5 text-center text-gray-600">
+                      Ilimitados
+                    </td>
+                    {includedByPlan.map((plan) => (
+                      <td
+                        key={plan.id}
+                        className="px-4 py-3.5 text-center text-gray-600"
+                      >
+                        {plan.professionals}
+                      </td>
+                    ))}
+                  </tr>
+                  {rowLabels.map((label) => (
+                    <tr
+                      key={label}
+                      className="border-b border-black/5 transition-colors last:border-0 hover:bg-black/1.5"
+                    >
+                      <td className="px-6 py-3.5 text-gray-700">{label}</td>
+                      {/* No teste tudo fica liberado — o trial não passa por
+                          `PlanFeatureGuard` (tenant sem plano sempre passa). */}
+                      <td className="px-4 py-3.5">
+                        <Cell included />
+                      </td>
+                      {includedByPlan.map((plan) => (
+                        <td key={plan.id} className="px-4 py-3.5">
+                          <Cell included={plan.included.get(label) ?? false} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </ScrollReveal>
+        )}
 
         {/* Notes */}
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
