@@ -32,6 +32,8 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
 import { TrialGuard } from 'src/shared/guards/trial.guard';
+import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
+import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
 import { ManageWaitlistUseCase } from '../../application/manage-waitlist.use-case';
 
 export class AddToWaitlistDto {
@@ -100,7 +102,8 @@ export class QueryWaitlistDto {
 @ApiTags('Lista de espera')
 @ApiBearerAuth()
 @Controller('waitlist')
-@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard, PlanFeatureGuard)
+@RequiresPlanFeature('hasWaitlist')
 export class WaitlistController {
   constructor(private readonly manageWaitlist: ManageWaitlistUseCase) {}
 
