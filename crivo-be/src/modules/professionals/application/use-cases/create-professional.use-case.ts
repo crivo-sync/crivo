@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import {
@@ -32,6 +37,8 @@ export class CreateProfessionalUseCase {
       );
     }
 
+    await this.assertWithinPlanLimit(input.tenantId);
+
     return this.professionalRepository.create({
       tenantId: input.tenantId,
       name: input.name,
@@ -41,6 +48,31 @@ export class CreateProfessionalUseCase {
       email: input.email ?? null,
       procedureIds: input.procedureIds,
     });
+  }
+
+  /**
+   * Tenant em trial (sem `planId`) não tem limite — o trial libera o
+   * produto inteiro. Profissional removido (soft delete) não conta: deletar
+   * libera vaga de verdade, senão a clínica ficaria travada num limite que
+   * já não reflete a equipe atual.
+   */
+  private async assertWithinPlanLimit(tenantId: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { plan: { select: { maxProfessionals: true, name: true } } },
+    });
+
+    if (!tenant.plan || tenant.plan.maxProfessionals === null) return;
+
+    const activeCount = await this.prisma.professional.count({
+      where: { tenantId, deletedAt: null },
+    });
+
+    if (activeCount >= tenant.plan.maxProfessionals) {
+      throw new ForbiddenException(
+        `O plano ${tenant.plan.name} permite até ${tenant.plan.maxProfessionals} profissional(is). Faça upgrade em Configurações → Assinatura para adicionar mais.`,
+      );
+    }
   }
 
   // Sem isso, um payload malformado (ou de outro tenant) conseguiria linkar
