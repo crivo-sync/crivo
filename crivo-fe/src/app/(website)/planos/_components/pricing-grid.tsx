@@ -1,13 +1,15 @@
 "use client";
 
+import Skeleton from "@mui/material/Skeleton";
+
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
-import { PRICING_PLANS } from "../../_data/pricing-plans";
+import { usePlans } from "@/features/billing/hooks/use-plans";
+import { planToPricingCard } from "../../_data/plan-to-pricing-card";
 import { PricingCard } from "../../_components/pricing-card";
 import { FreeTrialCard } from "../../_components/free-trial-card";
 
 export const PricingGrid = () => {
-  // O trial saiu da grade e virou o card "Comece grátis" (FreeTrialCard) abaixo.
-  const paidPlans = PRICING_PLANS.filter((plan) => plan.tier !== "trial");
+  const { plans, isLoading } = usePlans();
 
   return (
     <section className="relative overflow-hidden px-6 pt-8 pb-6 text-gray-900">
@@ -15,16 +17,25 @@ export const PricingGrid = () => {
 
       <div className="relative z-10 mx-auto max-w-5xl">
         <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {paidPlans.map((plan, idx) => (
-            <ScrollReveal
-              key={plan.name}
-              direction="up"
-              delay={idx * 100}
-              duration={700}
-            >
-              <PricingCard plan={plan} />
-            </ScrollReveal>
-          ))}
+          {isLoading
+            ? [0, 1, 2].map((idx) => (
+                <Skeleton
+                  key={idx}
+                  variant="rounded"
+                  height={420}
+                  sx={{ borderRadius: 6 }}
+                />
+              ))
+            : plans.map((plan, idx) => (
+                <ScrollReveal
+                  key={plan.id}
+                  direction="up"
+                  delay={idx * 100}
+                  duration={700}
+                >
+                  <PricingCard plan={planToPricingCard(plan)} />
+                </ScrollReveal>
+              ))}
         </div>
 
         <FreeTrialCard />

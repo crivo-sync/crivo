@@ -16,19 +16,19 @@ const FAQS = [
       "O acesso ao painel é bloqueado até a assinatura ser regularizada. Os valores acima seguem em fase de validação com clientes reais — avisamos com antecedência antes de qualquer cobrança de verdade.",
   },
   {
-    question: "Como funciona a cobrança por profissional?",
+    question: "Como funciona o limite de profissionais?",
     answer:
-      "Você paga por profissional ativo na sua conta, não por agendamento. O plano Clínica inclui até 3 profissionais e cobra R$ 49 por profissional extra. Profissional inativo no mês não entra na conta.",
+      "O plano Básico permite até 2 profissionais ativos. Intermediário e Avançado não têm limite. Não é por agendamento — profissional removido libera vaga na hora.",
   },
   {
     question: "A predição de risco de falta já funciona no teste?",
     answer:
-      "Sim, desde o primeiro dia em qualquer plano que a inclua. Não é um recurso liberado depois — fica disponível durante todo o trial.",
+      "Sim, desde o primeiro dia. Não é um recurso liberado depois — fica disponível durante todo o trial, mesmo que o plano escolhido depois não a inclua (é o caso do Básico).",
   },
   {
     question: "O que acontece se eu passar do limite de profissionais do plano?",
     answer:
-      "Essa regra ainda está em definição: bloqueio, cobrança automática do excedente ou aviso prévio. Vamos deixar isso claro antes do lançamento comercial.",
+      "O cadastro de um novo profissional é recusado com uma mensagem indicando o upgrade necessário — sem cobrança automática nem bloqueio dos profissionais que já existem.",
   },
   {
     question: "O WhatsApp é oficial?",
