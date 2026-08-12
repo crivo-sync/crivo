@@ -10,6 +10,11 @@ import { translateValidationErrors } from './shared/validation/validation-messag
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    // O webhook do Stripe precisa dos bytes crus do corpo para validar a
+    // assinatura HMAC — o corpo reserializado como JSON não bate byte a
+    // byte. Isso expõe `req.rawBody` em toda requisição sem exigir
+    // middleware dedicado (ver StripeWebhookController).
+    rawBody: true,
   });
 
   const logger = app.get(Logger);
