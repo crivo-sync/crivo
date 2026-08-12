@@ -7,6 +7,8 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
 import { TrialGuard } from 'src/shared/guards/trial.guard';
+import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
+import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
 import { AssessAppointmentRiskUseCase } from '../../application/assess-appointment-risk.use-case';
 import { MeasureRuleAccuracyUseCase } from '../../application/measure-rule-accuracy.use-case';
 
@@ -31,11 +33,15 @@ export class QueryUpcomingRiskDto {
  *
  * Sem `@Roles`: agir sobre o risco (ligar, reconfirmar) é trabalho da
  * recepção — restringir a ADMIN esvaziaria a função.
+ *
+ * `@RequiresPlanFeature('hasPrediction')`: só o Essencial não inclui.
+ * Tenant em trial passa sempre (ver `PlanFeatureGuard`).
  */
 @ApiTags('Predição')
 @ApiBearerAuth()
 @Controller('prediction')
-@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard, PlanFeatureGuard)
+@RequiresPlanFeature('hasPrediction')
 export class PredictionController {
   constructor(
     private readonly assessRisk: AssessAppointmentRiskUseCase,
