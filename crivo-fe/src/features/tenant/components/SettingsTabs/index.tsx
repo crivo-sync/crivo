@@ -6,10 +6,11 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 
 import { useIsAdmin } from "@/components/providers/session-provider";
+import { SubscriptionSettings } from "@/features/billing/components/SubscriptionSettings";
 import { MessageTemplates } from "../MessageTemplates";
 import { TenantSettings } from "../TenantSettings";
 
-type TabValue = "clinic" | "messages";
+type TabValue = "clinic" | "messages" | "subscription";
 
 /**
  * Separa "dados da clínica" de "textos das mensagens".
@@ -28,14 +29,16 @@ export const SettingsTabs = () => {
         <Tabs value={tab} onChange={(_, value: TabValue) => setTab(value)}>
           <Tab label="Dados da clínica" value="clinic" />
           <Tab label="Mensagens automáticas" value="messages" />
+          <Tab label="Assinatura" value="subscription" />
         </Tabs>
       </Box>
 
-      {/* Montagem condicional: a aba de mensagens busca os templates ao
-          montar, e deixá-la sempre no ar pagaria essa requisição em toda
-          visita a Configurações. */}
+      {/* Montagem condicional: cada aba busca seus próprios dados ao montar,
+          e deixá-las todas no ar pagaria essa requisição em toda visita a
+          Configurações. */}
       {tab === "clinic" && <TenantSettings />}
       {tab === "messages" && <MessageTemplates canManage={canManage} />}
+      {tab === "subscription" && <SubscriptionSettings />}
     </Box>
   );
 };
