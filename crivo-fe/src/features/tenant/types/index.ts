@@ -35,6 +35,8 @@ export type Tenant = {
   businessDays: number[];
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: string;
+  /** `null` enquanto o tenant está em trial — nenhum checkout foi concluído ainda. */
+  planId: string | null;
   createdAt: string;
   updatedAt: string;
 };
