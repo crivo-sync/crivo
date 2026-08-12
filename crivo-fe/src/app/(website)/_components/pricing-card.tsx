@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type PricingTier = "trial" | "essencial" | "clinica" | "rede";
+export type PricingTier = "trial" | "basico" | "intermediario" | "avancado";
 
 export type PricingFeature = {
   text: string;
@@ -77,7 +77,7 @@ const PLAN_ACCENT: Record<
     badgeLabel: "Comece por aqui",
     popular: false,
   },
-  essencial: {
+  basico: {
     border: "border-black/10",
     hoverBorder: "hover:border-indigo-500/40",
     badge: "text-indigo-600 bg-indigo-500/8 border-indigo-500/20",
@@ -86,7 +86,7 @@ const PLAN_ACCENT: Record<
     badgeLabel: null,
     popular: false,
   },
-  clinica: {
+  intermediario: {
     border: "border-indigo-600/50",
     hoverBorder: "hover:border-indigo-600/70",
     badge: "text-indigo-700 bg-indigo-500/10 border-indigo-500/30",
@@ -95,7 +95,7 @@ const PLAN_ACCENT: Record<
     badgeLabel: "Mais popular",
     popular: true,
   },
-  rede: {
+  avancado: {
     border: "border-black/10",
     hoverBorder: "hover:border-indigo-500/40",
     badge: "text-indigo-600 bg-indigo-500/8 border-indigo-500/20",
@@ -114,7 +114,11 @@ export const PricingCard = ({
   compact?: boolean;
 }) => {
   const accent = PLAN_ACCENT[plan.tier];
-  const features = compact ? plan.features.slice(0, 4) : plan.features;
+  // 6 no compacto: é quanto cobre todos os itens que **variam** entre os
+  // planos (`planFeatureLines` põe os diferenciais primeiro, justamente
+  // para caberem aqui). Cortar antes disso mostrava três colunas com as
+  // mesmas linhas, sem diferencial nenhum à vista.
+  const features = compact ? plan.features.slice(0, 6) : plan.features;
 
   return (
     <div
