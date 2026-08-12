@@ -2,9 +2,10 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-10 (Fase 2 iniciada: predição por regra,
-> escalonamento de lembretes por risco e lista de espera com oferta por
-> WhatsApp).
+> Última atualização: 2026-08-11 (Fase 3: `billing` completo — checkout,
+> webhook, limites por plano, tela de assinatura no painel e site
+> institucional lendo os planos reais do Stripe. Falta validar preço com
+> cliente real e decidir os limites de `hasAiMessages`).
 >
 > **Fase 1: o que era construível está construído.** O que segue aberto
 > depende de coisas fora do código:
@@ -135,6 +136,43 @@ Quatro conclusões que mudam o plano:
 2. **Prontuário é obrigatório para odontologia/dermato.** É requisito legal e operacional, não recurso "nice to have". Uma clínica não troca de sistema se perder o prontuário.
 3. **Nosso diferencial real não é "prever no-show", é o que fazemos com a previsão.** Eles reduzem falta com lembrete e lista de espera — regras simples. O espaço para nos diferenciarmos é a ação automática e personalizada por risco, não o número em si.
 4. **Confiabilidade de entrega é o diferencial que ninguém anuncia.** Todos prometem lembrete; ninguém promete que ele *chega*. Ver [A dor que valida o produto](#a-dor-que-valida-o-produto).
+
+### Modelo de preço deles (conferido em 11/08/2026)
+
+**Não usam tiers.** É **base R$ 39/mês + módulos avulsos**, e o cliente monta a
+configuração:
+
+| Módulo | Preço | Módulo | Preço |
+| --- | --- | --- | --- |
+| Plataforma Base (2 usuários, 1 profissional, 1 sala) | R$ 39 | WhatsApp Evolution | R$ 79 |
+| Prontuário Eletrônico | R$ 29 | WhatsApp Cloud API (Meta oficial) | R$ 149 |
+| Procedimentos & Tratamentos | R$ 19 | Marketing Clínico | R$ 49 |
+| Fotos Before/After | R$ 19 | Financeiro & Fluxo de Caixa | R$ 39 |
+| Pacotes de Sessões | R$ 15 | Analytics Avançado | R$ 39 |
+| Recall Automático | R$ 25 | IA (Lite/Pro/Scale) | R$ 49 / 129 / 299 |
+
+Capacidade extra: **+R$ 19/usuário**, **+R$ 15/profissional**, +R$ 9/sala.
+
+Os exemplos que eles próprios publicam: **clínica solo R$ 166/mês**, clínica
+média R$ 362, dermato com convênios R$ 660. Teste grátis sem cartão, **sem
+duração declarada**.
+
+**O que isso significa para o nosso preço:**
+
+- **A porta de entrada deles é R$ 39, a nossa é R$ 149.** Na primeira
+  comparação que o cliente faz — e ele faz — aparecemos ~4x mais caros, mesmo
+  que a conta real feche perto (o "solo" deles dá R$ 166).
+- **Somos mais baratos no meio da tabela.** Uma clínica que lá paga R$ 362
+  paga R$ 289 aqui, com WhatsApp e predição inclusos. O problema é de
+  *percepção de entrada*, não de valor entregue.
+- **O modular favorece quem quer pouco; o pacote favorece quem quer tudo.**
+  Nosso Intermediário embute IA, predição, lista de espera e painel — que lá
+  seriam R$ 39+79+49+39 = R$ 206 só em módulos, sem contar prontuário.
+- **Eles cobram R$ 29/mês só pelo prontuário.** Isso justifica tê-lo como
+  diferencial do plano topo (Avançado), como ficou em 11/08/2026.
+- **Pergunta em aberto:** criar um plano de entrada (~R$ 59–89, 1 profissional,
+  só agenda + WhatsApp) para não perder a comparação inicial? Os R$149/289/399
+  seguem sendo **hipótese não validada com cliente nenhum**.
 
 ### Posicionamento
 
@@ -299,7 +337,34 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 
 ### Fase 3 — Monetização e retenção
 
-8. **`billing`** — Stripe, planos, cobrança por assento
+8. **`billing`** — 🟢 **checkout, webhook, limites por plano, tela de assinatura e site conectado — tudo entregue em 11/08/2026** (Stripe modo teste)
+   - [x] **Model `Plan`** — 3 planos seedados a partir dos produtos reais do Stripe Dashboard (`Básico`/`Intermediário`/`Avançado`, `stripeProductId`+`stripePriceId`). Preço ainda é placeholder (R$149/289/399) — o dono do produto vai validar os valores finais antes de qualquer lançamento comercial; ver aviso em "Website — o que falta"
+   - [x] **`Tenant.planId`/`stripeCustomerId`/`stripeSubscriptionId`** — a assinatura continua como colunas do próprio Tenant, não um model `Subscription` separado (é sempre 1:1, nunca precisou da tabela própria que o Stripe-por-usuário do snap-financial tem)
+   - [x] **`POST /billing/checkout`** — cria/reaproveita o Stripe Customer, abre Checkout Session com `metadata: {tenantId, planId}` (não `client_reference_id` — é o que o webhook lê de volta, mesmo padrão do snap-financial)
+   - [x] **`POST /billing/webhook`** — trata `checkout.session.completed` (grava plano+status+ids), `customer.subscription.updated` (`mapStripeStatus`) e `customer.subscription.deleted` (`CANCELED`). Sem guard de propósito: a única credencial é a assinatura HMAC, verificada com `req.rawBody` (`NestFactory.create(..., { rawBody: true })` — o Nest já expõe isso nativamente, sem precisar do middleware `verify` manual que o snap-financial usa)
+   - [x] **`TrialGuard` estendido** — bloqueia `EXPIRED` (trial vencido) e agora também `CANCELED` (assinatura cancelada no Stripe). `PAST_DUE` passa de propósito: dá margem ao retry automático do Stripe antes de cortar acesso por uma falha momentânea de cartão
+   - [x] **Limites por plano** (11/08/2026) — dois mecanismos diferentes, por natureza da regra:
+     - **`PlanFeatureGuard` + `@RequiresPlanFeature(...)`** — feature toda-ou-nada, aplicada no controller inteiro. Tenant em trial (sem `planId`) sempre passa
+     - **Limite de profissionais dentro do `CreateProfessionalUseCase`** (não um guard) — é um contador, não um booleano; a regra de negócio (contar `deletedAt: null`, ignorar quem foi removido) vive na camada de aplicação, não espalhada num guard genérico
+     - `hasAiMessages` do `Plan` existe no schema mas **não trava nada ainda** — débito consciente: `Tenant.aiMessagesEnabled` já é um toggle livre em Configurações, e cruzar os dois exige decidir qual vence, o que não foi feito ainda
+   - [x] **Diferenciais reais por plano** (11/08/2026) — **Intermediário e Avançado eram idênticos no banco**: mesmos limites, mesmas features, R$110/mês de diferença por nada. Nenhum ajuste de UI resolvia — as colunas mostravam o mesmo porque *eram* o mesmo. Três flags novas em `Plan` (`hasWaitlist`, `hasDashboard`, `hasMedicalRecords`) passaram a vender módulos que o backend **já entregava e nenhum plano cobrava**:
+
+     | | Básico | Intermediário | Avançado |
+     | --- | --- | --- | --- |
+     | Profissionais | 2 | ilimitados | ilimitados |
+     | Predição de no-show | ❌ | ✅ | ✅ |
+     | Lista de espera | ❌ | ✅ | ✅ |
+     | Painel com gráficos | ❌ | ✅ | ✅ |
+     | Mensagens com IA | ❌ | ✅ | ✅ |
+     | Prontuário | ❌ | ❌ | ✅ |
+
+     - **Prontuário como diferencial do topo** porque é exatamente o que o concorrente cobra à parte (R$ 29/mês avulso) — ver "Modelo de preço deles"
+     - **Agendamento online fica em todos os planos**, de propósito: é a feature que traz paciente novo sem trabalho da recepção, e travá-la no Básico reduziria o valor de entrada justo onde já estamos caros vs. concorrência. Além disso é rota pública (`/public/:subdomain`), então travá-la exigiria resolver o plano pelo subdomínio, não pelo token
+     - `RequiresPlanFeature` deixou de ter uma união escrita à mão e passou a **derivar o tipo do próprio `Plan`** (`{[K in keyof Plan]: Plan[K] extends boolean ? K : never}`) — flag nova no schema já fica disponível sem ninguém lembrar de atualizar lista
+     - Testado ao vivo nos três planos: Básico recusa 403 em `waitlist`, `dashboard/summary`, `prediction` e `anamnesis`; Intermediário libera os três primeiros e recusa prontuário; Avançado libera tudo. Limite de profissionais: Básico com 2 recusa o 3º com o nome do plano na mensagem
+   - [x] **Tela "Assinatura" em `/painel/configuracoes`** (`crivo-fe`) — mostra plano atual, alerta por status (`TRIALING`/`PAST_DUE`/`CANCELED`), grid dos 3 planos com o de origem destacado (`isCurrent`) e botão que chama `POST /billing/checkout` e redireciona pro Stripe. Restrito a ADMIN nas duas camadas (backend `@Roles` + frontend desabilita o botão e mostra aviso)
+   - [x] **Site institucional lendo `GET /plans` de verdade** — `/planos` e a home pararam de usar `_data/pricing-plans.ts` (removido) e passaram a buscar os planos reais via `usePlans()`, com um mapeador (`plan-to-pricing-card.ts`) que nunca hardcoda preço. Como consequência, os nomes dos planos no site mudaram de Essencial/Clínica/Rede para Básico/Intermediário/Avançado — os antigos prometiam cobrança por assento (+R$49/profissional) e multi-unidade, nenhum dos dois existe no backend; decisão explícita do dono do produto de alinhar o marketing ao que existe, em vez de manter a promessa e re-seedar nomes. Página `(website)` ganhou `PublicQueryProvider` (React Query sem a lógica de logout automático do provider do painel — não faz sentido numa página sem sessão)
+   - [x] Testado ao vivo, ponta a ponta: checkout completado com cartão de teste (`4242...`) via Playwright → webhook grava `subscriptionStatus: ACTIVE` + `planId` + `stripeSubscriptionId` → cancelamento via API → webhook grava `CANCELED` → `GET /patients` passa a responder 403 com mensagem clara. Tela de assinatura testada como ADMIN (checkout redireciona pro Stripe de verdade) e como STAFF (botão desabilitado, aviso visível)
 9. **Painel de métricas de ocupação** — taxa de ocupação por profissional/sala/horário, buraco de agenda, receita perdida por falta. Hoje o dashboard mostra contagem e faturamento, não **ocupação** (exige capacidade instalada, que ainda não modelamos)
 10. **Dashboard financeiro** — faturamento, taxa de comparecimento, receita perdida por falta
 11. **Comissão por profissional**
@@ -413,7 +478,7 @@ contato. Duas lacunas mapeadas:
 | **Trial real (14 dias, sem cartão)** | ✅ entregue em 11/08/2026 — deixou de ser só copy. `Tenant.subscriptionStatus`/`trialEndsAt` gravados na hora do cadastro; `TrialGuard` bloqueia (403) todo controller autenticado do painel quando vence, exceto `GET /tenants/me` (de propósito — é de lá que o painel lê a data para avisar a clínica). Sem cron: o guard checa `trialEndsAt` em request-time e marca `EXPIRED` no banco de forma preguiçosa, no primeiro request depois do vencimento. Frontend mostra banner nos últimos 3 dias e mensagem clara quando bloqueado (`crivo-fe/src/app/(dashboard)/_components/trial-banner.tsx`) |
 | **`/planos` com 4 colunas (Teste + 3 planos)** | ✅ entregue em 11/08/2026 — a grade abre com um card de **Teste grátis** (14 dias, sem cartão) seguido de Essencial (R$ 149), Clínica (R$ 289 + R$ 49/profissional extra) e Rede (sob consulta), no mesmo padrão visual do Snap Financial. Os valores seguem sendo **hipótese não validada** (ver abaixo) e o rodapé da grade diz isso; nenhum CTA leva a checkout — todos vão para `/cadastro`, que inicia o trial. A página chegou a ser reduzida a um card único de trial no mesmo dia, revertido a pedido do dono do produto. Features inexistentes ("Reativação inteligente", "Painel de métricas de ocupação") **não** voltaram: a auditoria de 10/08 segue valendo |
 | **Chat com IA (DeepSeek)** | ⚪ Não iniciado | Atendimento/qualificação do visitante na landing. O `DeepSeekTextGenerator` já existe em `messaging`, mas serve outro propósito (reescrever lembrete) — chat exige conversa com estado, histórico e contenção de escopo, é integração nova |
-| **Planos pagos com Stripe** | ⚪ Não iniciado | **Só existe um plano funcionando de verdade** (o trial de 14 dias): as colunas Essencial/Clínica/Rede em `_data/pricing-plans.ts` são conteúdo estático, sem checkout por trás — todo CTA leva a `/cadastro`, que inicia trial independente da coluna clicada, e nada no backend distingue um tenant "Clínica" de um "Essencial". Enquanto o Stripe não entra, o risco é a página prometer um plano que o cadastro não entrega. Quando os planos e as chaves forem criados (manualmente, pelo dono do produto), o billing entra sobre a mesma base: `Tenant.subscriptionStatus`/`trialEndsAt` viram o ponto de partida para um upgrade que sai de `TRIALING` e entra em `ACTIVE` via webhook — mesmo padrão do snap-financial (`mapStripeStatus`), sem precisar remodelar o schema. Falta ainda o vínculo tenant↔plano (hoje inexistente) |
+| **Planos pagos com Stripe** | 🟢 **checkout, limites, tela de assinatura e site conectado — 11/08/2026** | Ver detalhe completo em "Prioridades revisadas → Fase 3 → `billing`". O site (`/planos` e a home) lê `GET /plans` de verdade — nomes migraram de Essencial/Clínica/Rede para Básico/Intermediário/Avançado, batendo com o Stripe Dashboard. **Antes de anunciar preço em produção**: os R$149/289/399 seguem sendo placeholder — migraram de "hipótese no README" para "produto real no Stripe Dashboard", mas não foram validados com cliente nenhum. **Débito**: `hasAiMessages` do `Plan` não trava nada ainda — cruzar com `Tenant.aiMessagesEnabled` (toggle livre hoje) fica pendente |
 
 > ⚠️ Ligar o Stripe congela publicamente uma tabela de preços que este mesmo
 > documento classifica como não validada e acima da entrada do mercado.

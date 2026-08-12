@@ -46,12 +46,20 @@ model Tenant {
   /// Default seg–sex.
   businessDays Int[] @default([1, 2, 3, 4, 5]) @map("business_days")
 
-  /// Hoje existe um único plano (trial de 14 dias, sem cartão) — por isso o
-  /// billing vive como campos do próprio Tenant, não em `Plan`/`Subscription`
-  /// separados. Quando o Stripe entrar com planos pagos de verdade, isso
-  /// deve virar um model próprio; até lá seria estrutura sem uso.
-  subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
-  trialEndsAt        DateTime           @map("trial_ends_at")
+  /// Toda clínica nasce em trial (sem `planId`). `planId` só é preenchido
+  /// quando o checkout do Stripe completa — é o que distingue "ainda não
+  /// escolheu plano" de "está pagando o Essencial", por exemplo.
+  ///
+  /// A assinatura em si continua como colunas do próprio Tenant, não um
+  /// model `Subscription` separado: aqui é sempre 1 tenant = 1 assinatura,
+  /// nunca precisou da tabela própria que o Stripe-por-usuário do
+  /// snap-financial tem.
+  subscriptionStatus   SubscriptionStatus @default(TRIALING) @map("subscription_status")
+  trialEndsAt          DateTime           @map("trial_ends_at")
+  planId               String?            @map("plan_id")
+  plan                 Plan?              @relation(fields: [planId], references: [id])
+  stripeCustomerId     String?            @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,16 +81,55 @@ model Tenant {
   @@map("tenants")
 }
 
-/// Status do trial/assinatura da clínica. Hoje só `TRIALING` e `EXPIRED`
-/// são atingidos pelo código — os demais (`ACTIVE`, `PAST_DUE`, `CANCELED`)
-/// já estão aqui prontos para quando o Stripe entrar, mesmo padrão do
-/// snap-financial, para não exigir migration de enum na hora da virada.
+/// Status da assinatura da clínica. `TRIALING`/`EXPIRED` são geridos pelo
+/// próprio backend (`SubscriptionGuard`, sem cron — ver o guard). Os demais
+/// (`ACTIVE`, `PAST_DUE`, `CANCELED`) só existem depois do primeiro checkout
+/// no Stripe, escritos pelo webhook (`mapStripeStatus`, mesmo padrão do
+/// snap-financial).
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
   PAST_DUE
   CANCELED
   EXPIRED
+}
+
+/// Plano pago. Seedado manualmente (sem tela de admin ainda) a partir dos
+/// produtos já criados no Stripe Dashboard — este model só espelha o que
+/// existe lá, nunca cria produto/preço no Stripe em runtime.
+model Plan {
+  id           String @id @default(uuid())
+  /// Chave estável usada no código (nunca o `name`, que é texto de UI e pode
+  /// mudar). Ex.: `"BASICO"`.
+  key          String @unique
+  name         String
+  /// Em centavos, como todo valor monetário no schema (`priceInCents` de
+  /// `Procedure`/`Appointment`) — evita erro de arredondamento de float.
+  priceInCents Int    @map("price_in_cents")
+
+  /// Limites e features por plano. `null` em `maxProfessionals` = sem
+  /// limite (usado pelo plano maior, "Rede"), não "zero profissionais".
+  maxProfessionals  Int?    @map("max_professionals")
+  hasPrediction     Boolean @default(false) @map("has_prediction")
+  hasAiMessages     Boolean @default(false) @map("has_ai_messages")
+  hasWaitlist       Boolean @default(false) @map("has_waitlist")
+  hasDashboard      Boolean @default(false) @map("has_dashboard")
+  /// Prontuário (anamnese + evolução). Diferencial do plano topo: é o
+  /// módulo que o concorrente cobra à parte (R$29/mês avulso).
+  hasMedicalRecords Boolean @default(false) @map("has_medical_records")
+
+  /// IDs do Stripe Dashboard. `stripePriceId` fica opcional porque o produto
+  /// pode existir no Stripe antes de ter um Price ativo configurado.
+  stripeProductId String  @unique @map("stripe_product_id")
+  stripePriceId   String? @unique @map("stripe_price_id")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants Tenant[]
+
+  @@map("plans")
 }
 
 enum Role {

@@ -576,8 +576,64 @@ async function seedSchedules(tenantId: string): Promise<number> {
   return windows.length;
 }
 
+/**
+ * Planos do Stripe (sandbox de teste). Preços e `stripePriceId` são os
+ * valores reais criados no Dashboard — ainda não são o preço final de
+ * venda, mas precisam bater com o Stripe para o checkout funcionar em
+ * qualquer ambiente que rode este seed do zero.
+ */
+const PLANS = [
+  {
+    key: 'BASICO',
+    name: 'Básico',
+    priceInCents: 14900,
+    maxProfessionals: 2,
+    hasPrediction: false,
+    hasAiMessages: false,
+    hasWaitlist: false,
+    hasDashboard: false,
+    hasMedicalRecords: false,
+    stripeProductId: 'prod_V3QEEFHXf1InQt',
+    stripePriceId: 'price_1U3JNm64chrm4OaKUwcNr0AY',
+  },
+  {
+    key: 'INTERMEDIARIO',
+    name: 'Intermediário',
+    priceInCents: 28900,
+    maxProfessionals: null,
+    hasPrediction: true,
+    hasAiMessages: true,
+    hasWaitlist: true,
+    hasDashboard: true,
+    hasMedicalRecords: false,
+    stripeProductId: 'prod_V3QFWHwYZvozeV',
+    stripePriceId: 'price_1U3JOw64chrm4OaKuHHHINZk',
+  },
+  {
+    key: 'AVANCADO',
+    name: 'Avançado',
+    priceInCents: 39900,
+    maxProfessionals: null,
+    hasPrediction: true,
+    hasAiMessages: true,
+    hasWaitlist: true,
+    hasDashboard: true,
+    hasMedicalRecords: true,
+    stripeProductId: 'prod_V3QFzoziEp5xOX',
+    stripePriceId: 'price_1U3JP964chrm4OaKe7ZkCp7H',
+  },
+];
+
 async function full() {
   const hashedPassword = await bcrypt.hash(DEV_PASSWORD, SALT_ROUNDS);
+
+  for (const plan of PLANS) {
+    await prisma.plan.upsert({
+      where: { key: plan.key },
+      update: plan,
+      create: plan,
+    });
+  }
 
   for (const seedTenant of TENANTS) {
     const { users, patients, professionals, procedures, ...tenantData } =
