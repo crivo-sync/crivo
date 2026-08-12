@@ -10,6 +10,8 @@ import { Tenant } from 'src/shared/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
 import { TrialGuard } from 'src/shared/guards/trial.guard';
+import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
+import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
 import { GetDashboardSummaryUseCase } from '../../application/use-cases/get-dashboard-summary.use-case';
 import { GetDashboardAnalyticsUseCase } from '../../application/use-cases/get-dashboard-analytics.use-case';
 import { DashboardSummaryResponseDto } from '../dtos/dashboard-summary-response.dto';
@@ -19,7 +21,8 @@ import { QueryAnalyticsDto } from '../dtos/query-analytics.dto';
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard, PlanFeatureGuard)
+@RequiresPlanFeature('hasDashboard')
 export class DashboardController {
   constructor(
     private readonly getDashboardSummary: GetDashboardSummaryUseCase,
