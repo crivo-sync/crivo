@@ -72,6 +72,59 @@ describe('TrialGuard', () => {
     expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 
+  it('bloqueia quando a assinatura foi cancelada, mesmo com trial no futuro', async () => {
+    const prisma = {
+      tenant: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          subscriptionStatus: 'CANCELED',
+          trialEndsAt: new Date(Date.now() + 86_400_000),
+        }),
+        update: jest.fn(),
+      },
+    } as unknown as PrismaService;
+
+    const guard = new TrialGuard(prisma);
+
+    await expect(guard.canActivate(makeContext(TENANT_ID))).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
+  });
+
+  it('libera quando ACTIVE (assinatura paga em dia)', async () => {
+    const prisma = {
+      tenant: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          subscriptionStatus: 'ACTIVE',
+          trialEndsAt: new Date(Date.now() - 86_400_000),
+        }),
+        update: jest.fn(),
+      },
+    } as unknown as PrismaService;
+
+    const guard = new TrialGuard(prisma);
+
+    await expect(guard.canActivate(makeContext(TENANT_ID))).resolves.toBe(true);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
+  });
+
+  it('libera quando PAST_DUE — dá margem ao retry automático do Stripe', async () => {
+    const prisma = {
+      tenant: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          subscriptionStatus: 'PAST_DUE',
+          trialEndsAt: new Date(Date.now() - 86_400_000),
+        }),
+        update: jest.fn(),
+      },
+    } as unknown as PrismaService;
+
+    const guard = new TrialGuard(prisma);
+
+    await expect(guard.canActivate(makeContext(TENANT_ID))).resolves.toBe(true);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
+  });
+
   it('recusa quando não há tenantContext (guard aplicado sem TenantContextGuard antes)', async () => {
     const prisma = {
       tenant: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
