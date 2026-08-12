@@ -15,6 +15,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { PublicBookingModule } from './modules/public-booking/public-booking.module';
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     PredictionModule,
     WaitlistModule,
     PublicBookingModule,
+    BillingModule,
   ],
   controllers: [],
   providers: [],
