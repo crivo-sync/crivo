@@ -24,6 +24,7 @@ import { useIsAdmin } from "@/components/providers/session-provider";
 import { MaskedTextField } from "@/components/masked-text-field";
 import { PHONE_MASK } from "@/lib/br-masks";
 import { useTenant } from "../../hooks/use-tenant";
+import { usePlanFeatures } from "../../hooks/use-plan-features";
 import { useUpdateTenant } from "../../hooks/use-update-tenant";
 import { updateTenantSchema, type UpdateTenantSchema } from "../../schemas/tenant";
 import { BusinessDaysField } from "./business-days-field";
@@ -75,6 +76,8 @@ export const TenantSettings = () => {
   const canManage = useIsAdmin();
   const { tenant, isLoading, error, refetch } = useTenant();
   const updateTenant = useUpdateTenant();
+  const { has, planName } = usePlanFeatures();
+  const canAi = has("hasAiMessages");
 
   // `defaultValues` com strings vazias (não `{}`) — os campos controlados
   // (`TextField value={field.value}`) não podem começar `undefined` e virar
@@ -405,7 +408,11 @@ export const TenantSettings = () => {
                   <Switch
                     checked={field.value ?? false}
                     onChange={(event) => field.onChange(event.target.checked)}
-                    disabled={!canManage}
+                    // Sem direito ao recurso o toggle trava ligado? Não: quem
+                    // já está com ele ligado por dado antigo precisa poder
+                    // desligar. Só o caminho de LIGAR é bloqueado — mesma
+                    // regra do `UpdateTenantUseCase`.
+                    disabled={!canManage || (!canAi && !field.value)}
                   />
                 }
                 label={
@@ -414,8 +421,9 @@ export const TenantSettings = () => {
                       Reescrever mensagens com IA
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      DeepSeek deixa o texto do WhatsApp mais natural. Se
-                      falhar, o envio cai para o modelo padrão.
+                      {canAi
+                        ? "DeepSeek deixa o texto do WhatsApp mais natural. Se falhar, o envio cai para o modelo padrão."
+                        : `Disponível a partir do plano Intermediário — o ${planName} não inclui.`}
                     </Typography>
                   </Box>
                 }

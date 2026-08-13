@@ -37,6 +37,13 @@ export type Tenant = {
   trialEndsAt: string;
   /** `null` enquanto o tenant está em trial — nenhum checkout foi concluído ainda. */
   planId: string | null;
+  /**
+   * Features do plano contratado. `null` em trial, que libera tudo.
+   *
+   * Serve para **esconder** o que o backend recusaria — é conveniência de
+   * UI, não segurança: quem manda é o `PlanFeatureGuard`.
+   */
+  plan: PlanFeatures | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +60,17 @@ export type OnboardingStatus = {
   /** Para montar o link do `/agendar` que a clínica divulga. */
   subdomain: string;
   isComplete: boolean;
+};
+
+export type PlanFeatures = {
+  name: string;
+  hasPrediction: boolean;
+  hasWaitlist: boolean;
+  hasDashboard: boolean;
+  hasMedicalRecords: boolean;
+  hasAiMessages: boolean;
+  maxProfessionals: number | null;
+  maxMessagesPerMonth: number | null;
 };
 
 export type ActionResult<T = undefined> =

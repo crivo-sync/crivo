@@ -1,7 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type Stripe from 'stripe';
 
+import { ConfigService } from '@nestjs/config';
+
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { MailService } from 'src/modules/mail/application/mail.service';
+import {
+  paymentFailedMail,
+  subscriptionConfirmedMail,
+} from 'src/modules/mail/application/templates';
 import { StripeService } from '../../infrastructure/stripe/stripe.service';
 import { mapStripeStatus } from '../map-stripe-status';
 
@@ -26,6 +33,8 @@ export class HandleStripeWebhookUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(input: HandleStripeWebhookInput): Promise<void> {
@@ -107,6 +116,57 @@ export class HandleStripeWebhookUseCase {
         subscriptionStatus: mapStripeStatus(stripeSub.status),
       },
     });
+
+    await this.notifySubscriptionConfirmed(tenantId, planId, stripeSub);
+  }
+
+  /**
+   * Recibo da assinatura para o admin da clínica.
+   *
+   * Depois do `update`, nunca antes: o e-mail confirma um estado que já está
+   * gravado. Se falhar, o pagamento continua válido — `MailService.send` não
+   * lança, e o webhook precisa devolver 200 para o Stripe parar de reentregar.
+   */
+  private async notifySubscriptionConfirmed(
+    tenantId: string,
+    planId: string,
+    stripeSub: Stripe.Subscription,
+  ): Promise<void> {
+    const [tenant, plan] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          name: true,
+          // O e-mail vai para quem assinou, e quem assina é ADMIN.
+          users: {
+            where: { role: 'ADMIN', isActive: true },
+            select: { email: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      }),
+      this.prisma.plan.findUnique({ where: { id: planId } }),
+    ]);
+
+    const email = tenant?.users[0]?.email;
+    if (!tenant || !plan || !email) return;
+
+    // `current_period_end` vem em segundos; ausente em alguns estados.
+    const periodEnd = (stripeSub as { current_period_end?: number })
+      .current_period_end;
+
+    await this.mail.send(
+      email,
+      subscriptionConfirmedMail({
+        clinicName: tenant.name,
+        planName: plan.name,
+        priceInCents: plan.priceInCents,
+        nextChargeAt: periodEnd ? new Date(periodEnd * 1000) : null,
+        messageQuota: plan.maxMessagesPerMonth,
+        maxProfessionals: plan.maxProfessionals,
+      }),
+    );
   }
 
   private async handleSubscriptionUpdated(
@@ -123,10 +183,50 @@ export class HandleStripeWebhookUseCase {
       return;
     }
 
+    const status = mapStripeStatus(subscription.status);
+
     await this.prisma.tenant.update({
       where: { id: tenant.id },
-      data: { subscriptionStatus: mapStripeStatus(subscription.status) },
+      data: { subscriptionStatus: status },
     });
+
+    // Só avisa na virada para PAST_DUE. O Stripe reenvia `updated` a cada
+    // tentativa de cobrança, e sem comparar com o status anterior a clínica
+    // receberia o mesmo e-mail de falha várias vezes seguidas.
+    if (status === 'PAST_DUE' && tenant.subscriptionStatus !== 'PAST_DUE') {
+      await this.notifyPaymentFailed(tenant.id);
+    }
+  }
+
+  private async notifyPaymentFailed(tenantId: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true,
+        plan: { select: { name: true } },
+        users: {
+          where: { role: 'ADMIN', isActive: true },
+          select: { email: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+      },
+    });
+
+    const email = tenant?.users[0]?.email;
+    if (!tenant || !email) return;
+
+    const appUrl =
+      this.config.get<string>('PUBLIC_APP_URL') ?? 'http://localhost:3000';
+
+    await this.mail.send(
+      email,
+      paymentFailedMail({
+        clinicName: tenant.name,
+        planName: tenant.plan?.name ?? 'atual',
+        billingUrl: `${appUrl.replace(/\/$/, '')}/painel/configuracoes`,
+      }),
+    );
   }
 
   private async handleSubscriptionDeleted(

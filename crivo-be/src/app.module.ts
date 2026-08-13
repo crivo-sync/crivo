@@ -17,7 +17,29 @@ import { PublicBookingModule } from './modules/public-booking/public-booking.mod
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { MailModule } from './modules/mail/mail.module';
 import { TrialModule } from './modules/trial/trial.module';
+
+/**
+ * Campos que nunca podem aparecer no log, nem em desenvolvimento.
+ *
+ * O body só é logado fora de produção, mas em dev a senha do cadastro ia
+ * inteira para o terminal — e terminal vira screenshot, print de bug e log
+ * de CI. Senha em texto puro em qualquer lugar é senha vazada.
+ */
+const SECRET_FIELDS = ['password', 'currentPassword', 'newPassword', 'token'];
+
+function redactSecrets(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
+
+  const copy: Record<string, unknown> = { ...(body as Record<string, unknown>) };
+
+  for (const field of SECRET_FIELDS) {
+    if (field in copy) copy[field] = '[REDACTED]';
+  }
+
+  return copy;
+}
 
 @Module({
   imports: [
@@ -58,7 +80,7 @@ import { TrialModule } from './modules/trial/trial.module';
                   params: req.params,
                   // Não logar o body em produção por segurança
                   ...(!isProduction && {
-                    body: req.raw.body,
+                    body: redactSecrets(req.raw.body),
                   }),
                 };
               },
@@ -94,6 +116,7 @@ import { TrialModule } from './modules/trial/trial.module';
     WaitlistModule,
     PublicBookingModule,
     BillingModule,
+    MailModule,
     TrialModule,
   ],
   controllers: [],
