@@ -15,6 +15,11 @@ export const registerSchema = z.object({
     .regex(SUBDOMAIN_RE, "Use só letras minúsculas, números e hífen")
     .refine((value) => !RESERVED.includes(value), "Este endereço é reservado"),
   email: z.email("Informe um e-mail válido"),
+  /** Só dígitos: a máscara é da UI, o backend valida `^\d{10,11}$`. */
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\d{10,11}$/, "Informe um WhatsApp válido com DDD"),
   password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres"),
 });
 

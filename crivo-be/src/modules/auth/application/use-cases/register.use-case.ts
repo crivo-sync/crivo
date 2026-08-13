@@ -8,6 +8,8 @@ export type RegisterInput = {
   subdomain: string;
   name: string;
   email: string;
+  /** WhatsApp da clínica, só dígitos. É por onde o Crivo fala com ela. */
+  phone: string;
   password: string;
 };
 
@@ -47,6 +49,7 @@ export class RegisterUseCase {
         data: {
           name: input.tenantName,
           subdomain: input.subdomain,
+          phone: input.phone,
           trialEndsAt,
         },
       });

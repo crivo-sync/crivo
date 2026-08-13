@@ -7,6 +7,8 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 
+import { PasswordField } from "@/components/password-field";
+
 import { useLogin } from "../../hooks/use-login";
 
 export const LoginForm = () => {
@@ -36,10 +38,11 @@ export const LoginForm = () => {
         control={control}
         name="password"
         render={({ field, fieldState }) => (
-          <TextField
+          // Sem medidor de força aqui: no login a senha já existe, e
+          // avaliá-la só atrapalharia quem está tentando entrar.
+          <PasswordField
             {...field}
             id="password"
-            type="password"
             label="Senha"
             autoComplete="current-password"
             error={!!fieldState.error}

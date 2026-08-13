@@ -17,6 +17,7 @@ const DEFAULT_VALUES: RegisterSchema = {
   tenantName: "",
   subdomain: "",
   email: "",
+  phone: "",
   password: "",
 };
 
