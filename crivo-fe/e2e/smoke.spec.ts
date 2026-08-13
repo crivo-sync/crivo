@@ -16,7 +16,7 @@ test.describe("Fundamentos", () => {
   test("credencial errada não entra", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("E-mail").fill("recepcao@clinicasorriso.com.br");
-    await page.getByLabel("Senha").fill("senha-errada");
+    await page.getByRole("textbox", { name: "Senha" }).fill("senha-errada");
     await page.getByRole("button", { name: "Entrar" }).click();
 
     // Continua no login e mostra o erro — sem isso, uma senha errada que

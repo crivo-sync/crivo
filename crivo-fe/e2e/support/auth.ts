@@ -25,7 +25,9 @@ export async function login(page: Page, role: UserRole = "staff") {
 
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(user.email);
-  await page.getByLabel("Senha").fill(user.password);
+  // `getByRole("textbox")` e não `getByLabel`: o botão de mostrar/ocultar
+  // senha tem `aria-label="Mostrar senha"` e também casaria com o label.
+  await page.getByRole("textbox", { name: "Senha" }).fill(user.password);
   await page.getByRole("button", { name: "Entrar" }).click();
 
   // Espera o painel de fato carregar: sem isto, o teste seguinte começaria
