@@ -2,36 +2,44 @@
 
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 
+/**
+ * Escrito para dono de clínica, não para engenheiro.
+ *
+ * A versão anterior anunciava "Tríade integrada", "Multi-tenant white-label"
+ * e "O tenant nunca vem do body nem da URL — sempre do token". Tudo verdade,
+ * e tudo ilegível para quem vai pagar: o mesmo fato dito em português diz
+ * mais e promete a mesma coisa.
+ */
 const DIFFERENTIATORS = [
   {
     emoji: "🔗",
-    title: "Tríade integrada",
+    title: "Uma tela, não três",
     description:
-      "Agenda, predição e mensageria conversam entre si — não são três sistemas colados.",
+      "Agenda, histórico do paciente e WhatsApp no mesmo lugar — sem planilha paralela nem conversa perdida no celular da recepção.",
     iconClass: "bg-indigo-500/10 border-indigo-500/20",
     hoverBorder: "hover:border-indigo-500/25",
   },
   {
     emoji: "🏥",
-    title: "Multi-tenant white-label",
+    title: "Com a cara da sua clínica",
     description:
-      "Cada clínica tem sua própria marca, cores e subdomínio, com dados totalmente isolados.",
+      "Sua marca, suas cores e seu endereço próprio na página que o paciente abre para marcar.",
     iconClass: "bg-violet-500/10 border-violet-500/20",
     hoverBorder: "hover:border-violet-500/25",
   },
   {
     emoji: "🔒",
-    title: "Isolamento por clínica",
+    title: "Seus dados são só seus",
     description:
-      "O tenant nunca vem do body nem da URL — sempre do token. Não dá para forjar acesso a outra clínica.",
+      "Nenhuma outra clínica alcança a sua base de pacientes — a separação é verificada a cada acesso, não uma promessa no contrato.",
     iconClass: "bg-gray-500/10 border-gray-500/20",
     hoverBorder: "hover:border-gray-500/25",
   },
   {
     emoji: "💬",
-    title: "Confirmação sem app",
+    title: "Confirmar dá uma palavra",
     description:
-      "O paciente confirma a presença clicando num link, sem baixar nada.",
+      "O paciente responde “sim” no WhatsApp e a agenda se atualiza sozinha. Sem baixar app, sem cadastro, sem precisar abrir link.",
     iconClass: "bg-indigo-500/10 border-indigo-500/20",
     hoverBorder: "hover:border-indigo-500/25",
   },
@@ -44,10 +52,13 @@ const DIFFERENTIATORS = [
     hoverBorder: "hover:border-violet-500/25",
   },
   {
+    // O que nenhum dos 11 concorrentes anuncia. Todos prometem lembrete;
+    // ninguém diz o que acontece quando ele não chega — e é justamente aí
+    // que o paciente falta achando que ninguém avisou.
     emoji: "🛡️",
-    title: "Nunca trava por causa da IA",
+    title: "Mensagem que falha não some",
     description:
-      "Se a IA falhar ou demorar, o envio cai automaticamente pro template fixo de sempre.",
+      "Se o WhatsApp do paciente não recebe, a recepção vê o nome e o telefone numa lista de quem ligar. Ninguém descobre pela cadeira vazia.",
     iconClass: "bg-gray-500/10 border-gray-500/20",
     hoverBorder: "hover:border-gray-500/25",
   },

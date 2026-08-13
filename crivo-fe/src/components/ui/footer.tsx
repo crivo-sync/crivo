@@ -6,9 +6,9 @@ import { SHOW_SOCIAL_PROOF } from "@/app/(website)/_data/social-proof";
 const footerLinks = {
   Produto: [
     { label: "Agenda", href: "/#modulos" },
-    { label: "Predição de no-show", href: "/#modulos" },
-    { label: "Mensageria", href: "/#modulos" },
-    { label: "Financeiro", href: "/#modulos" },
+    { label: "Risco de falta", href: "/#modulos" },
+    { label: "Lembretes no WhatsApp", href: "/#modulos" },
+    { label: "Planos e cobrança", href: "/#modulos" },
     { label: "Planos", href: "/planos" },
   ],
   Empresa: [
@@ -73,9 +73,8 @@ export const Footer = () => {
               <Logo />
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-gray-500">
-              Agenda, predição de no-show e mensageria automática num único
-              motor — plataforma whitelabel para clínicas de estética e
-              odontologia.
+              A agenda que avisa seus pacientes pelo WhatsApp e não deixa
+              horário virar prejuízo. Para clínicas de estética e odontologia.
             </p>
 
             {/* Social links */}

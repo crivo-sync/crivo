@@ -37,7 +37,13 @@ export function professionalsLimitLabel(plan: Plan): string {
 export function planComparableFeatures(plan: Plan): PlanFeatureLine[] {
   return [
     // Diferenciais primeiro — é o que decide a compra.
-    { text: "Predição de risco de no-show", included: plan.hasPrediction },
+    // "Predição de risco de no-show" era o texto anterior: jargão numa linha
+    // que a pessoa lê para decidir onde gastar. O nome bate com a aba do
+    // painel ("Risco de falta") e diz o que ela ganha com isso.
+    {
+      text: "Risco de falta: saiba para quem ligar amanhã",
+      included: plan.hasPrediction,
+    },
     { text: "Lista de espera com aviso automático", included: plan.hasWaitlist },
     {
       text: "Prontuário (anamnese e evolução)",

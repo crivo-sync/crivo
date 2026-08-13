@@ -3,16 +3,22 @@ import Link from "next/link";
 import { RegisterCta } from "./register-cta";
 
 /**
- * Números que o produto de fato entrega — conferidos contra o backend, não
- * escritos por impressão:
- * - `REMINDER_HOURS_BY_RISK`: risco alto recebe 72h **e** 24h antes
- * - `SEND_JOB_OPTIONS.attempts: 4`
- * - `ConfirmByTokenUseCase` (link) e `ConfirmByReplyUseCase` ("sim")
+ * O que o produto **faz**, não como funciona por dentro.
+ *
+ * A versão anterior anunciava "3x mais lembrete" e "4x reenvio antes de
+ * desistir": números verdadeiros (conferidos em `REMINDER_HOURS_BY_RISK` e
+ * `SEND_JOB_OPTIONS.attempts`), mas que descrevem o motor. Quem lê é dono de
+ * clínica decidindo onde gastar R$ 149/mês, e "4x reenvio" não é benefício —
+ * é implementação.
+ *
+ * Continuam sendo afirmações verificáveis no código, não promessa de
+ * resultado: nenhum diz "reduz faltas em X%", porque isso nós não medimos.
  */
 const STATS = [
-  { value: "3x", label: "mais lembrete para quem tende a faltar" },
-  { value: "4x", label: "reenvio antes de desistir" },
-  { value: "0 apps", label: "confirma pelo link ou respondendo" },
+  { value: "Sem app", label: "o paciente confirma respondendo “sim”" },
+  { value: "Sem furo", label: "mensagem que falha vira lista pra ligar" },
+  // "14 dias grátis" ficaria aqui, mas o card ao lado já diz isso duas vezes.
+  { value: "Vaga aberta", label: "quem está na espera é chamado na hora" },
 ];
 
 export const Hero = () => {
@@ -34,17 +40,23 @@ export const Hero = () => {
             </p>
           </div>
 
+          {/*
+            A versão anterior era "O motor que evita buracos na sua agenda":
+            bonita, mas mecanismo — o dono da clínica tinha que traduzir
+            sozinho para dinheiro. Agora a manchete é a perda dele, e a
+            calculadora logo abaixo deixa que ele mesmo faça a conta.
+          */}
           <h1 className="text-5xl leading-[1.05] font-bold text-gray-900 md:text-6xl lg:text-7xl">
-            O motor que evita{" "}
+            Cada falta leva embora{" "}
             <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 via-indigo-500 to-indigo-400">
-              buracos na sua agenda
+              o faturamento do dia
             </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600">
-            Agenda, predição de no-show e mensageria automática num único motor.
-            O Crivo avisa quando um horário está em risco — e age antes de virar
-            buraco na sua operação.
+            O paciente não aparece, o horário fica vazio e ninguém entra no
+            lugar. O Crivo lembra quem tende a faltar, avisa a recepção quando a
+            mensagem não chega e oferece a vaga a quem está esperando.
           </p>
 
           <div className="flex flex-col gap-4 pt-8 sm:flex-row">
