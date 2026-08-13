@@ -17,6 +17,7 @@ import { PublicBookingModule } from './modules/public-booking/public-booking.mod
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { MailModule } from './modules/mail/mail.module';
 import { TrialModule } from './modules/trial/trial.module';
 
 @Module({
@@ -94,6 +95,7 @@ import { TrialModule } from './modules/trial/trial.module';
     WaitlistModule,
     PublicBookingModule,
     BillingModule,
+    MailModule,
     TrialModule,
   ],
   controllers: [],
