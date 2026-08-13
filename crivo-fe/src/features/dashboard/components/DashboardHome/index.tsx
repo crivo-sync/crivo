@@ -12,6 +12,7 @@ import { useDashboardAnalytics } from "../../hooks/use-dashboard-analytics";
 import { useDashboardSummary } from "../../hooks/use-dashboard-summary";
 import { usePlanFeatures } from "@/features/tenant/hooks/use-plan-features";
 import { UpgradeChartsCard } from "./upgrade-charts-card";
+import { NoShowCostCard } from "./no-show-cost-card";
 import { AppointmentsByDayChart } from "../AppointmentsByDayChart";
 import { AppointmentsList } from "../AppointmentsList";
 import { FailedMessagesAlert } from "../FailedMessagesAlert";
@@ -62,6 +63,10 @@ export const DashboardHome = () => {
 
   return (
     <Stack spacing={3}>
+      {/* Antes dos contadores: é a informação que responde "quanto isso me
+          custa", e é ela que faz a clínica entender o valor do produto. */}
+      <NoShowCostCard />
+
       <SummaryCards counts={summary.counts} />
 
       <FailedMessagesAlert messages={summary.failedMessages} />

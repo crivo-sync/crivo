@@ -46,3 +46,18 @@ export type DashboardAnalytics = {
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; data?: undefined };
+
+/**
+ * Quanto a falta custou no mês — a pergunta que o dono da clínica faz.
+ *
+ * `noShowRate` é `null` quando nenhum atendimento teve desfecho no mês: 0%
+ * seria mentira, e o card diz isso em vez de fingir um número.
+ */
+export type NoShowCost = {
+  lostInCents: number;
+  noShowCount: number;
+  finishedCount: number;
+  noShowRate: number | null;
+  savedCount: number;
+  savedInCents: number;
+};
