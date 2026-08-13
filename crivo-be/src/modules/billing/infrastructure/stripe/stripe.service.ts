@@ -73,6 +73,43 @@ export class StripeService implements OnModuleInit {
     return this.client.subscriptions.cancel(subscriptionId);
   }
 
+  /**
+   * Troca o preço da assinatura **existente**, em vez de criar outra.
+   *
+   * Sem isto cada mudança de plano abria um checkout novo e o cliente ficava
+   * com duas assinaturas ativas, pagando as duas (aconteceu de verdade:
+   * três assinaturas simultâneas, R$ 727/mês, em 13/08/2026).
+   *
+   * `proration_behavior`:
+   * - `always_invoice` no **upgrade**: cobra a diferença proporcional na
+   *   hora e o acesso novo vale imediatamente.
+   * - `none` no **downgrade**: o cliente já pagou o mês inteiro do plano
+   *   maior, então mantém o acesso até o fim do ciclo. Sem isso ele perderia
+   *   recurso que pagou.
+   */
+  async updateSubscriptionPrice(params: {
+    subscriptionId: string;
+    priceId: string;
+    /** `false` agenda a troca para o fim do ciclo (downgrade). */
+    immediate: boolean;
+  }) {
+    const subscription = await this.client.subscriptions.retrieve(
+      params.subscriptionId,
+    );
+    const currentItemId = subscription.items.data[0]?.id;
+
+    if (!currentItemId) {
+      throw new Error(
+        `Subscription ${params.subscriptionId} has no items to update.`,
+      );
+    }
+
+    return this.client.subscriptions.update(params.subscriptionId, {
+      items: [{ id: currentItemId, price: params.priceId }],
+      proration_behavior: params.immediate ? 'always_invoice' : 'none',
+    });
+  }
+
   async createBillingPortalSession(params: CreateBillingPortalSessionParams) {
     return this.client.billingPortal.sessions.create({
       customer: params.customerId,

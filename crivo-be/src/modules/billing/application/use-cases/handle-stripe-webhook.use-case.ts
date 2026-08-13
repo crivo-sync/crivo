@@ -185,9 +185,27 @@ export class HandleStripeWebhookUseCase {
 
     const status = mapStripeStatus(subscription.status);
 
+    /**
+     * O preço da assinatura é a fonte da verdade do plano.
+     *
+     * Cobre os dois casos de troca: o upgrade (que o use case já gravou, e
+     * aqui só confirma) e o **downgrade agendado**, que só chega quando o
+     * ciclo pago vira — é este evento que efetiva a perda de recurso, no
+     * momento certo.
+     */
+    const priceId = subscription.items.data[0]?.price?.id;
+    const planFromPrice = priceId
+      ? await this.prisma.plan.findFirst({ where: { stripePriceId: priceId } })
+      : null;
+
+    const planChanged = planFromPrice && planFromPrice.id !== tenant.planId;
+
     await this.prisma.tenant.update({
       where: { id: tenant.id },
-      data: { subscriptionStatus: status },
+      data: {
+        subscriptionStatus: status,
+        ...(planFromPrice ? { planId: planFromPrice.id } : {}),
+      },
     });
 
     // Só avisa na virada para PAST_DUE. O Stripe reenvia `updated` a cada
@@ -195,6 +213,17 @@ export class HandleStripeWebhookUseCase {
     // receberia o mesmo e-mail de falha várias vezes seguidas.
     if (status === 'PAST_DUE' && tenant.subscriptionStatus !== 'PAST_DUE') {
       await this.notifyPaymentFailed(tenant.id);
+      return;
+    }
+
+    // Mudou de plano (upgrade ou downgrade que venceu): manda o mesmo recibo
+    // da assinatura, agora com os dados do plano novo.
+    if (planChanged) {
+      await this.notifySubscriptionConfirmed(
+        tenant.id,
+        planFromPrice.id,
+        subscription,
+      );
     }
   }
 

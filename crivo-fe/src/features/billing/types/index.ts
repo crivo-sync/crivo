@@ -13,9 +13,17 @@ export type Plan = {
   isActive: boolean;
 };
 
-export type CheckoutSession = {
-  url: string;
-};
+/**
+ * Assinar um plano dá em dois caminhos diferentes:
+ *
+ * - **`checkout`**: primeira assinatura — vai para o Stripe pagar.
+ * - **`changed`**: já existe assinatura, e o backend trocou o preço dela.
+ *   Não sai da aplicação; a troca já aconteceu (upgrade) ou ficou agendada
+ *   para o fim do ciclo pago (downgrade).
+ */
+export type CheckoutSession =
+  | { kind: "checkout"; url: string }
+  | { kind: "changed"; message: string };
 
 export type MessageUsage = {
   used: number;

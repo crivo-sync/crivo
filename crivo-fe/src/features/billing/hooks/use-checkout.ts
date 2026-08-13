@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useSnackbar } from "@/components/providers/snackbar-provider";
+import { TENANT_QUERY_KEY } from "@/features/tenant/hooks/use-tenant";
 import { createCheckoutSessionAction } from "../actions/create-checkout-session-action";
 
 /**
@@ -13,6 +15,7 @@ import { createCheckoutSessionAction } from "../actions/create-checkout-session-
 export function useCheckout() {
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const snackbar = useSnackbar();
+  const queryClient = useQueryClient();
 
   const startCheckout = async (planId: string) => {
     setLoadingPlanId(planId);
@@ -22,8 +25,20 @@ export function useCheckout() {
         snackbar.showError(result.message);
         return;
       }
-      // Redireciona para o Stripe Checkout — sai da aplicação de propósito,
-      // não é uma navegação client-side.
+
+      // Quem já tem assinatura não passa pelo checkout: o backend troca o
+      // preço da assinatura existente e devolve o que aconteceu. Mandar para
+      // o Stripe nesse caso criaria uma segunda assinatura ativa, cobrando
+      // as duas.
+      if (result.data.kind === "changed") {
+        snackbar.showSuccess(result.data.message);
+        // O plano mudou: recarrega o tenant para as travas de feature e o
+        // "Plano contratado" refletirem a troca sem F5.
+        await queryClient.invalidateQueries({ queryKey: TENANT_QUERY_KEY });
+        return;
+      }
+
+      // Primeira assinatura: sai da aplicação de propósito.
       window.location.href = result.data.url;
     } finally {
       setLoadingPlanId(null);
