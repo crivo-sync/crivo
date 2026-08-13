@@ -12,6 +12,7 @@ import { RescheduleAppointmentUseCase } from './application/use-cases/reschedule
 import { ChangeAppointmentStatusUseCase } from './application/use-cases/change-appointment-status.use-case';
 import { BusinessHoursService } from './application/services/business-hours.service';
 import { ProfessionalAvailabilityService } from './application/services/professional-availability.service';
+import { CountNewAppointmentsUseCase } from './application/use-cases/count-new-appointments.use-case';
 import { GetAvailabilityUseCase } from './application/use-cases/get-availability.use-case';
 import { GuardsModule } from '../../shared/guards/guards.module';
 
@@ -31,6 +32,7 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     BusinessHoursService,
     ProfessionalAvailabilityService,
     GetAvailabilityUseCase,
+    CountNewAppointmentsUseCase,
   ],
   // `CreateAppointmentUseCase` e `GetAvailabilityUseCase` são exportados para
   // o agendamento online reusar as MESMAS regras de agenda do painel — uma

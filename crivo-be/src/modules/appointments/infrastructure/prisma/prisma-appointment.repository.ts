@@ -69,6 +69,12 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
     return { data, total };
   }
 
+  countCreatedAfter(tenantId: string, since: Date): Promise<number> {
+    return this.prisma.appointment.count({
+      where: { tenantId, createdAt: { gt: since } },
+    });
+  }
+
   findByIdAndTenant(
     id: string,
     tenantId: string,

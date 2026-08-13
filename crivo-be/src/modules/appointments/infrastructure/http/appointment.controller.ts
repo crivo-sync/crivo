@@ -32,6 +32,7 @@ import { GetAppointmentByIdUseCase } from '../../application/use-cases/get-appoi
 import { CreateAppointmentUseCase } from '../../application/use-cases/create-appointment.use-case';
 import { RescheduleAppointmentUseCase } from '../../application/use-cases/reschedule-appointment.use-case';
 import { ChangeAppointmentStatusUseCase } from '../../application/use-cases/change-appointment-status.use-case';
+import { CountNewAppointmentsUseCase } from '../../application/use-cases/count-new-appointments.use-case';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
 
 @ApiTags('Agendamentos')
@@ -46,6 +47,7 @@ export class AppointmentController {
     private readonly rescheduleAppointment: RescheduleAppointmentUseCase,
     private readonly changeStatus: ChangeAppointmentStatusUseCase,
     private readonly getAvailability: GetAvailabilityUseCase,
+    private readonly countNewAppointments: CountNewAppointmentsUseCase,
   ) {}
 
   @Get()
@@ -74,6 +76,36 @@ export class AppointmentController {
       perPage: query.perPage,
       total,
     });
+  }
+
+  /**
+   * Quantos agendamentos entraram depois de `since` (ISO).
+   *
+   * Serve ao aviso de "chegou alguém" na Agenda. Precisa ser um contador
+   * separado porque a lista é ordenada por data de atendimento: alguém que
+   * marca hoje para daqui a duas semanas cai numa página posterior, e quem
+   * está na página 1 nunca veria a chegada.
+   *
+   * Também declarada antes de `:id` — mesma armadilha de ordem de rota.
+   */
+  @Get('new-count')
+  @ApiOperation({ summary: 'Quantos agendamentos foram criados desde um instante' })
+  async newCount(
+    @Tenant('tenantId') tenantId: string,
+    @Query('since') since?: string,
+  ) {
+    const parsed = since ? new Date(since) : null;
+
+    // Sem `since` válido não há como contar "novos" — devolve zero em vez de
+    // 400: é um contador auxiliar, e derrubar a tela por causa dele seria
+    // pior que não mostrar o aviso.
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return { count: 0 };
+    }
+
+    const count = await this.countNewAppointments.execute(tenantId, parsed);
+
+    return { count };
   }
 
   // Declarada ANTES de `:id` de propósito: o Nest resolve rotas por ordem de

@@ -66,6 +66,15 @@ export const APPOINTMENT_REPOSITORY = 'AppointmentRepository';
 
 export type AppointmentRepository = {
   findMany(params: FindManyAppointmentsParams): Promise<PaginatedAppointments>;
+  /**
+   * Quantos agendamentos foram criados depois de um instante.
+   *
+   * Independente de paginação e de filtro de propósito: a lista é ordenada
+   * por data de atendimento, então um agendamento marcado para daqui a dias
+   * cai numa página posterior e o aviso de "chegou alguém" nunca apareceria
+   * para quem está na página 1 — que é o caso comum.
+   */
+  countCreatedAfter(tenantId: string, since: Date): Promise<number>;
   findByIdAndTenant(
     id: string,
     tenantId: string,
