@@ -26,6 +26,17 @@ export type ClinicalPhotoView = {
   /** Temporária — some depois de `SIGNED_URL_TTL_SECONDS`. */
   url: string;
   thumbnailUrl: string;
+  /**
+   * Atendimento a que a foto pertence. A galeria agrupa por ele — é o que
+   * transforma fotos soltas na história do tratamento ("aplicação de
+   * 12/08"), e sem a data e o procedimento aqui a tela não teria como
+   * montar esse agrupamento sem uma segunda requisição.
+   */
+  appointment: {
+    id: string;
+    startsAt: Date;
+    procedure: string;
+  };
 };
 
 @Injectable()
@@ -49,7 +60,16 @@ export class ManageClinicalPhotosUseCase {
     const photos = await this.prisma.clinicalPhoto.findMany({
       where: { tenantId, appointmentId },
       orderBy: [{ kind: 'asc' }, { createdAt: 'asc' }],
-      include: { uploadedBy: { select: { name: true } } },
+      include: {
+        uploadedBy: { select: { name: true } },
+        appointment: {
+          select: {
+            id: true,
+            startsAt: true,
+            procedure: { select: { name: true } },
+          },
+        },
+      },
     });
 
     return photos.map((photo) => this.toView(photo));
@@ -65,7 +85,16 @@ export class ManageClinicalPhotosUseCase {
     const photos = await this.prisma.clinicalPhoto.findMany({
       where: { tenantId, patientId },
       orderBy: { createdAt: 'desc' },
-      include: { uploadedBy: { select: { name: true } } },
+      include: {
+        uploadedBy: { select: { name: true } },
+        appointment: {
+          select: {
+            id: true,
+            startsAt: true,
+            procedure: { select: { name: true } },
+          },
+        },
+      },
     });
 
     return photos.map((photo) => this.toView(photo));
@@ -109,7 +138,16 @@ export class ManageClinicalPhotosUseCase {
         storageKey: uploaded.public_id,
         uploadedByUserId: input.userId,
       },
-      include: { uploadedBy: { select: { name: true } } },
+      include: {
+        uploadedBy: { select: { name: true } },
+        appointment: {
+          select: {
+            id: true,
+            startsAt: true,
+            procedure: { select: { name: true } },
+          },
+        },
+      },
     });
 
     return this.toView(photo);
@@ -145,6 +183,11 @@ export class ManageClinicalPhotosUseCase {
     createdAt: Date;
     storageKey: string;
     uploadedBy: { name: string };
+    appointment: {
+      id: string;
+      startsAt: Date;
+      procedure: { name: string };
+    };
   }): ClinicalPhotoView {
     return {
       id: photo.id,
@@ -152,6 +195,11 @@ export class ManageClinicalPhotosUseCase {
       caption: photo.caption,
       createdAt: photo.createdAt,
       uploadedBy: photo.uploadedBy.name,
+      appointment: {
+        id: photo.appointment.id,
+        startsAt: photo.appointment.startsAt,
+        procedure: photo.appointment.procedure.name,
+      },
       url: this.cloudinary.signedUrl(photo.storageKey, {
         expiresInSeconds: SIGNED_URL_TTL_SECONDS,
       }),

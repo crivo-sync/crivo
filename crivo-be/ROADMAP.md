@@ -111,7 +111,7 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | Lembrete de consulta por WhatsApp | ✅ Meta API oficial | ⚠️ funcionando em dev (Evolution); falta credencial Meta | 🔴 Crítica |
 | Confirmação de consulta pelo paciente | ✅ | ✅ página pública `/c/:token` + botão (04/08/2026) | — |
 | Prontuário eletrônico / anamnese | ✅ Ficha digital | ✅ anamnese + evolução (04/08/2026); sem anexos | — |
-| Fotos clínicas antes/depois | ✅ | ❌ | 🟠 Alta |
+| Fotos clínicas antes/depois | ✅ | ✅ entrega autenticada + URL assinada (13/08/2026) | — |
 | Agendamento online pelo paciente | ✅ 24h, sem app | ✅ backend (10/08) + página `/agendar/:subdomain` (12/08/2026) | — |
 | Lista de espera / preenchimento de lacunas | ✅ | ✅ com sugestão automática ao cancelar e oferta por WhatsApp (10/08/2026) | — |
 | Recall pós-procedimento | ✅ automático | ❌ (base do "reativação inteligente", Fase 2) | 🟠 Alta |
@@ -325,7 +325,14 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Anamnese** — ficha de saúde por paciente (alergias, medicações, condições, observações), com registro de quem preencheu por último
    - [x] **Evolução append-only** — `ClinicalNote` não tem `updatedAt` nem `deletedAt`, e não existe rota de PUT/DELETE. Corrigir é escrever nota nova. A ausência dos campos é o que impede alterar histórico, sem custo de versionamento
    - [x] Tela de detalhe do paciente com abas (Dados / Anamnese / Evolução) — as clínicas só aparecem para quem pode vê-las
-   - [ ] **Anexos (fotos, exames)** — ver "Fora de escopo" abaixo
+   - [x] **Fotos clínicas antes/depois** (13/08/2026) — a feature que faltava para estética, e a que o concorrente cobra à parte. Ligada ao **atendimento**, não só ao paciente: o que a clínica mostra é "resultado da aplicação de 12/08", e o atendimento dá data, procedimento e profissional de graça. Decisões:
+     - **Não reusa o `uploadImage` existente**, que grava URL pública (correto para logo e avatar, inaceitável para foto clínica: abre para qualquer um com o link, sem login, para sempre). `uploadPrivateImage` sobe como `type: 'authenticated'`
+     - **A URL nunca é guardada no banco** — é assinada e gerada a cada leitura, com 5 min de validade. Guardar significaria ter um campo com link morto
+     - **`authenticated` e não `private`**: só o primeiro permite transformação assinada (o thumbnail da grade)
+     - **O original não é transformado no upload**: foto clínica é prova de resultado, e recortar ou comprimir destrói o que ela documenta
+     - **Pode ser excluída**, diferente da evolução (append-only): foto do paciente errado ou sem consentimento precisa sair de verdade. Arquivo primeiro, registro depois — na ordem inversa, um erro deixaria arquivo órfão sem ninguém saber que existe
+     - Verificado ao vivo: URL assinada → 200; sem assinatura → 401; forçando `/upload/` → 401; `expires_at` no passado → 400; após excluir → 404 (o 200 inicial era **cache de CDN**, não o arquivo — parar no primeiro teste teria dado diagnóstico errado)
+   - [ ] **Anexos de exame (PDF)** — as fotos resolveram o caso de imagem; PDF exige outro tratamento (`resource_type: 'raw'`) e ainda não tem demanda
 3. **Horário por profissional e bloqueio de agenda** — 🟢 **entregue em 04/08/2026**
    - [x] **Grade semanal** (`ProfessionalSchedule`) — uma linha por faixa, então "terça 08–12" e "terça 13–18" convivem (intervalo de almoço). Grade vazia = atende o expediente inteiro da clínica, para não travar quem já estava cadastrado
    - [x] **Bloqueio pontual** (`ProfessionalTimeOff`) — férias, congresso. Sempre vence a grade

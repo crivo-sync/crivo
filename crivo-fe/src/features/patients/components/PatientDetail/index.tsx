@@ -18,11 +18,12 @@ import { useIsClinical } from "@/components/providers/session-provider";
 import { formatPhone } from "@/lib/br-masks";
 import { AnamnesisForm } from "@/features/medical-records/components/AnamnesisForm";
 import { ClinicalNotes } from "@/features/medical-records/components/ClinicalNotes";
+import { ClinicalPhotos } from "@/features/medical-records/components/ClinicalPhotos";
 import { PatientConversation } from "@/features/messages/components/PatientConversation";
 import { usePlanFeatures } from "@/features/tenant/hooks/use-plan-features";
 import { usePatient } from "../../hooks/use-patient";
 
-type TabValue = "data" | "conversation" | "anamnesis" | "notes";
+type TabValue = "data" | "conversation" | "anamnesis" | "notes" | "photos";
 
 export const PatientDetail = ({ patientId }: { patientId: string }) => {
   const [tab, setTab] = useState<TabValue>("data");
@@ -95,6 +96,16 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
             )}
             {isClinical && (
               <Tab
+                label="Fotos"
+                value="photos"
+                disabled={!canRecords}
+                icon={canRecords ? undefined : <LockIcon sx={{ fontSize: 14 }} />}
+                iconPosition="end"
+                title={canRecords ? undefined : lockedHint}
+              />
+            )}
+            {isClinical && (
+              <Tab
                 label="Evolução"
                 value="notes"
                 disabled={!canRecords}
@@ -138,6 +149,10 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
 
         {tab === "notes" && isClinical && (
           <ClinicalNotes patientId={patientId} />
+        )}
+
+        {tab === "photos" && isClinical && (
+          <ClinicalPhotos patientId={patientId} />
         )}
       </Paper>
     </Stack>
