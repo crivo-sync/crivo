@@ -48,6 +48,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
 | `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
 | `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial (11–12/08/2026). ⚠️ Preços seguem **hipótese não validada** com cliente real |
+| `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa |
 | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
 | `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
 

@@ -10,6 +10,8 @@ import Stack from "@mui/material/Stack";
 import { ErrorServer } from "@/components/ui/error-server";
 import { useDashboardAnalytics } from "../../hooks/use-dashboard-analytics";
 import { useDashboardSummary } from "../../hooks/use-dashboard-summary";
+import { usePlanFeatures } from "@/features/tenant/hooks/use-plan-features";
+import { UpgradeChartsCard } from "./upgrade-charts-card";
 import { AppointmentsByDayChart } from "../AppointmentsByDayChart";
 import { AppointmentsList } from "../AppointmentsList";
 import { FailedMessagesAlert } from "../FailedMessagesAlert";
@@ -23,11 +25,16 @@ const DEFAULT_REVENUE_DAYS = 30;
 export const DashboardHome = () => {
   const [revenueDays, setRevenueDays] = useState<number>(DEFAULT_REVENUE_DAYS);
   const { summary, isLoading, error, refetch } = useDashboardSummary();
+
+  // Gráficos são feature de plano; o resumo do dia não. Sem essa distinção a
+  // clínica no Solo/Básico via a home inteira virar erro.
+  const { has, planName } = usePlanFeatures();
+  const canCharts = has("hasDashboard");
   const {
     analytics,
     isLoading: isLoadingAnalytics,
     isFetching: isFetchingAnalytics,
-  } = useDashboardAnalytics(revenueDays);
+  } = useDashboardAnalytics(revenueDays, canCharts);
 
   if (error) {
     return <ErrorServer message={error.message} onRetry={() => refetch()} />;
@@ -66,7 +73,9 @@ export const DashboardHome = () => {
           gap: 2,
         }}
       >
-        {isLoadingAnalytics || !analytics ? (
+        {!canCharts ? (
+          <UpgradeChartsCard planName={planName} />
+        ) : isLoadingAnalytics || !analytics ? (
           <>
             <Skeleton variant="rounded" height={260} />
             <Skeleton variant="rounded" height={260} />
@@ -79,7 +88,7 @@ export const DashboardHome = () => {
         )}
       </Box>
 
-      {!isLoadingAnalytics && analytics && (
+      {canCharts && !isLoadingAnalytics && analytics && (
         <RevenueByProcedureChart
           data={analytics.revenueByProcedure}
           // A janela vem da resposta, não do estado local: é o backend que

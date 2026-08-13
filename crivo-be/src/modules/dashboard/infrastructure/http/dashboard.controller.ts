@@ -20,9 +20,21 @@ import { QueryAnalyticsDto } from '../dtos/query-analytics.dto';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
+/**
+ * Home do painel.
+ *
+ * **A trava de plano é por rota, não no controller inteiro**, porque as duas
+ * têm naturezas diferentes:
+ *
+ * - `summary` é **operação do dia** (agenda de hoje, quem falta confirmar,
+ *   mensagem que falhou). Travar isso fazia a clínica no Solo abrir o
+ *   sistema e receber uma tela de erro vermelha como primeira coisa — o
+ *   produto parecia quebrado, não limitado.
+ * - `analytics` é **análise** (gráficos e faturamento). Esse sim é o que o
+ *   plano vende, e continua atrás de `hasDashboard`.
+ */
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, TenantContextGuard, TrialGuard, PlanFeatureGuard)
-@RequiresPlanFeature('hasDashboard')
 export class DashboardController {
   constructor(
     private readonly getDashboardSummary: GetDashboardSummaryUseCase,
@@ -42,6 +54,7 @@ export class DashboardController {
   }
 
   @Get('analytics')
+  @RequiresPlanFeature('hasDashboard')
   @ApiOperation({
     summary:
       'Dados para gráficos: status e agendamentos por dia (últimos 7 dias) e ' +
