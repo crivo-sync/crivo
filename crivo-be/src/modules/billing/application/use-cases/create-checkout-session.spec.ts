@@ -42,14 +42,18 @@ function makeUseCase({
 
   const prisma = {
     tenant: {
-      findUniqueOrThrow: jest.fn().mockImplementation((args) =>
-        args?.select?.plan
-          ? Promise.resolve({ plan: currentPlan })
-          : Promise.resolve(tenant),
-      ),
+      findUniqueOrThrow: jest.fn().mockResolvedValue(tenant),
       update: jest.fn().mockResolvedValue(tenant),
     },
-    plan: { findUnique: jest.fn().mockResolvedValue(target) },
+    plan: {
+      // Distingue o plano ALVO do plano ATUAL: o use case busca os dois, e um
+      // mock que devolvesse sempre o mesmo esconderia o downgrade.
+      findUnique: jest.fn().mockImplementation((args) =>
+        Promise.resolve(
+          args?.where?.id === currentPlan?.id ? currentPlan : target,
+        ),
+      ),
+    },
   } as unknown as PrismaService;
 
   const stripe = {
@@ -91,23 +95,8 @@ describe('CreateCheckoutSessionUseCase — troca de plano', () => {
     expect(stripe.updateSubscriptionPrice).not.toHaveBeenCalled();
   });
 
-  it('com assinatura, NUNCA abre checkout novo — troca o preço da existente', async () => {
+  it('upgrade vai para o checkout — o cliente confirma o pagamento', async () => {
     const { useCase, stripe } = makeUseCase({
-      target: INTERMEDIARIO,
-      currentPlan: BASICO,
-      stripeSubscriptionId: 'sub_1',
-    });
-
-    await useCase.execute({ tenantId: TENANT_ID, planId: INTERMEDIARIO.id });
-
-    // Abrir checkout aqui criaria uma SEGUNDA assinatura ativa e o cliente
-    // pagaria as duas — aconteceu de verdade (três simultâneas, R$ 727/mês).
-    expect(stripe.createCheckoutSession).not.toHaveBeenCalled();
-    expect(stripe.updateSubscriptionPrice).toHaveBeenCalled();
-  });
-
-  it('upgrade vale na hora e cobra a diferença', async () => {
-    const { useCase, stripe, prisma } = makeUseCase({
       target: INTERMEDIARIO,
       currentPlan: BASICO,
       stripeSubscriptionId: 'sub_1',
@@ -118,17 +107,16 @@ describe('CreateCheckoutSessionUseCase — troca de plano', () => {
       planId: INTERMEDIARIO.id,
     });
 
-    expect(stripe.updateSubscriptionPrice).toHaveBeenCalledWith(
-      expect.objectContaining({ immediate: true }),
-    );
-    // Acesso liberado já: o plano novo é gravado na hora.
-    expect(prisma.tenant.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { planId: INTERMEDIARIO.id } }),
-    );
-    expect(result).toMatchObject({ kind: 'changed' });
+    // Subir de plano cobra: passa pela tela do Stripe, e é o
+    // `checkout.session.completed` que dispara o e-mail de confirmação.
+    expect(result).toMatchObject({ kind: 'checkout' });
+    expect(stripe.createCheckoutSession).toHaveBeenCalled();
+    // A assinatura antiga é cancelada pelo WEBHOOK, não aqui — só depois de
+    // o pagamento novo confirmar.
+    expect(stripe.updateSubscriptionPrice).not.toHaveBeenCalled();
   });
 
-  it('downgrade NÃO tira o acesso antes do fim do ciclo pago', async () => {
+  it('downgrade NÃO passa pelo checkout nem cobra de novo', async () => {
     const { useCase, stripe, prisma } = makeUseCase({
       target: BASICO,
       currentPlan: INTERMEDIARIO,
@@ -140,15 +128,15 @@ describe('CreateCheckoutSessionUseCase — troca de plano', () => {
       planId: BASICO.id,
     });
 
-    // `immediate: false` = sem cobrança proporcional; a troca vale no fim do
-    // ciclo. O cliente já pagou o mês do plano maior.
+    // Cobrar para descer de plano seria absurdo: o mês do plano maior já
+    // foi pago.
+    expect(stripe.createCheckoutSession).not.toHaveBeenCalled();
     expect(stripe.updateSubscriptionPrice).toHaveBeenCalledWith(
       expect.objectContaining({ immediate: false }),
     );
     // O plano no banco NÃO muda agora — quem grava é o webhook, quando o
     // ciclo virar. Rebaixar aqui tiraria recurso que já foi pago.
     expect(prisma.tenant.update).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ kind: 'changed' });
     expect((result as { message: string }).message).toMatch(/até o fim/i);
   });
 

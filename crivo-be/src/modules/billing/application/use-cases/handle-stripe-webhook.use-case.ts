@@ -107,6 +107,37 @@ export class HandleStripeWebhookUseCase {
     const stripeSub =
       await this.stripe.retrieveSubscription(stripeSubscriptionId);
 
+    /**
+     * Troca de plano: a assinatura antiga precisa morrer.
+     *
+     * O checkout do Stripe sempre cria uma assinatura nova — não substitui a
+     * anterior. Sem cancelar aqui, o cliente fica com duas ativas e paga as
+     * duas (aconteceu: três simultâneas, R$ 727/mês, sem nada na tela
+     * indicando).
+     *
+     * Cancelamento **antes** de gravar a nova no banco: se falhar, o tenant
+     * continua apontando para a antiga e o `stripe:pull` detecta a
+     * divergência. Gravando primeiro, uma falha aqui deixaria a antiga
+     * cobrando sem ninguém sabendo.
+     */
+    const anterior = tenant.stripeSubscriptionId;
+
+    if (anterior && anterior !== stripeSubscriptionId) {
+      try {
+        await this.stripe.cancelSubscription(anterior);
+        this.logger.log(
+          `Assinatura anterior ${anterior} cancelada após troca de plano.`,
+        );
+      } catch (error) {
+        // Não interrompe: o pagamento novo já aconteceu e precisa valer. A
+        // antiga fica registrada no log para reparo manual.
+        this.logger.error(
+          `FALHA ao cancelar a assinatura anterior ${anterior} do tenant ` +
+            `${tenantId} — pode estar cobrando em duplicidade: ${error}`,
+        );
+      }
+    }
+
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {

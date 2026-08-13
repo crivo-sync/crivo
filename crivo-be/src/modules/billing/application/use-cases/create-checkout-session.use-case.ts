@@ -60,19 +60,33 @@ export class CreateCheckoutSessionUseCase {
     }
 
     /**
-     * Já tem assinatura: **troca o preço dela**, não abre checkout novo.
+     * **Downgrade** não passa pelo checkout: o cliente já pagou o mês do
+     * plano maior, e cobrar de novo para descer de plano seria absurdo. A
+     * assinatura existente é atualizada e a troca vale no fim do ciclo.
      *
-     * Abrir checkout criaria uma segunda assinatura ativa e o cliente pagaria
-     * as duas — aconteceu de verdade (três simultâneas, R$ 727/mês).
+     * **Upgrade e primeira assinatura** vão para o checkout do Stripe: é onde
+     * o cliente vê o que está sendo cobrado e confirma o pagamento. A
+     * assinatura anterior é cancelada pelo webhook, quando a nova confirma —
+     * ver `handleCheckoutCompleted`. Sem isso ficariam duas ativas e o
+     * cliente pagaria as duas (aconteceu: três simultâneas, R$ 727/mês).
      */
-    if (tenant.stripeSubscriptionId) {
-      return this.changePlan(tenant.id, tenant.stripeSubscriptionId, {
-        id: plan.id,
-        name: plan.name,
-        priceInCents: plan.priceInCents,
-        // Já validado acima; o TS não estreita através do `plan` inteiro.
-        stripePriceId: plan.stripePriceId,
+    if (tenant.stripeSubscriptionId && tenant.planId) {
+      const current = await this.prisma.plan.findUnique({
+        where: { id: tenant.planId },
+        select: { name: true, priceInCents: true },
       });
+
+      const isDowngrade =
+        !!current && plan.priceInCents < current.priceInCents;
+
+      if (isDowngrade) {
+        return this.scheduleDowngrade(
+          tenant.stripeSubscriptionId,
+          plan.name,
+          plan.stripePriceId,
+          current.name,
+        );
+      }
     }
 
     let stripeCustomerId = tenant.stripeCustomerId;
@@ -117,52 +131,31 @@ export class CreateCheckoutSessionUseCase {
   }
 
   /**
-   * Troca de plano numa assinatura que já existe.
+   * Downgrade: agenda a troca sem cobrar nada agora.
    *
-   * **Upgrade vale na hora; downgrade só no fim do ciclo.** O cliente já
-   * pagou o mês inteiro do plano maior — rebaixar imediatamente tiraria
-   * recurso que ele pagou. Por isso o `planId` no banco só muda no upgrade:
-   * no downgrade a troca fica agendada no Stripe, e o webhook
-   * `customer.subscription.updated` grava o plano novo quando o ciclo virar.
+   * `immediate: false` → `proration_behavior: 'none'`, então o cliente
+   * mantém os recursos do plano maior até o fim do período já pago. O
+   * `planId` no banco **não** muda aqui: quem grava é o webhook
+   * `customer.subscription.updated`, quando o ciclo virar. Rebaixar agora
+   * tiraria recurso que já foi pago.
    */
-  private async changePlan(
-    tenantId: string,
+  private async scheduleDowngrade(
     subscriptionId: string,
-    plan: { id: string; name: string; priceInCents: number; stripePriceId: string },
+    targetPlanName: string,
+    targetPriceId: string,
+    currentPlanName: string,
   ): Promise<CheckoutOrChangeResult> {
-    const current = await this.prisma.tenant
-      .findUniqueOrThrow({
-        where: { id: tenantId },
-        select: { plan: { select: { priceInCents: true, name: true } } },
-      })
-      .then((t) => t.plan);
-
-    const isUpgrade = plan.priceInCents > (current?.priceInCents ?? 0);
-
     await this.stripe.updateSubscriptionPrice({
       subscriptionId,
-      priceId: plan.stripePriceId,
-      immediate: isUpgrade,
+      priceId: targetPriceId,
+      immediate: false,
     });
-
-    if (isUpgrade) {
-      // Acesso novo vale imediatamente — o Stripe já cobrou a diferença.
-      await this.prisma.tenant.update({
-        where: { id: tenantId },
-        data: { planId: plan.id },
-      });
-
-      return {
-        kind: 'changed',
-        message: `Plano alterado para ${plan.name}. O acesso já está liberado.`,
-      };
-    }
 
     return {
       kind: 'changed',
       message:
-        `Mudança para ${plan.name} agendada. Você continua com os recursos do ` +
-        `plano ${current?.name ?? 'atual'} até o fim do período já pago.`,
+        `Mudança para ${targetPlanName} agendada. Você continua com os ` +
+        `recursos do plano ${currentPlanName} até o fim do período já pago.`,
     };
   }
 }
