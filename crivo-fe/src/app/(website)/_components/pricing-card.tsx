@@ -1,6 +1,11 @@
 import Link from "next/link";
 
-export type PricingTier = "trial" | "basico" | "intermediario" | "avancado";
+export type PricingTier =
+  | "trial"
+  | "solo"
+  | "basico"
+  | "intermediario"
+  | "avancado";
 
 export type PricingFeature = {
   text: string;
@@ -75,6 +80,15 @@ const PLAN_ACCENT: Record<
     cta: "bg-white text-emerald-700 border border-emerald-600/30 hover:border-emerald-600 hover:bg-emerald-50",
     glow: "shadow-[0_0_40px_rgba(16,185,129,0.06)]",
     badgeLabel: "Comece por aqui",
+    popular: false,
+  },
+  solo: {
+    border: "border-black/10",
+    hoverBorder: "hover:border-indigo-500/40",
+    badge: "text-indigo-600 bg-indigo-500/8 border-indigo-500/20",
+    cta: "bg-white text-indigo-700 border border-indigo-600/30 hover:border-indigo-600 hover:bg-indigo-50",
+    glow: "shadow-[0_0_40px_rgba(79,70,229,0.04)]",
+    badgeLabel: null,
     popular: false,
   },
   basico: {
