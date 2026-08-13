@@ -26,7 +26,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:seed:clean": "SEED_TYPE=clean prisma db seed",
-    "stripe:sync": "stripe listen --forward-to localhost:3333/stripe/webhook"
+    "stripe:sync": "stripe listen --forward-to localhost:3333/billing/webhook"
   },
   "dependencies": {
     "@bull-board/api": "^8.5.0",
