@@ -17,9 +17,10 @@ import { useIsClinical } from "@/components/providers/session-provider";
 import { formatPhone } from "@/lib/br-masks";
 import { AnamnesisForm } from "@/features/medical-records/components/AnamnesisForm";
 import { ClinicalNotes } from "@/features/medical-records/components/ClinicalNotes";
+import { PatientConversation } from "@/features/messages/components/PatientConversation";
 import { usePatient } from "../../hooks/use-patient";
 
-type TabValue = "data" | "anamnesis" | "notes";
+type TabValue = "data" | "conversation" | "anamnesis" | "notes";
 
 export const PatientDetail = ({ patientId }: { patientId: string }) => {
   const [tab, setTab] = useState<TabValue>("data");
@@ -67,6 +68,9 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
         <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs value={tab} onChange={(_, value: TabValue) => setTab(value)}>
             <Tab label="Dados" value="data" />
+            {/* Sem `isClinical`: responder ao paciente é trabalho da recepção,
+                mesma decisão já tomada na caixa de entrada. */}
+            <Tab label="Conversa" value="conversation" />
             {isClinical && <Tab label="Anamnese" value="anamnesis" />}
             {isClinical && <Tab label="Evolução" value="notes" />}
           </Tabs>
@@ -95,6 +99,8 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
               ))}
             </Stack>
           ))}
+
+        {tab === "conversation" && <PatientConversation patientId={patientId} />}
 
         {tab === "anamnesis" && isClinical && (
           <AnamnesisForm patientId={patientId} />

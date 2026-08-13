@@ -76,4 +76,11 @@ export class PrismaInboundMessageRepository implements InboundMessageRepository 
 
     return count;
   }
+
+  findByPatient(tenantId: string, patientId: string): Promise<InboundMessage[]> {
+    return this.prisma.inboundMessage.findMany({
+      where: { tenantId, patientId },
+      orderBy: { sentAt: 'asc' },
+    });
+  }
 }

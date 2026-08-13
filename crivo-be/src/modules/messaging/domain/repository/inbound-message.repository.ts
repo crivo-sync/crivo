@@ -30,4 +30,7 @@ export interface InboundMessageRepository {
   markAsRead(id: string, tenantId: string): Promise<InboundMessage | null>;
 
   markAllAsRead(tenantId: string): Promise<number>;
+
+  /** Todo recebido de um paciente, mais antigo primeiro — a outra metade da timeline da conversa. */
+  findByPatient(tenantId: string, patientId: string): Promise<InboundMessage[]>;
 }

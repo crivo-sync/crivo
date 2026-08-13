@@ -252,7 +252,7 @@ export class ManageWaitlistUseCase {
       this.prisma.waitlistEntry.findFirst({
         where: { id: entryId, tenantId },
         include: {
-          patient: { select: { name: true, phone: true } },
+          patient: { select: { id: true, name: true, phone: true } },
           tenant: { select: { name: true } },
         },
       }),
@@ -280,6 +280,7 @@ export class ManageWaitlistUseCase {
       // Sem `appointmentId`: aquele agendamento foi cancelado, e vinculá-lo
       // faria a mensagem aparecer no histórico de um atendimento que não
       // vai acontecer.
+      patientId: entry.patient.id,
       type: MessageType.WAITLIST_OFFER,
       toPhone: entry.patient.phone,
       body,

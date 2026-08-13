@@ -232,8 +232,56 @@ export class MessageTemplateService {
     ].join('\n');
   }
 
-  confirmationReceipt(clinicName: string): string {
-    return `Presença confirmada! ✅ Te esperamos na ${clinicName}.`;
+  /**
+   * Recibo enviado logo depois que o paciente confirma (pelo link ou
+   * respondendo "sim" no WhatsApp).
+   *
+   * Repete data, hora, procedimento e profissional de propósito. Era uma
+   * linha só ("Presença confirmada! Te esperamos na X") e destoava das
+   * outras mensagens, que são estruturadas — mas o motivo principal não é
+   * estética: **esta é a última mensagem que o paciente recebe antes da
+   * consulta**, e é a que ele vai procurar na conversa para lembrar do
+   * horário. Sem os dados, ele precisa rolar até o lembrete antigo.
+   *
+   * `input` opcional para não quebrar chamadas que só têm o nome da clínica;
+   * sem ele, cai no texto curto de antes.
+   */
+  confirmationReceipt(
+    clinicName: string,
+    input?: {
+      patientName: string;
+      professionalName: string;
+      procedureName: string;
+      startsAt: Date;
+    },
+  ): string {
+    if (!input) {
+      return `Presença confirmada! ✅ Te esperamos na ${clinicName}.`;
+    }
+
+    const dateLabel = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIMEZONE,
+      day: '2-digit',
+      month: '2-digit',
+    }).format(input.startsAt);
+
+    const timeLabel = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(input.startsAt);
+
+    return [
+      `Presença confirmada, ${input.patientName.split(' ')[0]}! ✅`,
+      '',
+      `Seu horário na *${clinicName}* está garantido:`,
+      '',
+      `📅 ${dateLabel} às ${timeLabel}`,
+      `💠 ${input.procedureName}`,
+      `👤 ${input.professionalName}`,
+      '',
+      'Até lá! Se precisar remarcar, é só falar com a gente. 💙',
+    ].join('\n');
   }
 
   /**

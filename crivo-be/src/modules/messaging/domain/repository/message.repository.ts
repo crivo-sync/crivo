@@ -8,6 +8,7 @@ import {
 export type CreateMessageData = {
   tenantId: string;
   appointmentId?: string | null;
+  patientId?: string | null;
   channel?: MessageChannel;
   type: MessageType;
   toPhone: string;
@@ -35,6 +36,8 @@ export type MessageWithPatient = Message & {
     startsAt: Date;
     patient: { id: string; name: string; phone: string };
   } | null;
+  /** Direto, para mensagens sem `appointmentId` (ex.: `MANUAL`). */
+  patient: { id: string; name: string; phone: string } | null;
 };
 
 export type PaginatedMessages = {
@@ -49,6 +52,8 @@ export type MessageRepository = {
   /** Traz o paciente junto: o worker precisa dele para logar de quem é a falha. */
   findById(id: string): Promise<MessageWithPatient | null>;
   findMany(params: FindManyMessagesParams): Promise<PaginatedMessages>;
+  /** Todo envio a um paciente, mais antigo primeiro — metade da timeline da conversa. */
+  findByPatient(tenantId: string, patientId: string): Promise<Message[]>;
   markSent(id: string, data: MarkSentData): Promise<void>;
   markFailed(id: string, error: string): Promise<void>;
   incrementAttempts(id: string): Promise<void>;
