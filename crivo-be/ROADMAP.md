@@ -15,10 +15,12 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > Desde 13/08 o painel também abre com **quanto as faltas custaram em reais**,
 > e cada clínica envia pelo **seu próprio número de WhatsApp**.
 >
+> O **site** passou a falar dinheiro junto com o produto (13/08): manchete na
+> dor, calculadora de quanto as faltas custam na clínica do visitante, e o
+> jargão de engenharia fora de todas as páginas — com teste que falha se
+> voltar.
+>
 > **O que segue aberto e depende de código:**
-> - **Reescrever a home na chave da dor** — o produto já mostra dinheiro no
->   painel; a home ainda vende mecanismo ("o motor que evita buracos na sua
->   agenda"). Ver [O que o Agendiva faz melhor](#o-que-o-agendiva-faz-melhor-que-nós-13082026)
 > - **Pareamento da Evolution por QR code** — hoje o nome da instância é
 >   digitado à mão nas Configurações
 >
@@ -294,12 +296,21 @@ melhor — **mas vende melhor**, e isso importa mais do que parece:
    traduzir sozinho para reais. **Nós temos o dado para fazer essa conta e
    não fazemos**: `Appointment.priceInCents` × `NO_SHOW` do período é
    exatamente "quanto a falta te custou".
-   → **Feito dentro do produto em 13/08/2026** (`GET /dashboard/no-show-cost`
-   + card no topo do painel). **Falta na home**: quem ainda não assinou
-   continua lendo mecanismo, não dinheiro — ver Fase 3.
+   → **Fechado em 13/08/2026**, nas duas pontas: `GET /dashboard/no-show-cost`
+   + card no topo do painel (para quem já é cliente) e **calculadora na home**
+   (para quem ainda não é). A calculadora não copia o "recupere até R$ 1.500":
+   o visitante informa faltas/semana e ticket médio, e a conta é dele — não
+   afirmamos quanto disso o Crivo evita, o que manteria a mesma régua da
+   medição de acurácia (que se recusa a concluir com amostra pequena).
 2. **Falam a dor em português de gente**: *"perdeu o caderninho da agenda de
    novo"*. Nós falamos "predição de risco de no-show" — que é o **como**, não
    o **quê**.
+   → **Corrigido em 13/08/2026**: "no-show", "tríade integrada" e
+   "multi-tenant white-label" saíram do site inteiro (home, planos e rodapé).
+   Um teste E2E falha se o jargão voltar. A revisão achou de quebra quatro
+   afirmações **erradas** — cobrança "por profissional ativo" (é mensalidade
+   fixa), "plano Clínica" (extinto), relatórios multi-unidade (inexistentes)
+   e dois módulos marcados "em desenvolvimento" já no ar.
 3. **Prometem número verificável** ("reduz faltas em até 30%", "fecha
    comissão em 5 minutos"). Nós fugimos de número por honestidade — está
    certo não inventar, mas dá para prometer o que o produto **faz** com

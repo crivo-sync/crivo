@@ -6,7 +6,10 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 > as faltas custaram este mês, em reais**; o resumo do dia foi **liberado em
 > todos os planos** — travá-lo fazia a clínica no Solo abrir o sistema e ver
 > uma tela de erro como primeira coisa; onde havia gráficos, quem não tem
-> `hasDashboard` vê um convite ao upgrade em vez de nada).
+> `hasDashboard` vê um convite ao upgrade em vez de nada. No site, a home
+> passou a **falar a dor em reais**: manchete nova, **calculadora de perda**
+> com os números do visitante, e o jargão de engenharia removido de todas as
+> páginas — 7 testes E2E novos, um deles falhando se o jargão voltar).
 >
 > Rev. 19 (13/08): **fotos antes/depois** na ficha do paciente, agrupadas por
 > atendimento, com URL assinada que expira e sem botão de download; o painel
@@ -46,7 +49,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🟡 **38 testes E2E (Playwright)** em 9 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
+| Testes automatizados | 🟡 **45 testes E2E (Playwright)** em 10 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas, bloqueio do `/painel` e a **home** (a conta da calculadora e um teste que falha se o jargão de engenharia voltar ao site). Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje abre com **o custo das faltas do mês em reais**, seguido de cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
@@ -316,6 +319,18 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Mês sem falta vira card verde**, não um card de alerta zerado: notícia boa com moldura de alerta se lê como problema.
   - Rota `GET /dashboard/no-show-cost` fora do `hasDashboard`, como o `summary` — esconder isso de quem está no Solo esconderia o próprio argumento de venda.
 - ~~**O resumo do painel estava travado por plano**~~ — ✅ 13/08/2026. `hasDashboard` cobria o `/painel` inteiro, então a clínica no Solo abria o sistema e a **primeira coisa** que via era uma tela de erro. A trava passou a ser por rota: resumo e custo das faltas abertos a todos, gráficos e faturamento seguem pagos. No lugar dos gráficos, `UpgradeChartsCard` convida ao upgrade — quem não tem o recurso vê o que está perdendo, em vez de um buraco na página.
+
+- ~~**A home vendia mecanismo, não dinheiro**~~ — ✅ 13/08/2026. A manchete era *"O motor que evita buracos na sua agenda"*: bonita, mas o dono da clínica precisava traduzir sozinho para reais — enquanto o Agendiva abre com *"recupere até R$ 1.500/mês que sua clínica perde com faltas"*. Agora é *"Cada falta leva embora o faturamento do dia"*, e logo depois da seção de dor entra a **`LossCalculator`**. Decisões:
+  - **A conta é do visitante, não nossa** — ele informa faltas por semana e ticket médio. Copiar o "R$ 1.500" do concorrente exigiria um cliente que não temos, e inventar número contradiz a régua do produto (a medição de acurácia se recusa a concluir com menos de 30 casos). Assim o número é grande e é dele.
+  - **4,33 semanas por mês** (52/12), não 4 — arredondar subestimaria a perda em ~8%, e subestimar enfraquece o próprio argumento.
+  - **A ressalva fica colada no número**: "nenhuma ferramenta zera as faltas — o Crivo age sobre as que dá para evitar". Sem ela, o total insinua que assinar recupera tudo aquilo.
+  - **Campo zerado pede o dado** em vez de exibir "R$ 0,00 por ano", que se lê como defeito, não como resposta.
+  - Entra **depois** da dor e **antes** da lista de recursos: recurso só interessa a quem já aceitou que tem o problema.
+- ~~**O site falava em jargão de engenharia**~~ — ✅ 13/08/2026. "Predição de no-show", "tríade integrada", "multi-tenant white-label" e "retry com backoff" saíram da home, da tabela de planos e do rodapé. Um teste E2E (`home.spec.ts`) falha se voltarem. A revisão achou **quatro afirmações erradas**, não só mal escritas — o tipo de dívida que só aparece na renovação do contrato:
+  - **"Preço por profissional ativo"** — a cobrança é mensalidade fixa por faixa. Prometia uma conta diferente da que o Stripe cobra.
+  - **"Disponível a partir do plano Clínica"** — plano extinto na migração para Básico/Intermediário/Avançado. Conferido em `GET /plans`: a predição liga no **Intermediário**.
+  - **"Relatórios consolidados para múltiplas unidades"** — não existe em linha nenhuma de código (a mesma família de promessa falsa que a auditoria de 11/08 já tinha removido dos planos).
+  - **Predição e financeiro marcados "em desenvolvimento"** — os dois estão no ar desde 10 e 11/08; subestimar o produto entregue custa venda tanto quanto exagerar.
 
 ### Fase 3 — Qualidade
 
