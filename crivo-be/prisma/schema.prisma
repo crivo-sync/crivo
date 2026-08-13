@@ -109,14 +109,19 @@ model Plan {
 
   /// Limites e features por plano. `null` em `maxProfessionals` = sem
   /// limite (usado pelo plano maior, "Rede"), não "zero profissionais".
-  maxProfessionals  Int?    @map("max_professionals")
-  hasPrediction     Boolean @default(false) @map("has_prediction")
-  hasAiMessages     Boolean @default(false) @map("has_ai_messages")
-  hasWaitlist       Boolean @default(false) @map("has_waitlist")
-  hasDashboard      Boolean @default(false) @map("has_dashboard")
+  maxProfessionals    Int?    @map("max_professionals")
+  /// Mensagens de saída por mês (`null` = sem teto). É o único custo
+  /// variável por clínica: a Meta cobra por conversa iniciada pela
+  /// empresa. Resposta a paciente dentro da janela de 24h não conta —
+  /// nem para a Meta, nem aqui (ver `CheckMessageQuotaUseCase`).
+  maxMessagesPerMonth Int?    @map("max_messages_per_month")
+  hasPrediction       Boolean @default(false) @map("has_prediction")
+  hasAiMessages       Boolean @default(false) @map("has_ai_messages")
+  hasWaitlist         Boolean @default(false) @map("has_waitlist")
+  hasDashboard        Boolean @default(false) @map("has_dashboard")
   /// Prontuário (anamnese + evolução). Diferencial do plano topo: é o
   /// módulo que o concorrente cobra à parte (R$29/mês avulso).
-  hasMedicalRecords Boolean @default(false) @map("has_medical_records")
+  hasMedicalRecords   Boolean @default(false) @map("has_medical_records")
 
   /// IDs do Stripe Dashboard. `stripePriceId` fica opcional porque o produto
   /// pode existir no Stripe antes de ter um Price ativo configurado.
@@ -194,6 +199,7 @@ model Patient {
   appointments    Appointment[]
   anamnesis       Anamnesis?
   clinicalNotes   ClinicalNote[]
+  messages        Message[]
   inboundMessages InboundMessage[]
   waitlistEntries WaitlistEntry[]
 
@@ -564,6 +570,11 @@ model Message {
   id                String         @id @default(uuid())
   tenantId          String         @map("tenant_id")
   appointmentId     String?        @map("appointment_id")
+  /// Direto no paciente, não só via `appointment.patientId` — uma resposta
+  /// manual (`MANUAL`) precisa existir sem consulta associada, e sem esta
+  /// coluna a mensagem ficaria sem vínculo nenhum. Espelha `InboundMessage`,
+  /// que já resolvia isso pelo telefone desde o webhook de entrada.
+  patientId         String?        @map("patient_id")
   channel           MessageChannel @default(WHATSAPP)
   type              MessageType
   status            MessageStatus  @default(PENDING)
@@ -585,10 +596,12 @@ model Message {
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  patient     Patient?     @relation(fields: [patientId], references: [id])
 
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([appointmentId])
+  @@index([patientId])
   @@map("messages")
 }
 

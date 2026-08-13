@@ -272,6 +272,12 @@ async function clean() {
   // explicitamente mantém a ordem legível e não depende do cascade.
   await prisma.professionalSchedule.deleteMany();
   await prisma.professionalTimeOff.deleteMany();
+  // `waitlist_entries` aponta para procedimento/profissional/paciente e
+  // `inbound_messages` para agendamento/paciente — as duas precisam sair
+  // antes deles. Esquecer isso é o que quebrava o seed com
+  // `waitlist_entries_procedure_id_fkey`.
+  await prisma.waitlistEntry.deleteMany();
+  await prisma.inboundMessage.deleteMany();
   await prisma.message.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.procedure.deleteMany();
@@ -279,6 +285,8 @@ async function clean() {
   await prisma.refreshToken.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
+  // Só depende do tenant, mas precisa sair antes dele.
+  await prisma.messageTemplate.deleteMany();
   await prisma.tenant.deleteMany();
 
   console.log('🧹 Banco limpo (todas as tabelas).');
@@ -583,6 +591,19 @@ async function seedSchedules(tenantId: string): Promise<number> {
  * qualquer ambiente que rode este seed do zero.
  */
 const PLANS = [
+  {
+    key: 'SOLO',
+    name: 'Solo',
+    priceInCents: 7900,
+    maxProfessionals: 1,
+    hasPrediction: false,
+    hasAiMessages: false,
+    hasWaitlist: false,
+    hasDashboard: false,
+    hasMedicalRecords: false,
+    stripeProductId: 'prod_V3jU0Bb4kjEMD0',
+    stripePriceId: 'price_1U3c1H64chrm4OaKBTF77AJ1',
+  },
   {
     key: 'BASICO',
     name: 'Básico',

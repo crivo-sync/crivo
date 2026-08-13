@@ -35,6 +35,9 @@ import { ConfirmByReplyUseCase } from './application/use-cases/confirm-by-reply.
 import { GetInboundMessagesUseCase } from './application/use-cases/get-inbound-messages.use-case';
 import { ManageTemplatesUseCase } from './application/use-cases/manage-templates.use-case';
 import { ResendMessageUseCase } from './application/use-cases/resend-message.use-case';
+import { CheckMessageQuotaUseCase } from './application/use-cases/check-message-quota.use-case';
+import { GetConversationUseCase } from './application/use-cases/get-conversation.use-case';
+import { SendManualMessageUseCase } from './application/use-cases/send-manual-message.use-case';
 import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
@@ -119,6 +122,9 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     GetInboundMessagesUseCase,
     ManageTemplatesUseCase,
     ResendMessageUseCase,
+    CheckMessageQuotaUseCase,
+    GetConversationUseCase,
+    SendManualMessageUseCase,
   ],
   // `MessageTemplateService` é exportado para a lista de espera montar o
   // texto da oferta de vaga sem duplicar formatação de data/hora.
@@ -126,6 +132,7 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     ScheduleAppointmentReminderUseCase,
     MESSAGE_REPOSITORY,
     MessageTemplateService,
+    CheckMessageQuotaUseCase,
   ],
 })
 export class MessagingModule {}

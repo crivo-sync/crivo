@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PatientsModule } from './modules/patients/patients.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -16,6 +17,7 @@ import { PublicBookingModule } from './modules/public-booking/public-booking.mod
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { TrialModule } from './modules/trial/trial.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { BillingModule } from './modules/billing/billing.module';
         };
       },
     }),
+    // Primeiro uso de cron no projeto (expiração de trial).
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 segundos
@@ -90,6 +94,7 @@ import { BillingModule } from './modules/billing/billing.module';
     WaitlistModule,
     PublicBookingModule,
     BillingModule,
+    TrialModule,
   ],
   controllers: [],
   providers: [],
