@@ -2,9 +2,15 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-11 (rev. 12 — planos com diferencial real
-> entre si, e as colunas de preço finalmente mostrando o que separa um do
-> outro, no site e no painel).
+> Última atualização: 2026-08-13 (rev. 18 — agendamento que chega com a
+> Agenda aberta agora é avisado e destacado; botão "Marcar outra consulta"
+> na confirmação do `/agendar`; 🐞 contador de trial arredondava para cima,
+> mostrando "15 dias" num trial de 14 — conta unificada em `src/lib/trial.ts`).
+>
+> Rev. 16 (12/08): aba **Conversa** na ficha do paciente (a recepção responde
+> pelo painel, sem sair para o WhatsApp), **checklist de onboarding** no
+> `/painel` para a clínica nova, calendário do `/agendar` migrado para
+> `DatePicker`, e contador de mensagens na tela de Assinatura.
 
 ---
 
@@ -16,18 +22,20 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Material UI (theme, providers, DataGrid) | 🟢 |
 | `auth` (login, logout, proteção de rota, **cadastro self-service + trial de 14 dias**) | 🟢 |
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
-| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF |
+| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF. Ficha com abas: **Dados**, **Conversa** (envio + recebimento na mesma linha do tempo, com resposta manual — aberta a STAFF), **Anamnese** e **Evolução** (as duas últimas só para papéis clínicos) |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `agenda` (appointments) | 🟢 Quatro visões: **Lista** (tabela), **Quadro** (calendário `@mui/x-scheduler`), **Risco de falta** (predição) e **Lista de espera**. Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
-| `mensagens` (messaging) | 🟢 Três abas: **Histórico**, **Falhas** (com reenvio manual e erro em português) e **Recebidas** (caixa de entrada do que o paciente respondeu). Aberto a ADMIN e STAFF |
+| `mensagens` (messaging) | 🟢 Três abas: **Histórico**, **Falhas** (com reenvio manual e erro em português) e **Recebidas** (caixa de entrada do que o paciente respondeu). Responder é na aba **Conversa** da ficha do paciente. Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
-| `configuracoes` (tenants/me) | 🟢 Três abas: **Dados da clínica** (leitura para todos, edição ADMIN), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual + checkout Stripe, só ADMIN) |
+| `configuracoes` (tenants/me) | 🟢 Três abas: **Dados da clínica** (leitura para todos, edição ADMIN), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
+| `onboarding` | 🟢 Checklist no topo do `/painel` (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar (profissional, procedimento, primeiro agendamento) e some sozinho quando ela está operando |
 | `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `dashboard` e `medical-records`; `hasAiMessages` ainda não trava nada |
+| `public-booking` (`/agendar/:subdomain`) | 🟢 Página pública onde o paciente marca sozinho, sem login. Cascata profissional → procedimento → dia → horário, com o mesmo cálculo de vaga do painel |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🟡 **17 testes E2E (Playwright)** cobrindo login, permissões, agendamento e as telas novas. Ainda **sem teste unitário** — `error-messages.ts` e a prévia de templates seguem descobertos |
+| Testes automatizados | 🟡 **35 testes E2E (Playwright)** em 8 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts` e a prévia de templates seguem descobertos |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
@@ -124,6 +132,14 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
    - **Telefone com máscara**: reaproveita `MaskedTextField` + `PHONE_MASK` de `src/lib/br-masks.ts`, mesmo padrão de `pacientes`/`profissionais`.
    - **Bug corrigido nesta feature**: `defaultValues: {}` no `useForm` fazia os `TextField` controlados nascerem com `value={undefined}` e só ganharem valor real depois que `useTenant()` resolvia e o `useEffect` chamava `reset()` — React acusa isso como "a component is changing an uncontrolled input to be controlled". Fix: `defaultValues` com strings vazias explícitas (`EMPTY_VALUES`), mesmo padrão já usado nos outros formulários do projeto — só não tinha sido aplicado aqui porque o form não tem um "modo criação" com valores vazios óbvios (é sempre edição de um registro que já existe).
 7. ~~**Perfil do usuário logado**~~ — ✅ **feito**, backend e frontend. `/painel/perfil` virou form de verdade (editar nome, trocar senha, trocar foto), não mais somente-leitura.
+8. ~~**Onboarding da clínica nova**~~ — ✅ **feito** (12/08/2026). `features/tenant/components/OnboardingChecklist`, no topo do `/painel`. Clínica criada pelo cadastro nascia sem profissional e sem procedimento, e sem os dois nada funciona: a agenda não calcula horário e o `/agendar` divulgado responde "Agenda ainda não disponível". O painel abria **todo zerado, sem explicação** — a clínica descobria pelo paciente reclamando. Decisões:
+   - **Checklist, não wizard obrigatório** — travar quem só quer olhar o produto antes de preencher é pior do que deixar entrar e mostrar o que falta.
+   - **Só o primeiro pendente tem botão em destaque** (`contained`); os outros ficam `text`. Três botões iguais não dizem por onde começar.
+   - **O card some sozinho** quando `isComplete` (profissional + procedimento + primeiro agendamento). Também some em erro de busca: é auxiliar, e uma falha aqui não pode roubar a tela do dia a dia.
+   - **O link do `/agendar` aparece desde o começo**, com botão de copiar — mas acompanhado de um `Alert` de que ainda não aceita agendamento enquanto faltar cadastro. Divulgar antes de configurar é justamente como o problema chegava ao paciente. Usa `window.location.origin` (não há env var de URL pública no projeto), o que é correto por construção: o link é do mesmo host que a clínica já está usando.
+   - 4 testes E2E, incluindo o caso "clínica já operando não vê o card".
+   - 🐞 **Achado de quebra: bomba-relógio de calendário na suíte.** `agendamento.spec.ts › os horários mostram início e fim` fixava o dia em `hoje + 7` (pulando fim de semana). O primeiro profissional da lista (Dr. Paulo, no seed) **não atende às quintas** — então o teste passava o ano inteiro e falhava toda vez que a suíte rodasse numa quinta-feira, que foi o caso em 13/08/2026. Passou a usar `primeiroDiaComVaga`, o helper que os testes vizinhos do mesmo arquivo já usavam pelo mesmo motivo.
+9. ❌ **Chat com IA — descartado em 12/08/2026.** Avaliado para a página pública e para o painel, recusado nos dois. No público: quem conversa é visitante anônimo, custo DeepSeek variável sem dono e risco de a IA prometer horário ou preço errado para quem nem é cliente. No painel: não apareceu pergunta que a clínica faria a um chat e que Agenda, Risco de falta e Painel já não respondam melhor — seria pagar por uso para reembalar dado que já está na tela. A IA fica onde tem função verificável: reescrever o lembrete (`aiMessagesEnabled`). Fica registrado para não voltar como "ideia nova" daqui a três meses.
 
 ### Perfil do usuário logado (trocar senha, avatar, etc.)
 
@@ -219,12 +235,55 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Tabela comparativa (`ComparisonNote`) recriada com as células vindas de `COLUMNS`**, não quatro `<td>` escritos à mão — foi exatamente essa duplicação que a deixou desalinhada da grade acima em uma das idas e vindas do dia.
   - **Features falsas continuam fora**: "Reativação inteligente de pacientes", "Painel de métricas de ocupação", cobrança por assento e multi-unidade não existem em linha nenhuma de código e não voltaram — no lugar, cada plano mostra exatamente o que `Plan.maxProfessionals`/`hasPrediction`/`hasAiMessages` diz no banco.
 - ~~**Aba "Assinatura" em Configurações**~~ — ✅ `features/billing/` novo (mesma estrutura em camadas do projeto: `types` → `http` → `actions` → `hooks` → `components`), com `SubscriptionSettings` mostrando o plano atual do tenant (`Tenant.planId` cruzado com `GET /plans`, sem precisar mudar o contrato de `GET /tenants/me`), alerta por status (`TRIALING` com contagem de dias, `PAST_DUE`, `CANCELED`) e grid dos 3 planos com o card do plano contratado destacado. Botão "Assinar este plano" chama `POST /billing/checkout` e redireciona pro Stripe de verdade — testado via Playwright automatizando o cartão de teste `4242...` até a URL do checkout. Restrito a ADMIN nas duas pontas: backend recusa com `@Roles`, frontend desabilita o botão e mostra aviso para STAFF (testado nos dois papéis).
+- ~~**Agendamento público mostrava formulário morto para clínica nova**~~ — ✅ 12/08/2026. Clínica recém-cadastrada tem zero profissional e zero procedimento, e sem os dois não existe horário nenhum para oferecer — mas a página exibia o formulário completo mesmo assim. O paciente encarava campos que nunca funcionariam, e a clínica não descobria que o link divulgado estava quebrado. Agora avisa "Agenda ainda não disponível" com o telefone da clínica quando houver. Teste E2E cria uma clínica pelo cadastro real (as opções vêm de Server Action, então `page.route` não as intercepta).
+- ~~**Formulário de agendamento em `<select>` nativo**~~ — ✅ migrado para Material UI (12/08/2026). A página ganhou `layout.tsx` próprio com `MuiProvider`: fica fora de `(website)` e `(dashboard)`, então nenhum dos dois provia o tema. Efeito colateral no teste: `TextField select` do MUI não é `<select>`, então `selectOption` deixou de funcionar e a suíte passou a usar `getByRole("combobox")` + `getByRole("option")`; o estado desabilitado também aparece como `aria-disabled`, não `disabled`.
+  - **Armadilha**: `sx={{ background: (theme) => ... }}` quebra em Server Component — função não atravessa a fronteira servidor→cliente. O `tsc` não pega; só estoura em runtime.
+- ~~**Senha digitada às cegas, sem indicação de força**~~ — ✅ `components/password-field/` (12/08/2026), mesmo padrão do Snap Financial: 5 critérios, 5 barras, adaptado para MUI. Mostra **o que falta** ("falta uma maiúscula, um símbolo"), não só uma nota — "senha fraca" sozinho deixa a pessoa tentando variações no escuro. O olho vai no cadastro e no login; o medidor só no cadastro, porque no login a senha já existe e avaliá-la atrapalharia quem tenta entrar.
+  - **Regressão que causei**: o botão tem `aria-label="Mostrar senha"`, então `getByLabel("Senha")` passou a casar com dois elementos e quebrou o helper de login de **toda** a suíte. Corrigido com `getByRole("textbox", { name: "Senha" })`.
+- ~~**Cadastro não pedia contato da clínica**~~ — ✅ WhatsApp obrigatório (12/08/2026), com a máscara que já existia (`MaskedTextField` + `PHONE_MASK`). Sem ele, clínica criada pelo cadastro não tinha telefone nem e-mail próprio — só o e-mail do usuário admin —, o que inviabilizava qualquer aviso sobre a conta.
+- ~~**Agendamento online não tinha tela**~~ — ✅ 12/08/2026. O backend estava pronto e testado desde 10/08, mas **a página do paciente não existia** — os quatro planos anunciavam "Agendamento online pelo paciente" e não havia para onde mandar ninguém. Agora `/agendar/[subdomain]` (`features/public-booking/`), fora do `(website)` e do `(dashboard)`: é Tailwind como o site, mas sem header/footer institucional — a página é da clínica, não do Crivo. Decisões:
+  - **Cascata profissional → procedimento → dia → horário**, a mesma do painel: sem os dois primeiros o backend não tem como calcular horário livre (a grade é de quem atende, a duração do procedimento define se cabe). Procedimento travado até escolher o profissional evita a lista mudar embaixo do que já foi selecionado.
+  - **`availability` e `isLoadingSlots` são derivados, não estados sincronizados.** A primeira versão limpava o resultado antigo num `useEffect` e o React Compiler barrou (`setState` síncrono em effect gera render em cascata). Guardando a combinação junto com o resultado, o dado velho é ignorado na leitura — dois `useState` a menos e nenhuma cascata.
+  - **Clínica inexistente vira `notFound()`**, não um formulário que nunca funcionaria; `robots: noindex` porque a página é de cada clínica, não conteúdo indexável do Crivo.
+  - **`<img>` em vez de `next/image`** para o logo: vem de domínio arbitrário da clínica (white-label) e o otimizador exigiria declarar cada host em `next.config`.
+  - Formatador de telefone próprio (`public-booking/phone.ts`) em vez do `PHONE_MASK`: aquele é feito para o `MaskedTextField` (MUI + imask) e esta página não tem MUI.
+  - 5 testes E2E (`e2e/agendamento-online.spec.ts`), incluindo o agendamento completo. Verificado ao vivo: `origin: ONLINE`, paciente criado pelo telefone e as duas mensagens enfileiradas.
+- ~~**`/painel` deixava a casca aparecer com cookie inválido**~~ — ✅ corrigido em 12/08/2026. O middleware só decodificava o payload do JWT (sem verificar assinatura), então um **token forjado** com `exp` no futuro passava e a casca do painel renderizava vazia até as chamadas voltarem 401 e o `QueryProvider` deslogar. **Nenhum dado real vazava** — o crivo-be rejeita o token —, mas a tela piscava logada. Agora o middleware confirma o token com `GET /users/me` antes de deixar passar, e redireciona para `/login` limpando os cookies inservíveis. Decisões:
+  - **Perguntar ao backend em vez de verificar a assinatura localmente**: validar o HMAC no middleware exigiria o `JWT_SECRET` também no frontend — o mesmo segredo em dois lugares, e qualquer rotação precisando lembrar dos dois. O crivo-be continua sendo a única autoridade.
+  - **Só 401 derruba a sessão, 403 não.** `GET /users/me` está atrás do `TrialGuard`, então uma clínica com trial vencido recebe 403 — tratá-lo como token inválido a deslogaria em vez de deixá-la ver o aviso de "seu teste acabou". Verificado nos dois casos.
+  - **Falha de rede deixa passar**: se o backend está fora do ar, não dá para afirmar que o token é inválido; as chamadas da própria tela cuidam disso.
+  - 4 testes E2E novos (`e2e/acesso-painel.spec.ts`): sem cookie, token forjado, sub-rota sensível (`/painel/usuarios`) e cookie que nem é JWT.
+- ~~**Quarto plano `Solo` (R$ 79)**~~ — ✅ 12/08/2026. Porta de entrada com 1 profissional, mesmo escopo do Básico. As grades passaram de 3 para 4 colunas (`lg:grid-cols-4` no site, `md: 3` no Grid do painel), e os skeletons de carregamento acompanharam — três placeholders numa grade de quatro deixariam um buraco visível no primeiro paint.
 - ~~**As colunas de plano não mostravam diferencial nenhum**~~ — ✅ corrigido em 11/08/2026, dois bugs distintos na mesma informação, cada um numa cópia diferente da lista de features:
   - **Na home**, o card `compact` cortava a lista nos 4 primeiros itens — e os 4 primeiros eram os comuns a todos os planos. As três colunas exibiam literalmente as mesmas linhas, sem nenhum diferencial visível.
   - **No painel**, a lista só recebia `push` da feature **quando o plano a tinha**. O Básico aparecia com uma linha só, e o comprador não tinha como saber o que estava perdendo.
   - **Causa comum**: a lista era montada em dois lugares (`plan-to-pricing-card.ts` e `plan-card.tsx`), e as duas cópias divergiram. Agora existe `features/billing/plan-features.ts` como fonte única, com os diferenciais **primeiro** (para caberem no corte do compacto) e os não inclusos **presentes e riscados**, nunca omitidos. O corte do compacto subiu de 4 para 6, que é o que cobre tudo que varia entre planos.
   - **Tabela comparativa** (`/planos`) também parou de ter as linhas hardcoded — passou a derivar de `planComparableFeatures`, a mesma fonte dos cards. Ela chegou a não citar prontuário nem painel enquanto os planos já os diferenciavam.
   - **Limite de profissionais saiu das linhas booleanas**: é valor, não sim/não. Como linha comum de tabela, "Até 2 profissional(is)" aparecia com ✓ no Básico e ✗ nos planos maiores — lendo como se os caros tivessem menos. Virou uma linha "Profissionais" com o número de cada plano (`2 / Ilimitados / Ilimitados`).
+- ~~**Aba Assinatura não mostrava quanto faltava para acabar a franquia**~~ — ✅ 12/08/2026. `features/billing/components/MessageUsageCard`, mesmo padrão visual do `LimitCard` do Snap Financial: número grande é o limite, barra de progresso mostra o consumo, cor muda para `warning` perto do teto. Lê `GET /billing/usage` (`used`/`limit`/`isTrial`) via `useMessageUsage` — falha nessa busca não derruba a tela, o card só some e os planos continuam navegáveis. Texto do aviso ao estourar a cota diz explicitamente que a mensagem **aparece na aba Falhas**, porque é lá que ela vai parar (o backend marca `FAILED`, não fica pendente).
+- ~~**Página `/agendar` só mostrava telefone e endereço**~~ — ✅ 12/08/2026. `booking-options` já trazia o resto dos dados da clínica (`email`, horário e dias de funcionamento) mas o frontend não pedia. Dias soltos (`[1,2,3,4,5]`) viram faixa contínua "Seg a Sex" em vez de listar os 5 por extenso; horário em minutos (`businessHoursStart`/`End`) formata como "08:00 às 18:00". O telefone do rodapé passou a usar `formatPhone` (`lib/br-masks`), que já existia para o cadastro mas não estava aplicado aqui — antes aparecia cru (`1133334444`).
+- ~~**Agendamento que chegava com a Agenda aberta passava despercebido**~~ — ✅ 13/08/2026. O polling de 8s já trazia a linha nova, mas ela entrava no meio da tabela em silêncio: quem não estava olhando na hora exata não via. Agora `useNewAppointments` guarda os ids do **primeiro** carregamento e marca como novo tudo que aparece depois — com aviso dispensável no topo ("2 agendamentos novos chegaram") e barra lateral roxa só nas linhas que chegaram. Decisões:
+  - **Compara com o primeiro carregamento, não com a lista anterior** — comparando com a anterior, o destaque duraria um único ciclo de 8s e sumiria sozinho, tempo curto demais para quem voltou do café.
+  - **Lista vazia inicial não vira "estado conhecido"** — tratá-la assim faria a página inteira acender como nova no primeiro poll.
+  - **Barra lateral + fundo suave, não cor chapada**: a linha continua legível e o destaque não compete com o chip de status, que é o que a recepção lê primeiro.
+  - 🐞 **A primeira versão não funcionava no caso comum** (corrigido no mesmo dia): o aviso saía de `newIds.size`, que só enxerga a página carregada. Como a lista é ordenada por **data de atendimento**, quem marca hoje para daqui a duas semanas cai na página 2+ — e a recepção, na página 1, não via nada. Foi assim que o recurso pareceu "não funcionar" no teste real. Agora a contagem vem de `GET /appointments/new-count?since=`, independente de página e filtro; `newIds` continua local só para destacar a linha **quando ela está visível**. O texto do aviso reflete os dois casos: "destacado(s) na lista abaixo" ou "em outra página da lista" — prometer destaque que não existe seria pior que não avisar.
+  - **O E2E cobre só o caminho negativo** ("nada é destacado quando nada chegou"). A versão que criava o agendamento pelo fluxo público ficou refém de estado acumulado — cada execução ocupava um horário do seed e a seguinte não achava vaga — e o `DataGrid` virtualiza as linhas, então a linha nova nem entrava no DOM. Um teste que falha por dado saturado é pior que teste nenhum; o caminho positivo foi verificado à mão, com screenshot.
+- ~~**Para responder o paciente, a recepção saía do sistema**~~ — ✅ aba **Conversa** na ficha do paciente (12/08/2026). A caixa de entrada só permitia ler e marcar como tratada; responder era pelo WhatsApp da clínica por fora, e aquela resposta não ficava registrada. Agora `features/messages/components/PatientConversation`: envio e recebimento na mesma linha do tempo, com campo de resposta. Decisões:
+  - **Montado com MUI base, sem `@mui/x-chat`** — a lib existe e é MIT, mas está em `9.0.0-alpha.16`, e o projeto já carrega um `x-scheduler` em beta. Bolhas com `Paper`/`Stack` e composer com `TextField` custam ~150 linhas e não quebram em upgrade.
+  - **Aba visível para STAFF**, diferente de Anamnese/Evolução — responder ao paciente é trabalho da recepção; prontuário não é. Mesma decisão já tomada na caixa de entrada.
+  - **`whiteSpace: pre-wrap` nas bolhas** — os templates têm quebra de linha e emoji; sem isso a mensagem vira um parágrafo só, diferente do que o paciente de fato recebeu.
+  - **Legenda por bolha mostra tipo + status** ("Lembrete de agendamento · Enviada"): a conversa mistura automático e manual, e a recepção precisa saber o que o sistema já disse antes de repetir. Falha aparece em vermelho com "ligue para o paciente", não escondida.
+  - **O snackbar diz "na fila de envio", não "enviada"** — o envio é assíncrono e pode falhar depois; prometer entrega aqui seria a mesma mentira que a lista de falhas existe para desfazer. O campo só limpa em sucesso, para não perder o texto digitado num erro.
+  - **Polling de 8s** (`LIVE_REFETCH_INTERVAL_MS`), igual à caixa de entrada: o paciente responde pelo WhatsApp, fora do sistema.
+  - 🐞 De quebra: `TYPE_LABELS` não tinha `WAITLIST_OFFER` (o backend manda esse tipo desde 10/08) — a coluna "Tipo" renderizava vazio para oferta de vaga no histórico. 4 testes E2E novos.
+- ~~**A confirmação do `/agendar` deixava o paciente no escuro**~~ — ✅ 13/08/2026. Depois de marcar, a tela dizia "não precisa fazer mais nada" e nada acontecia: o paciente não recebia a mensagem na hora (o envio passa por fila) e ficava sem saber se tinha dado certo. Agora tem uma barra de 20s ("Enviando a confirmação no seu WhatsApp… 18s") que, ao zerar, vira orientação de fallback com o telefone da clínica. Decisões:
+  - **A barra NÃO reconsulta dado** — é uma contagem de tempo. Buscar o status real exigiria uma rota pública nova devolvendo dado de agendamento numa página aberta na internet, o oposto da decisão de manter a resposta de `booking-options` enxuta. O que o paciente precisa não é do status: é de um prazo e de um plano B.
+  - **Conta por `Date.now()`, não somando ticks** — aba em segundo plano tem `setInterval` estrangulado pelo navegador; a soma de ticks travaria a barra pela metade ao voltar para a aba.
+  - **Mostra segundos, não porcentagem** — "faltam 12s" é a informação que a pessoa quer; "40%" não diz de quê.
+  - **O fallback diz "seu horário está reservado de qualquer forma"** — a mensagem pode falhar (WhatsApp da clínica fora do ar), mas o agendamento existe. Sem essa frase, o paciente que não recebe nada assume que precisa marcar de novo.
+  - **Botão "Marcar outra consulta"** — antes, quem precisava de um segundo horário (outro procedimento, ou marcar para um familiar) só saía dali recarregando a página na mão. O `reset()` zera a seleção inteira, não só esconde a confirmação: manter profissional/procedimento/dia preenchidos faria a pessoa remarcar o mesmo horário sem perceber. `options` fica em cache — é a lista da clínica, não escolha do paciente.
+  - Componente migrado de Tailwind para MUI no caminho: era o último pedaço da página pública fora do padrão. 2 testes E2E novos.
+- ~~**Campo "Dia" do agendamento público era um `<input type="date">` nativo**~~ — ✅ 12/08/2026. Único calendário do produto fora do padrão MUI `DatePicker` usado em todo o painel (`SlotPicker` da Agenda, filtros, lista de espera). Trocado, com `disablePast` e `shouldDisableDate` cinza nos dias fora de `clinic.businessDays` — o dado que a entrega anterior (dados de contato/horário) já tinha trazido para essa página, mas que ainda não era usado para nada. Efeito colateral corrigido de graça: o card de horário vazio mostrava o enum cru do backend (`WINDOW_PASSED`) em vez de texto em português — agora traduzido, igual ao `emptySlotsMessage` do painel. E2E adaptado para o padrão de `agendamento.spec.ts` (`getByRole("spinbutton", { name: "Dia" })`, já que o `DatePicker` expõe três elementos com o mesmo rótulo e `getByLabel` casa com os três).
 
 ### Fase 3 — Qualidade
 
@@ -350,6 +409,54 @@ perder, então `onOpenChange(false)` continua direto.
 ## Débitos técnicos conhecidos
 
 - **`src/components/ui/`** mistura componentes do site (`header`, `footer`, `logo`, `scroll-reveal`) com o que sobrou da fase shadcn. Como o admin não usa mais nada dali, faria sentido renomear para algo como `src/components/website/`.
+- **Não há runner de teste unitário** (nem Vitest nem Jest instalado) — só Playwright. O bug do contador de trial (13/08/2026) é exatamente o tipo que um teste unitário pegaria em segundos e que E2E não pega: lógica pura, dependente de relógio, cujo erro aparece só numa janela de horas do dia. Validei por execução direta com relógio fixo, o que funciona mas não fica no repositório protegendo contra regressão. **Instalar Vitest é o próximo passo de qualidade**, e `src/lib/trial.ts` + `error-messages.ts` são os primeiros candidatos.
+
+## Armadilha resolvida: pelo túnel, a página abria mas nada funcionava
+
+O link de confirmação (`/c/:token`) que vai no WhatsApp aponta, em dev, para
+um túnel (ngrok/Cloudflare). A página **abria normalmente**, mas o botão
+"Confirmar presença" não fazia nada: nenhum POST saía, nenhum erro na tela e
+nada no console do servidor. Em `localhost` o mesmo botão funcionava.
+
+São **duas** proteções do Next contra cross-origin, e as duas precisam ser
+liberadas — resolver só uma mantém o sintoma idêntico:
+
+1. **`allowedDevOrigins`** — o Next bloqueia *assets de desenvolvimento* em
+   requisição cross-origin. O HMR falhava (WebSocket 503) e **a página não
+   hidratava**; sem hidratação o React nunca anexa o `onClick`, e o botão
+   vira HTML estático. Esta era a causa do sintoma observado.
+2. **`serverActions.allowedOrigins`** — o Next compara `Origin` com `Host` e
+   aborta a Server Action quando diferem (CSRF). Só aparece depois que a
+   hidratação volta, mas quebraria o envio do mesmo jeito.
+
+A segunda vale só fora de produção: lá o domínio é fixo, os headers batem, e
+um curinga de túnel enfraqueceria o CSRF sem ganho nenhum.
+
+**Lição de diagnóstico:** "abre mas não reage" quase sempre é hidratação, não
+lógica de componente. Checar `__reactFiber` no elemento distingue os dois em
+segundos — se a chave não existe, o problema está no carregamento do bundle,
+não no `onClick`.
+
+## Armadilha resolvida: contador de trial arredondava para cima
+
+`Math.ceil` nos dias restantes do trial parecia inofensivo e tinha **dois**
+defeitos, um deles visível para o cliente pagante:
+
+1. **Trial de 14 dias recém-criado mostrava "15 dias restantes"** — o produto
+   prometia na tela um dia a mais do que entrega.
+2. **O contador travava no primeiro número por quase 24h.** Quem assinou
+   ontem às 15h via "14 dias" no dia seguinte ao meio-dia (faltavam 13,26 —
+   `ceil` devolve 14). Foi assim que o bug foi notado.
+
+**Fix**: `Math.floor`, extraído para `src/lib/trial.ts` como fonte única —
+a conta estava **duplicada** entre o banner do painel e a tela de Assinatura,
+e as duas cópias teriam que ser corrigidas juntas. `floor` responde à pergunta
+que a clínica faz ("quantos dias inteiros ainda tenho?") e deixa as horas
+quebradas a favor do cliente: quem vê "0 dias" ainda tem até o horário exato
+de `trialEndsAt`, e quem corta o acesso é o `SubscriptionGuard` no backend,
+nunca este número. Efeito colateral bom: os textos do banner ficaram
+precisos — "acaba hoje" agora aparece faltando menos de 24h, e não "amanhã"
+como antes.
 
 ## Armadilha resolvida: `mutateAsync` sem `try/catch` derrubava a página
 
