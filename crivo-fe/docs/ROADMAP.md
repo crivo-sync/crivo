@@ -2,10 +2,16 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-13 (rev. 18 — agendamento que chega com a
-> Agenda aberta agora é avisado e destacado; botão "Marcar outra consulta"
-> na confirmação do `/agendar`; 🐞 contador de trial arredondava para cima,
-> mostrando "15 dias" num trial de 14 — conta unificada em `src/lib/trial.ts`).
+> Última atualização: 2026-08-13 (rev. 19 — **fotos antes/depois** na ficha
+> do paciente, agrupadas por atendimento, com URL assinada que expira e sem
+> botão de download; o painel passou a **esconder o que o plano não inclui**
+> (cadeado nas abas, em vez de 403 numa tela vazia); confirmação antes de
+> descer de plano).
+>
+> Rev. 18 (13/08): agendamento que chega com a Agenda aberta é avisado e
+> destacado; botão "Marcar outra consulta" na confirmação do `/agendar`;
+> 🐞 contador de trial arredondava para cima, mostrando "15 dias" num trial
+> de 14 — conta unificada em `src/lib/trial.ts`.
 >
 > Rev. 16 (12/08): aba **Conversa** na ficha do paciente (a recepção responde
 > pelo painel, sem sair para o WhatsApp), **checklist de onboarding** no
@@ -22,7 +28,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Material UI (theme, providers, DataGrid) | 🟢 |
 | `auth` (login, logout, proteção de rota, **cadastro self-service + trial de 14 dias**) | 🟢 |
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
-| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF. Ficha com abas: **Dados**, **Conversa** (envio + recebimento na mesma linha do tempo, com resposta manual — aberta a STAFF), **Anamnese** e **Evolução** (as duas últimas só para papéis clínicos) |
+| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF. Ficha com abas: **Dados**, **Conversa** (envio + recebimento na mesma linha do tempo, com resposta manual — aberta a STAFF), **Anamnese**, **Fotos** (antes/depois agrupadas por atendimento) e **Evolução** (as três últimas só para papéis clínicos, e só no plano com prontuário) |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `agenda` (appointments) | 🟢 Quatro visões: **Lista** (tabela), **Quadro** (calendário `@mui/x-scheduler`), **Risco de falta** (predição) e **Lista de espera**. Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
@@ -35,7 +41,7 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🟡 **35 testes E2E (Playwright)** em 8 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts` e a prévia de templates seguem descobertos |
+| Testes automatizados | 🟡 **38 testes E2E (Playwright)** em 9 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 

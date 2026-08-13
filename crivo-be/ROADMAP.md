@@ -5,10 +5,13 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > Última atualização: 2026-08-13.
 >
 > **O que era construível está construído.** `billing` completo (checkout,
-> webhook, 4 planos com limites e features por faixa, franquia de mensagens
-> com contador, expiração automática do trial), página pública de
-> agendamento, tela de conversa (a recepção responde pelo painel) e checklist
-> de onboarding para a clínica nova.
+> webhook, 4 planos com limites e features por faixa — travados no backend
+> **e** no painel —, franquia de mensagens com contador, expiração automática
+> do trial, upgrade pelo checkout com cancelamento da assinatura anterior),
+> página pública de agendamento, tela de conversa (a recepção responde pelo
+> painel), checklist de onboarding, **e-mails transacionais** (boas-vindas,
+> assinatura, trial acabando, falha de cobrança) e **fotos antes/depois** com
+> entrega autenticada — a última feature que faltava para clínica de estética.
 >
 > **O que segue aberto não depende de código:**
 > - **Credenciais da Meta** — adiado por custo. O provider está pronto e
@@ -42,10 +45,11 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
 | `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada, reenvio manual, templates editáveis por clínica e provider selecionável. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
 | `prediction` | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção |
-| `medical-records` | 🟢 Anamnese + evolução append-only, restrito a ADMIN/PROFESSIONAL (04/08/2026). Falta anexos |
+| `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
 | `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
 | `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial (11–12/08/2026). ⚠️ Preços seguem **hipótese não validada** com cliente real |
 | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
+| `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
 
 Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação por link e por resposta) funcionando em dev. **A tríade agenda + comunicação + predição está completa em primeira versão** — a predição saiu do zero e já *age*: escalona lembretes por risco e alimenta a lista de espera.
 
@@ -91,12 +95,43 @@ Preços de entrada anunciados publicamente (consulta em 30/07/2026):
 | iClinic | R$ 289/mês | Médico | Consolidado, curva de aprendizado longa |
 | Amplimed | R$ 399/mês | Convênios | Forte em TISS, custo alto para estética pura |
 
+**Camada mais barata, encontrada só no recheque de 13/08/2026** — não estava
+no mapeamento original e muda a leitura da faixa de entrada:
+
+| Sistema | A partir de | Observação |
+| --- | --- | --- |
+| Bellagenda | R$ 23,90 | Agendamento, lembrete WhatsApp, sinal via Pix |
+| SPAgenda | R$ 29 (R$ 24,17 no anual) | Agendamento puro |
+| Agendiva | R$ 39,90 (Solo/Pro/Studio até R$ 99,90) | Ficha por procedimento, lembrete 24h, comissão, vitrine pública |
+| Elenya | R$ 49,90 | Confirmação WhatsApp 24h, fluxo de caixa básico |
+| Gestek | R$ 69,90/**ano** | Agenda multiprofissional, fichas customizáveis |
+| Avec | sob consulta | **Agendamento e resposta por IA no WhatsApp** + split de pagamento |
+| Belle Software | sob consulta | Recursos de IA, assinatura eletrônica (+R$ 45), app do cliente (+R$ 150) |
+| Booksy | R$ 99,99 | Marketplace global, forte em barbearia |
+
 **Leitura do mercado:**
 
-- **A faixa de entrada é R$ 39–120.** Nossa hipótese de R$ 149 nasce acima da porta de entrada de todo mundo.
+- **A faixa de entrada real é R$ 24–100, não R$ 39–120** (corrigido em
+  13/08/2026). O mapeamento de 30/07 não viu a camada de agendamento puro
+  (Bellagenda, SPAgenda, Agendiva, Elenya). Nosso Solo a R$ 79 está **dentro**
+  dessa faixa, mas competindo com quem entrega menos por menos.
 - **O mercado é fragmentado e ninguém domina.** Cada player é forte em um nicho (estética, odonto, convênio) e fraco nos outros — há espaço, mas não por preço.
 - **Todos já têm agenda, prontuário e WhatsApp.** Isso é commodity. Competir nessas três é chegar tarde.
+- **Fotos antes/depois também são commodity** (13/08/2026): Iter Clinic,
+  Simples Agenda, Belle Software e Booksy já têm. Entregá-las nos tira de
+  desvantagem, mas **não** é diferencial — o valor está em estarem ligadas ao
+  atendimento e com entrega autenticada, que ninguém anuncia.
+- **Franquia de mensagens já é praticada na faixa de entrada** — há plano de
+  R$ 57 com 20 notificações/mês e R$ 99,86 com 50. Isso **valida a decisão de
+  cota** do Crivo (Solo 500, Básico 1.500): não é invenção nossa, é como o
+  mercado lida com o custo variável do WhatsApp. E mostra que nossas cotas são
+  generosas em comparação.
 - **Ninguém vende confiabilidade de entrega.** Todos anunciam "lembrete por WhatsApp"; nenhum anuncia o que acontece quando ele falha. É aí que a história da recepcionista vira oportunidade.
+- **IA no WhatsApp desceu do topo para a faixa de entrada.** Não é mais só a
+  Clinicorp Premium: Avec e Belle Software (ambos "sob consulta", perfil de
+  salão/estética pequena) já anunciam agendamento e resposta por IA. O sinal
+  que o ROADMAP mandava monitorar — "IA chegar na base do mercado" — está
+  acontecendo agora.
 
 ---
 
@@ -118,7 +153,7 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 | Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ (há faturamento por procedimento, não fluxo de caixa) | 🟠 Alta |
 | Métricas de ocupação de agenda | ✅ | ❌ — exige modelar capacidade instalada | 🟡 Média |
 | Multi-unidade (rede/franquia) | ✅ (Clinicorp) | ❌ — hoje 1 tenant = 1 clínica, sem hierarquia | 🟡 Média |
-| **Agente de IA no WhatsApp** (agenda/confirma/cobra sozinho) | ✅ **Clinicorp lançou em 2026** — 3 agentes (agendamento, relacionamento, captação), com handoff para humano | ❌ — ver ["A IA mudou de patamar"](#a-ia-mudou-de-patamar-13082026) | 🟠 **Reavaliar** |
+| **Agente de IA no WhatsApp** (agenda/confirma/cobra sozinho) | ✅ Clinicorp (3 agentes, plano Premium) **e agora também na faixa de entrada**: Avec e Belle Software | ❌ — ver ["A IA mudou de patamar"](#a-ia-mudou-de-patamar-13082026) | 🔴 **Reavaliar após 1º cliente** |
 | Chat de IA na landing (qualificar visitante) | ⚠️ raro no setor | ❌ **por decisão** (12/08/2026) | — |
 | Comissão por profissional | ✅ | ❌ | 🟡 Média |
 | Pacotes e sessões múltiplas | ✅ | ❌ | 🟡 Média |
@@ -139,13 +174,21 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 
 **Eles estão à nossa frente em quase tudo que o cliente vê.** Nosso diferencial declarado (predição de no-show) é justamente o que eles já anunciam como resultado ("redução de faltas até 60%") — só que com produto no ar e nós ainda no schema.
 
-Quatro conclusões que mudam o plano:
+Conclusões que mudam o plano:
 
 1. **WhatsApp não é diferencial, é bilhete de entrada.** Qualquer concorrente sério já tem. Sem lembrete automático, o produto não é comparável — independente de quão boa seja a predição.
 2. **Prontuário é obrigatório para odontologia/dermato.** É requisito legal e operacional, não recurso "nice to have". Uma clínica não troca de sistema se perder o prontuário.
 3. **Nosso diferencial real não é "prever no-show", é o que fazemos com a previsão.** Eles reduzem falta com lembrete e lista de espera — regras simples. O espaço para nos diferenciarmos é a ação automática e personalizada por risco, não o número em si.
 4. **Confiabilidade de entrega é o diferencial que ninguém anuncia.** Todos prometem lembrete; ninguém promete que ele *chega*. Ver [A dor que valida o produto](#a-dor-que-valida-o-produto).
-5. **O topo do mercado virou "agente de IA que executa"** (13/08/2026), não mais só automação por regra. A faixa de entrada não seguiu — mas a distância entre o que a Clinicorp Premium faz e o que um sistema de R$ 79 faz aumentou. Ver [A IA mudou de patamar](#a-ia-mudou-de-patamar-13082026).
+5. **O mercado virou "agente de IA que executa"** — e não só no topo. Em
+   30/07 a IA era "rara no setor"; em 13/08 já está na Clinicorp Premium
+   **e** na faixa de entrada (Avec, Belle Software). A frase que este
+   documento escreveu duas semanas antes — "a faixa de entrada não seguiu" —
+   envelheceu em duas semanas. Ver [A IA mudou de patamar](#a-ia-mudou-de-patamar-13082026).
+6. **Fotos antes/depois entraram como paridade, não como diferencial**
+   (13/08/2026). Iter Clinic, Simples Agenda, Belle e Booksy já tinham. Ter
+   nos tira de desvantagem — uma clínica de estética descartava o produto sem
+   isso —, mas não ganha venda sozinho.
 
 ### A IA mudou de patamar (13/08/2026)
 
@@ -635,7 +678,7 @@ Quatro observações:
 | IA alucinar ou distorcer um dado da mensagem | **Mitigado por design:** prompt restringe a redigir, nunca a decidir fato; validação pós-geração confere nome/data/hora/link literalmente antes de aceitar o texto — se algo faltar, cai no template fixo |
 | **Webhook do Stripe apontando para rota inexistente** (dev) | ⚠️ **Diagnosticado em 13/08/2026.** O `stripe listen` estava com `--forward-to localhost:3333/stripe/webhook`, mas a rota é **`/billing/webhook`** — todo pagamento de teste ia para um 404. O sintoma engana: o checkout completa, o Stripe cobra de verdade, e o banco fica em `TRIALING` como se nada tivesse acontecido. O `.env.example` já documenta o comando certo. Em produção não se aplica (a URL é cadastrada no dashboard) |
 | **Link de confirmação apontando para túnel morto** (dev) | ⚠️ **Mitigado por script** (13/08/2026). O `/c/:token` que vai no WhatsApp é montado com `PUBLIC_APP_URL`, e em dev isso é um túnel efêmero cuja URL muda a cada restart — 9 mensagens chegaram a sair com um subdomínio morto (`DNS_PROBE_FINISHED_NXDOMAIN`). `./tunnel.sh` sobe o ngrok, grava a URL nova no `.env` e restaura ao sair. **Precisa reiniciar o processo do backend** — verificado que `--watch` NÃO basta: o `ConfigService` lê o `.env` uma vez no boot do processo, e o watch recarrega os módulos mantendo o mesmo processo Node. Em produção o problema não existe: a URL é fixa. **Cloudflare não é opção nesta rede** (porta 7844 bloqueada em TCP e UDP) |
-| **Concorrente do topo lançar agente de IA e puxar o mercado** (Clinicorp, 2026) | ⚠️ **Risco vigilado, não mitigado.** Hoje não alcança nosso preço (add-on de plano Premium, R$ 369,90), e a faixa de entrada não seguiu. Vira problema se o preço do agente cair para R$ 79–149 ou se virar argumento para puxar cliente pequeno para cima. Sinal a monitorar: Iter Clinic ou Clínica nas Nuvens anunciarem agente. Ver [A IA mudou de patamar](#a-ia-mudou-de-patamar-13082026) |
+| **IA no WhatsApp virando padrão de mercado** (Clinicorp, Avec, Belle — 2026) | 🔴 **Risco subiu de nível em 13/08/2026.** O sinal que este documento mandava monitorar ("IA chegar na faixa de entrada") **já aconteceu**: não é mais só a Clinicorp Premium (R$ 369,90) — Avec e Belle Software, ambos de perfil salão/estética pequena, já anunciam agendamento e resposta por IA. Segue **não mitigado**, e a resposta continua sendo não copiar: um agente que marca em cima de outro paciente destrói a confiabilidade que o produto vende. Mas o argumento "ninguém tem IA nessa faixa" morreu. Reavaliar escopo estreito (só agendamento, com confirmação humana) **assim que houver cliente pagante** |
 
 ---
 
@@ -646,7 +689,10 @@ reconfirmar antes de usar em decisão comercial. O recheque mostrou que duas
 semanas bastaram para invalidar um item ("IA rara no setor"): trate qualquer
 linha com mais de um mês como suspeita.
 
-**Recheque de 13/08/2026 (agentes de IA):**
+**Recheque de 13/08/2026 (agentes de IA e faixa de entrada):**
+
+- [Melhores sistemas para clínica de estética — comparativo Agendiva](https://agendiva.com.br/melhores-sistemas-para-clinica-de-estetica) (11 sistemas; ⚠️ publicado por concorrente)
+- [Sistema de agendamento: preço em 2026 — SPAgenda](https://spagenda.com/artigo/quanto-custa-sistema-agendamento) (faixa R$ 24–100 e planos com franquia de notificação)
 
 - [Agentes Clinicorp IA — página do produto](https://www.clinicorp.com/agentes-clinicorp-ia)
 - [Clinicorp aposta em agentes de IA para dobrar de tamanho até 2027 — Brazil Economy](https://brazileconomy.com.br/empresas/2026/02/clinicorp-aposta-em-agentes-de-ia-para-automatizar-clinicas-e-dobrar-de-tamanho-ate-2027/)
