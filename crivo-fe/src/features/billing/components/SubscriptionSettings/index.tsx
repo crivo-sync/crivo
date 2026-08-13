@@ -7,6 +7,8 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
+import { useState } from "react";
+
 import { ErrorServer } from "@/components/ui/error-server";
 import { useIsAdmin } from "@/components/providers/session-provider";
 import { trialDaysLeft } from "@/lib/trial";
@@ -16,6 +18,8 @@ import { useMessageUsage } from "../../hooks/use-message-usage";
 import { usePlans } from "../../hooks/use-plans";
 import { MessageUsageCard } from "../MessageUsageCard";
 import { PlanCard } from "./plan-card";
+import { ConfirmDowngradeDialog } from "./confirm-downgrade-dialog";
+import type { Plan } from "../../types";
 
 /** Mostra o plano atual (ou o estado do trial) e a lista de planos para
  * assinar/trocar. Some sem quebrar se a busca falhar — a tela de
@@ -38,6 +42,8 @@ export const SubscriptionSettings = () => {
   // Falha aqui não impede o resto da tela: o card só some, os planos
   // continuam navegáveis.
   const { usage } = useMessageUsage();
+  const [downgradeTarget, setDowngradeTarget] = useState<Plan | undefined>();
+  const currentPlan = plans.find((p) => p.id === tenant?.planId);
 
   if (tenantError) {
     return (
@@ -107,12 +113,45 @@ export const SubscriptionSettings = () => {
                 isCurrent={tenant.planId === plan.id}
                 isLoading={loadingPlanId === plan.id}
                 canSelect={canManage}
-                onSelect={startCheckout}
+                isDowngrade={
+                  !!currentPlan && plan.priceInCents < currentPlan.priceInCents
+                }
+                onSelect={(planId) => {
+                  const target = plans.find((p) => p.id === planId);
+
+                  // Descer de plano passa por confirmação; subir é direto.
+                  // O risco aqui é o clique acidental — os cards ficam lado
+                  // a lado e "Assinar este plano" no Solo parecia tão
+                  // inofensivo quanto no Avançado.
+                  if (
+                    target &&
+                    currentPlan &&
+                    target.priceInCents < currentPlan.priceInCents
+                  ) {
+                    setDowngradeTarget(target);
+                    return;
+                  }
+
+                  startCheckout(planId);
+                }}
               />
             </Grid>
           ))}
         </Grid>
       </Box>
+
+      <ConfirmDowngradeDialog
+        targetPlan={downgradeTarget}
+        currentPlan={currentPlan}
+        isLoading={loadingPlanId === downgradeTarget?.id}
+        onCancel={() => setDowngradeTarget(undefined)}
+        onConfirm={async () => {
+          if (!downgradeTarget) return;
+          const id = downgradeTarget.id;
+          setDowngradeTarget(undefined);
+          await startCheckout(id);
+        }}
+      />
     </Stack>
   );
 };
