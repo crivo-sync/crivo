@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Logo } from "@/components/ui/logo";
+import { SHOW_SOCIAL_PROOF } from "@/app/(website)/_data/social-proof";
 
 const NAV_LINKS = [
   { href: "/#produto", label: "Produto" },
   { href: "/#modulos", label: "Módulos" },
   { href: "/planos", label: "Planos" },
-  { href: "/#depoimentos", label: "Depoimentos" },
+  // Segue a mesma flag da seção: com ela desligada, a âncora `#depoimentos`
+  // não existe na página e o link rolaria para lugar nenhum.
+  ...(SHOW_SOCIAL_PROOF
+    ? [{ href: "/#depoimentos", label: "Depoimentos" }]
+    : []),
 ];
 
 export const Header = () => {
