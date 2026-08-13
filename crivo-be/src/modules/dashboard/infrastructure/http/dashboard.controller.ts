@@ -14,6 +14,7 @@ import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
 import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
 import { GetDashboardSummaryUseCase } from '../../application/use-cases/get-dashboard-summary.use-case';
 import { GetDashboardAnalyticsUseCase } from '../../application/use-cases/get-dashboard-analytics.use-case';
+import { GetNoShowCostUseCase } from '../../application/use-cases/get-no-show-cost.use-case';
 import { DashboardSummaryResponseDto } from '../dtos/dashboard-summary-response.dto';
 import { DashboardAnalyticsResponseDto } from '../dtos/dashboard-analytics-response.dto';
 import { QueryAnalyticsDto } from '../dtos/query-analytics.dto';
@@ -39,6 +40,7 @@ export class DashboardController {
   constructor(
     private readonly getDashboardSummary: GetDashboardSummaryUseCase,
     private readonly getDashboardAnalytics: GetDashboardAnalyticsUseCase,
+    private readonly getNoShowCost: GetNoShowCostUseCase,
   ) {}
 
   @Get('summary')
@@ -51,6 +53,19 @@ export class DashboardController {
     const result = await this.getDashboardSummary.execute(tenantId);
 
     return DashboardSummaryResponseDto.fromEntity(result);
+  }
+
+  /**
+   * Sem trava de plano, como o `summary`: é a resposta à pergunta que faz o
+   * dono da clínica assinar ("quanto a falta me custa?"). Escondê-la de quem
+   * está no Solo esconderia justamente o argumento de venda.
+   */
+  @Get('no-show-cost')
+  @ApiOperation({
+    summary: 'Quanto as faltas custaram no mês e quantas foram evitadas',
+  })
+  async noShowCost(@Tenant('tenantId') tenantId: string) {
+    return this.getNoShowCost.execute(tenantId);
   }
 
   @Get('analytics')
