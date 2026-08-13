@@ -75,6 +75,7 @@ model Tenant {
   waitlistEntries  WaitlistEntry[]
   anamneses        Anamnesis[]
   clinicalNotes    ClinicalNote[]
+  clinicalPhotos   ClinicalPhoto[]
   schedules        ProfessionalSchedule[]
   timeOff          ProfessionalTimeOff[]
 
@@ -162,6 +163,7 @@ model User {
   refreshTokens    RefreshToken[]
   professional     Professional?
   clinicalNotes    ClinicalNote[]
+  clinicalPhotos   ClinicalPhoto[]
   anamnesesUpdated Anamnesis[]
 
   @@index([tenantId])
@@ -199,6 +201,7 @@ model Patient {
   appointments    Appointment[]
   anamnesis       Anamnesis?
   clinicalNotes   ClinicalNote[]
+  clinicalPhotos  ClinicalPhoto[]
   messages        Message[]
   inboundMessages InboundMessage[]
   waitlistEntries WaitlistEntry[]
@@ -481,6 +484,7 @@ model Appointment {
   messages        Message[]
   inboundMessages InboundMessage[]
   clinicalNotes   ClinicalNote[]
+  clinicalPhotos  ClinicalPhoto[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
   @@index([tenantId, professionalId, startsAt])
@@ -651,6 +655,54 @@ model InboundMessage {
   @@index([tenantId, readAt])
   @@index([patientId])
   @@map("inbound_messages")
+}
+
+/// Momento que a foto clínica registra.
+enum ClinicalPhotoKind {
+  BEFORE
+  AFTER
+}
+
+/// Foto clínica (antes/depois) de um atendimento.
+///
+/// **Dado sensível de saúde**, como o prontuário: mesma restrição de papel
+/// (ADMIN/PROFESSIONAL) e mesma feature de plano (`hasMedicalRecords`).
+///
+/// O arquivo NÃO fica em URL pública. Sobe para o Cloudinary como
+/// `authenticated` e só é servido por URL assinada com expiração — link de
+/// foto clínica acaba em histórico de navegador, print e conversa de
+/// WhatsApp, e um link permanente vaza para sempre.
+///
+/// Ligada ao **atendimento**, não só ao paciente: em estética o que importa
+/// é "resultado da aplicação de 12/08", e é o atendimento que dá data,
+/// procedimento e profissional de graça. A galeria por paciente continua
+/// possível — basta agrupar pelos atendimentos dele.
+model ClinicalPhoto {
+  id            String @id @default(uuid())
+  tenantId      String @map("tenant_id")
+  patientId     String @map("patient_id")
+  appointmentId String @map("appointment_id")
+
+  kind ClinicalPhotoKind
+
+  /// `public_id` no Cloudinary. É com ele que a URL assinada é gerada a cada
+  /// leitura — nunca guardamos uma URL pronta, que expiraria no banco.
+  storageKey String  @map("storage_key")
+  caption    String?
+
+  /// Quem enviou. Foto clínica é registro: sem autor, não há responsável.
+  uploadedByUserId String @map("uploaded_by_user_id")
+
+  createdAt DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  uploadedBy  User        @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([tenantId, patientId, createdAt])
+  @@index([appointmentId])
+  @@map("clinical_photos")
 }
 
 /// Interpretação da resposta do paciente ao lembrete.

@@ -1,17 +1,24 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -27,7 +34,10 @@ import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.gua
 import { TrialGuard } from 'src/shared/guards/trial.guard';
 import { PlanFeatureGuard } from 'src/shared/guards/plan-feature.guard';
 import { RequiresPlanFeature } from 'src/shared/decorators/requires-plan-feature.decorator';
+import { assertValidImageUpload } from 'src/shared/validation/image-upload';
 import { CreateClinicalNoteDto } from '../dtos/create-clinical-note.dto';
+import { UploadClinicalPhotoDto } from '../dtos/upload-clinical-photo.dto';
+import { ManageClinicalPhotosUseCase } from '../../application/use-cases/manage-clinical-photos.use-case';
 import { UpsertAnamnesisDto } from '../dtos/upsert-anamnesis.dto';
 import {
   AnamnesisResponseDto,
@@ -63,6 +73,7 @@ export class MedicalRecordController {
     private readonly upsertAnamnesis: UpsertAnamnesisUseCase,
     private readonly getClinicalNotes: GetClinicalNotesUseCase,
     private readonly createClinicalNote: CreateClinicalNoteUseCase,
+    private readonly clinicalPhotos: ManageClinicalPhotosUseCase,
   ) {}
 
   @Get('anamnesis')
@@ -146,5 +157,79 @@ export class MedicalRecordController {
     });
 
     return ClinicalNoteResponseDto.fromEntity(note);
+  }
+
+  /**
+   * Galeria antes/depois do paciente.
+   *
+   * As URLs vêm assinadas e **expiram em minutos** — são geradas a cada
+   * leitura, nunca guardadas. Por isso não dá para cachear a resposta.
+   */
+  @Get('photos')
+  @ApiOperation({ summary: 'Fotos clínicas do paciente (ADMIN/PROFESSIONAL)' })
+  async listPhotos(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
+    @Tenant('tenantId') tenantId: string,
+  ) {
+    return this.clinicalPhotos.listByPatient(tenantId, patientId);
+  }
+
+  @Get('appointments/:appointmentId/photos')
+  @ApiOperation({ summary: 'Fotos de um atendimento específico' })
+  async listAppointmentPhotos(
+    @Param('appointmentId', ParseUUIDPipe) appointmentId: string,
+    @Tenant('tenantId') tenantId: string,
+  ) {
+    return this.clinicalPhotos.listByAppointment(tenantId, appointmentId);
+  }
+
+  @Post('appointments/:appointmentId/photos')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        kind: { type: 'string', enum: ['BEFORE', 'AFTER'] },
+        caption: { type: 'string' },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Envia foto antes/depois de um atendimento (ADMIN/PROFESSIONAL)',
+  })
+  async uploadPhoto(
+    @Param('appointmentId', ParseUUIDPipe) appointmentId: string,
+    @Tenant('tenantId') tenantId: string,
+    @Tenant('userId') userId: string,
+    @Body() dto: UploadClinicalPhotoDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    assertValidImageUpload(file);
+
+    return this.clinicalPhotos.upload({
+      tenantId,
+      appointmentId,
+      userId,
+      kind: dto.kind,
+      caption: dto.caption,
+      fileBuffer: file.buffer,
+    });
+  }
+
+  /**
+   * Diferente da evolução (append-only), foto pode ser excluída: a errada —
+   * paciente trocado, ou sem consentimento — precisa poder sair, e mantê-la
+   * só no storage seria guardar dado sensível que mandaram apagar.
+   */
+  @Delete('photos/:photoId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Exclui uma foto clínica (ADMIN/PROFESSIONAL)' })
+  async removePhoto(
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+    @Tenant('tenantId') tenantId: string,
+  ): Promise<void> {
+    await this.clinicalPhotos.remove(tenantId, photoId);
   }
 }
