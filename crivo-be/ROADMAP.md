@@ -274,6 +274,39 @@ duração declarada**.
   seguem sendo **hipótese não validada com cliente nenhum** — o que mudou foi
   a faixa de entrada, não a confiança no número.
 
+### O que o Agendiva faz melhor que nós (13/08/2026)
+
+Concorrente de R$ 39,90–99,90, focado em estética. Feature a feature não é
+melhor — **mas vende melhor**, e isso importa mais do que parece:
+
+1. **Vende dinheiro, não recurso.** A manchete deles é *"recupere até
+   R$ 1.500/mês que sua clínica perde com faltas"*. A nossa é *"o motor que
+   evita buracos na sua agenda"* — bonita, mas o dono da clínica precisa
+   traduzir sozinho para reais. **Nós temos o dado para fazer essa conta e
+   não fazemos**: `Appointment.priceInCents` × `NO_SHOW` do período é
+   exatamente "quanto a falta te custou".
+2. **Falam a dor em português de gente**: *"perdeu o caderninho da agenda de
+   novo"*. Nós falamos "predição de risco de no-show" — que é o **como**, não
+   o **quê**.
+3. **Prometem número verificável** ("reduz faltas em até 30%", "fecha
+   comissão em 5 minutos"). Nós fugimos de número por honestidade — está
+   certo não inventar, mas dá para prometer o que o produto **faz** com
+   precisão: "todo envio que falha vira uma lista de quem ligar".
+
+**O que temos e nenhum dos 11 concorrentes anuncia** (conferido no código,
+não de memória):
+
+- **Falha de envio nunca some**: lista de "ligue para estes pacientes" +
+  reenvio manual. Todos prometem lembrete; **ninguém** promete o que
+  acontece quando ele não chega.
+- **Escalonamento por risco**: quem tende a faltar recebe D-72h **e** D-24h;
+  quem sempre comparece recebe um só. Os outros mandam o mesmo lembrete para
+  todo mundo.
+- **Confirmação respondendo "sim"**, sem abrir link nem app.
+- **Medição honesta da própria predição** (`GET /no-show/accuracy`), que se
+  **recusa a concluir** com amostra menor que 30 casos. Nenhum concorrente
+  expõe isso — e é o oposto de "reduz até 30%" sem fonte.
+
 ### Posicionamento
 
 Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter mais recursos — é ter **a agenda que não deixa de avisar o paciente**:
@@ -673,6 +706,7 @@ Quatro observações:
 | Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
 | Migração de clínica que já usa concorrente | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar |
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
+| 🚧 **Instância do WhatsApp é única para o servidor inteiro** (achado em 13/08/2026) | 🔴 **Bloqueia o multi-tenant em produção.** `EVOLUTION_INSTANCE` é variável de ambiente, então **todas as clínicas enviariam pelo mesmo número** — o paciente da Clínica A receberia mensagem do número da Clínica B. Hoje não aparece porque só há uma clínica real. Resolver exige: campo `evolutionInstance` por `Tenant`, o `MessageProviderResolver` passando a instância ao provider (hoje ele resolve só *qual* provider), e uma tela para a clínica parear o próprio número por QR code. **Vale a mesma decisão para a Meta**: lá é um `phone_number_id` por clínica, mesma modelagem. Fazer isto ANTES de subir a segunda clínica |
 | **Evolution API em produção** (decidido em 05/08/2026 por custo) | ⚠️ **Risco aceito, não mitigado.** Banimento é permanente e sem recurso — perderíamos o número junto com a agenda do cliente. Mitigações possíveis enquanto durar: número dedicado (nunca o pessoal do dono), volume baixo, opt-in real do paciente, e a lista de falhas já existente para a recepção ligar. Migrar para a Meta assim que houver caixa é o plano, e o código já é plugável (`MESSAGING_PROVIDER`), então a troca é de env var, não de refactor |
 | Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |
 | Custo do DeepSeek por mensagem (feature de IA opcional) | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano |
