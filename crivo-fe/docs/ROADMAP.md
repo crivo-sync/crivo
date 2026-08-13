@@ -2,11 +2,16 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-13 (rev. 19 — **fotos antes/depois** na ficha
-> do paciente, agrupadas por atendimento, com URL assinada que expira e sem
-> botão de download; o painel passou a **esconder o que o plano não inclui**
-> (cadeado nas abas, em vez de 403 numa tela vazia); confirmação antes de
-> descer de plano).
+> Última atualização: 2026-08-13 (rev. 20 — o `/painel` abre dizendo **quanto
+> as faltas custaram este mês, em reais**; o resumo do dia foi **liberado em
+> todos os planos** — travá-lo fazia a clínica no Solo abrir o sistema e ver
+> uma tela de erro como primeira coisa; onde havia gráficos, quem não tem
+> `hasDashboard` vê um convite ao upgrade em vez de nada).
+>
+> Rev. 19 (13/08): **fotos antes/depois** na ficha do paciente, agrupadas por
+> atendimento, com URL assinada que expira e sem botão de download; o painel
+> passou a **esconder o que o plano não inclui** (cadeado nas abas, em vez de
+> 403 numa tela vazia); confirmação antes de descer de plano.
 >
 > Rev. 18 (13/08): agendamento que chega com a Agenda aberta é avisado e
 > destacado; botão "Marcar outra consulta" na confirmação do `/agendar`;
@@ -36,14 +41,14 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
 | `configuracoes` (tenants/me) | 🟢 Três abas: **Dados da clínica** (leitura para todos, edição ADMIN), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
 | `onboarding` | 🟢 Checklist no topo do `/painel` (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar (profissional, procedimento, primeiro agendamento) e some sozinho quando ela está operando |
-| `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `dashboard` e `medical-records`; `hasAiMessages` ainda não trava nada |
+| `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `medical-records`, `hasAiMessages` (no envio **e** no toggle das Configurações) e nos **gráficos** do `dashboard` — o resumo do dia e o custo das faltas ficam abertos em todos os planos |
 | `public-booking` (`/agendar/:subdomain`) | 🟢 Página pública onde o paciente marca sozinho, sem login. Cascata profissional → procedimento → dia → horário, com o mesmo cálculo de vaga do painel |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
 | Testes automatizados | 🟡 **38 testes E2E (Playwright)** em 9 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
 
-A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
+A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje abre com **o custo das faltas do mês em reais**, seguido de cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
 ---
 
@@ -303,6 +308,14 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Botão "Marcar outra consulta"** — antes, quem precisava de um segundo horário (outro procedimento, ou marcar para um familiar) só saía dali recarregando a página na mão. O `reset()` zera a seleção inteira, não só esconde a confirmação: manter profissional/procedimento/dia preenchidos faria a pessoa remarcar o mesmo horário sem perceber. `options` fica em cache — é a lista da clínica, não escolha do paciente.
   - Componente migrado de Tailwind para MUI no caminho: era o último pedaço da página pública fora do padrão. 2 testes E2E novos.
 - ~~**Campo "Dia" do agendamento público era um `<input type="date">` nativo**~~ — ✅ 12/08/2026. Único calendário do produto fora do padrão MUI `DatePicker` usado em todo o painel (`SlotPicker` da Agenda, filtros, lista de espera). Trocado, com `disablePast` e `shouldDisableDate` cinza nos dias fora de `clinic.businessDays` — o dado que a entrega anterior (dados de contato/horário) já tinha trazido para essa página, mas que ainda não era usado para nada. Efeito colateral corrigido de graça: o card de horário vazio mostrava o enum cru do backend (`WINDOW_PASSED`) em vez de texto em português — agora traduzido, igual ao `emptySlotsMessage` do painel. E2E adaptado para o padrão de `agendamento.spec.ts` (`getByRole("spinbutton", { name: "Dia" })`, já que o `DatePicker` expõe três elementos com o mesmo rótulo e `getByLabel` casa com os três).
+
+- ~~**O painel media faltas em contagem, não em dinheiro**~~ — ✅ 13/08/2026. `NoShowCostCard` no topo do `/painel`, acima dos cards de contagem: "As faltas custaram este mês · R$ 350,00 · 1 paciente faltou". Veio da análise do Agendiva, que vende *"recupere até R$ 1.500/mês"* enquanto nós vendíamos mecanismo — e o dado para a conta (`priceInCents`, congelado no ato do agendamento) já existia sem ninguém usar. Decisões:
+  - **Fica acima dos `SummaryCards`** — "R$ 350,00 perdidos" é o que faz o dono da clínica agir; "25 pacientes" é contexto. A ordem na tela é a ordem da urgência.
+  - **Não diz "R$ X recuperados pela lista de espera"**, que seria o número mais vendável: `WaitlistEntry` vira `OFFERED` e nunca registra se a oferta virou agendamento. O que aparece é "falta evitada" (compareceu **e** confirmou pelo WhatsApp).
+  - **A taxa só aparece com 5+ atendimentos concluídos** — "100% de faltas" com um único atendimento no mês é ruído apresentado como diagnóstico.
+  - **Mês sem falta vira card verde**, não um card de alerta zerado: notícia boa com moldura de alerta se lê como problema.
+  - Rota `GET /dashboard/no-show-cost` fora do `hasDashboard`, como o `summary` — esconder isso de quem está no Solo esconderia o próprio argumento de venda.
+- ~~**O resumo do painel estava travado por plano**~~ — ✅ 13/08/2026. `hasDashboard` cobria o `/painel` inteiro, então a clínica no Solo abria o sistema e a **primeira coisa** que via era uma tela de erro. A trava passou a ser por rota: resumo e custo das faltas abertos a todos, gráficos e faturamento seguem pagos. No lugar dos gráficos, `UpgradeChartsCard` convida ao upgrade — quem não tem o recurso vê o que está perdendo, em vez de um buraco na página.
 
 ### Fase 3 — Qualidade
 

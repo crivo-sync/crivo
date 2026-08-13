@@ -12,8 +12,17 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > painel), checklist de onboarding, **e-mails transacionais** (boas-vindas,
 > assinatura, trial acabando, falha de cobrança) e **fotos antes/depois** com
 > entrega autenticada — a última feature que faltava para clínica de estética.
+> Desde 13/08 o painel também abre com **quanto as faltas custaram em reais**,
+> e cada clínica envia pelo **seu próprio número de WhatsApp**.
 >
-> **O que segue aberto não depende de código:**
+> **O que segue aberto e depende de código:**
+> - **Reescrever a home na chave da dor** — o produto já mostra dinheiro no
+>   painel; a home ainda vende mecanismo ("o motor que evita buracos na sua
+>   agenda"). Ver [O que o Agendiva faz melhor](#o-que-o-agendiva-faz-melhor-que-nós-13082026)
+> - **Pareamento da Evolution por QR code** — hoje o nome da instância é
+>   digitado à mão nas Configurações
+>
+> **O que segue aberto e não depende de código:**
 > - **Credenciais da Meta** — adiado por custo. O provider está pronto e
 >   selecionável; sem as chaves, escolher META faz o envio falhar. Até lá o
 >   WhatsApp roda em Evolution, com risco de banimento **assumido**
@@ -48,7 +57,7 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 | `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
 | `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
 | `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial (11–12/08/2026). ⚠️ Preços seguem **hipótese não validada** com cliente real |
-| `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa |
+| `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa. **Custo das faltas em reais** (13/08/2026) no topo do painel, também liberado em todos os planos |
 | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
 | `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
 
@@ -285,6 +294,9 @@ melhor — **mas vende melhor**, e isso importa mais do que parece:
    traduzir sozinho para reais. **Nós temos o dado para fazer essa conta e
    não fazemos**: `Appointment.priceInCents` × `NO_SHOW` do período é
    exatamente "quanto a falta te custou".
+   → **Feito dentro do produto em 13/08/2026** (`GET /dashboard/no-show-cost`
+   + card no topo do painel). **Falta na home**: quem ainda não assinou
+   continua lendo mecanismo, não dinheiro — ver Fase 3.
 2. **Falam a dor em português de gente**: *"perdeu o caderninho da agenda de
    novo"*. Nós falamos "predição de risco de no-show" — que é o **como**, não
    o **quê**.
@@ -461,6 +473,13 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **O veredito vem do backend**, não da tela: quem lê o número precisa da mesma ressalva em qualquer lugar
      - 7 testes, incluindo um que compara dois cenários (falta antes × falta depois) para provar que a ordem temporal é respeitada — se a falta futura vazasse, os dois dariam o mesmo resultado
      - **Estado hoje**: 7 atendimentos com desfecho no banco de dev — amostra insuficiente, e a medição diz isso. Validada com 140 casos sintéticos: HIGH 33,3% × LOW 0%, `separates: true`
+   - [x] **Custo das faltas em reais** (13/08/2026) — `GET /dashboard/no-show-cost` + card no topo do painel. Nasceu da análise do Agendiva: o produto media no-show em contagem e percentual, que é linguagem de produto; dono de clínica pensa em dinheiro, e `Appointment.priceInCents` (preço congelado no ato) já permitia a conta. Decisões:
+     - **Não afirma "R$ X recuperados pela lista de espera"**, que seria o número mais vendável e o que o concorrente anuncia. `WaitlistEntry` vira `OFFERED` e para por aí — não registra se a oferta virou agendamento. Fazer a conta assim mesmo seria inventar o principal número da tela
+     - **"Falta evitada" exige `COMPLETED` + `confirmedAt`** — sem a confirmação seria só "veio à consulta", que aconteceria com ou sem o Crivo. É o mais perto de "o produto salvou isso" que o dado sustenta
+     - **Taxa é `null`, não `0`, em mês sem desfecho** — 0% afirmaria "nenhum paciente falta aqui". E na tela ela só aparece com 5+ atendimentos concluídos: "100% de faltas" com um atendimento é ruído, não diagnóstico
+     - **Fora do `hasDashboard`**, como o `summary`: esconder de quem está no Solo esconderia o próprio argumento de venda
+     - Mês sem falta vira card verde ("Nenhuma falta este mês"), não um card de alerta zerado — que passaria a impressão oposta
+     - 5 testes do use case + verificado ao vivo no painel: "As faltas custaram este mês · R$ 350,00 · 1 paciente faltou"
 5. **Lista de espera** — preenche a lacuna quando o risco se concretiza
    - [x] **Backend** (10/08/2026) — tabela `waitlist_entries` e `GET/POST /waitlist`, `GET /waitlist/candidates/:appointmentId`, `PATCH :id/offered`, `DELETE :id`. Decisões:
      - **Sugere, não oferece sozinho** — mandar mensagem automática ao primeiro da fila parece eficiente, mas remarcar tem contexto que o sistema não tem ("essa paciente pediu para não ligar de manhã"), e oferta errada gasta conversa paga. A recepção decide; `PATCH :id/offered` registra que ela avisou
