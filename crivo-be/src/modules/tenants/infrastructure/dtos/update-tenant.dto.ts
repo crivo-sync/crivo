@@ -11,7 +11,9 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -72,6 +74,24 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsEnum(MessagingProvider)
   messagingProvider?: MessagingProvider;
+
+  @ApiPropertyOptional({
+    example: 'clinica-sorriso',
+    description:
+      'Instância da Evolution desta clínica — na prática, o número de ' +
+      'WhatsApp dela, pareado por QR code no painel da Evolution. Uma por ' +
+      'clínica: sem isso todas enviariam pelo mesmo número. Vazio = usa o ' +
+      'padrão do servidor (EVOLUTION_INSTANCE).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  // Nome de instância vai direto na URL da Evolution: barra ou espaço
+  // quebrariam a rota, e caractere estranho abriria caminho para injeção.
+  @Matches(/^[a-zA-Z0-9_-]*$/, {
+    message: 'Use apenas letras, números, hífen e underscore.',
+  })
+  evolutionInstance?: string;
 
   @ApiPropertyOptional({
     example: 480,

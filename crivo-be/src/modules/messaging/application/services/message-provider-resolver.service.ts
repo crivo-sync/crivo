@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { MessagingProvider } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
-import type { MessageProvider } from '../../domain/provider/message-provider';
+import type {
+  MessageProvider,
+  SendMessageInput,
+} from '../../domain/provider/message-provider';
 import { EvolutionMessageProvider } from '../../infrastructure/providers/evolution-message.provider';
 import { FakeMessageProvider } from '../../infrastructure/providers/fake-message.provider';
 import { MetaMessageProvider } from '../../infrastructure/providers/meta-message.provider';
@@ -19,7 +22,16 @@ import { MetaMessageProvider } from '../../infrastructure/providers/meta-message
  * `Tenant.messagingProvider` nulo mantém o comportamento antigo: usa o
  * padrão do servidor. As credenciais continuam em variáveis de ambiente; a
  * clínica escolhe o caminho, não guarda segredo no banco.
+ *
+ * Devolve **provider e remetente juntos** porque são a mesma decisão: de
+ * nada adianta acertar o caminho (Evolution) e errar o número — a mensagem
+ * sairia pelo WhatsApp de outra clínica.
  */
+export type ResolvedSender = {
+  provider: MessageProvider;
+  sender: NonNullable<SendMessageInput['sender']>;
+};
+
 @Injectable()
 export class MessageProviderResolver {
   private readonly logger = new Logger(MessageProviderResolver.name);
@@ -32,13 +44,16 @@ export class MessageProviderResolver {
     private readonly meta: MetaMessageProvider,
   ) {}
 
-  async resolveForTenant(tenantId: string): Promise<MessageProvider> {
+  async resolveForTenant(tenantId: string): Promise<ResolvedSender> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { messagingProvider: true },
+      select: { messagingProvider: true, evolutionInstance: true },
     });
 
-    return this.byName(tenant?.messagingProvider ?? this.serverDefault());
+    return {
+      provider: this.byName(tenant?.messagingProvider ?? this.serverDefault()),
+      sender: { evolutionInstance: tenant?.evolutionInstance ?? null },
+    };
   }
 
   /** Padrão do servidor, para quem ainda não escolheu. */

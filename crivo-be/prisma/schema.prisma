@@ -34,6 +34,18 @@ model Tenant {
   /// segredo no banco.
   messagingProvider MessagingProvider? @map("messaging_provider")
 
+  /// Instância da Evolution desta clínica — na prática, **o número de
+  /// WhatsApp dela**, pareado por QR code.
+  ///
+  /// Uma por tenant: sem isso a instância vinha do ambiente e todas as
+  /// clínicas enviariam pelo mesmo número, fazendo o paciente da Clínica A
+  /// receber mensagem do número da Clínica B.
+  ///
+  /// `null` cai no padrão do servidor (`EVOLUTION_INSTANCE`), aceitável só
+  /// enquanto existe uma clínica. O equivalente da Meta (`phone_number_id`)
+  /// entra aqui do lado quando as credenciais existirem.
+  evolutionInstance String? @map("evolution_instance")
+
   /// Horário de funcionamento, em minutos desde a meia-noite (480 = 08:00).
   /// Inteiro em vez de String("08:00") de propósito: comparar agendamento com
   /// o expediente vira aritmética simples, sem parsing nem fuso no meio.
