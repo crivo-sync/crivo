@@ -120,8 +120,13 @@ model Plan {
   hasAiMessages       Boolean @default(false) @map("has_ai_messages")
   hasWaitlist         Boolean @default(false) @map("has_waitlist")
   hasDashboard        Boolean @default(false) @map("has_dashboard")
-  /// Prontuário (anamnese + evolução). Diferencial do plano topo: é o
-  /// módulo que o concorrente cobra à parte (R$29/mês avulso).
+  /// Prontuário (anamnese + evolução) **e fotos antes/depois**. Diferencial
+  /// do plano topo: o concorrente cobra o prontuário à parte (R$29/mês
+  /// avulso), e as fotos são o argumento de venda para estética.
+  ///
+  /// As duas coisas sob a mesma flag de propósito: é o mesmo dado sensível
+  /// de saúde, com a mesma restrição de papel (ADMIN/PROFESSIONAL). Separar
+  /// criaria um plano que vende foto clínica sem prontuário para registrá-la.
   hasMedicalRecords   Boolean @default(false) @map("has_medical_records")
 
   /// IDs do Stripe Dashboard. `stripePriceId` fica opcional porque o produto

@@ -43,6 +43,15 @@ export function planComparableFeatures(plan: Plan): PlanFeatureLine[] {
       text: "Prontuário (anamnese e evolução)",
       included: plan.hasMedicalRecords,
     },
+    /**
+     * Linha própria, embora compartilhe a flag do prontuário: para clínica de
+     * estética o antes/depois é o argumento de venda, e escondê-lo dentro de
+     * "Prontuário" faria o comprador não ver o que mais lhe interessa.
+     */
+    {
+      text: "Fotos antes/depois por atendimento",
+      included: plan.hasMedicalRecords,
+    },
     { text: "Mensagens reescritas por IA", included: plan.hasAiMessages },
     { text: "Painel com gráficos e faturamento", included: plan.hasDashboard },
 

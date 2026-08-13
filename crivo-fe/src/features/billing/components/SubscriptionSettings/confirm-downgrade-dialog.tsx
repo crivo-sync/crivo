@@ -49,8 +49,12 @@ export const ConfirmDowngradeDialog = ({
       perdas.push("Predição de risco de no-show");
     if (currentPlan.hasWaitlist && !targetPlan.hasWaitlist)
       perdas.push("Lista de espera com aviso automático");
-    if (currentPlan.hasMedicalRecords && !targetPlan.hasMedicalRecords)
+    if (currentPlan.hasMedicalRecords && !targetPlan.hasMedicalRecords) {
       perdas.push("Prontuário (anamnese e evolução)");
+      // Item separado de propósito: quem tem foto guardada precisa ver que
+      // vai perder acesso a ela, não deduzir isso de "prontuário".
+      perdas.push("Fotos antes/depois (as já enviadas ficam inacessíveis)");
+    }
     if (currentPlan.hasAiMessages && !targetPlan.hasAiMessages)
       perdas.push("Mensagens reescritas por IA");
     if (currentPlan.hasDashboard && !targetPlan.hasDashboard)

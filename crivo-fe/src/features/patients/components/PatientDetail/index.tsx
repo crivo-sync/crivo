@@ -38,7 +38,7 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
   // quem é clínico: sem ver, a clínica não sabe que existe.
   const { has, planName } = usePlanFeatures();
   const canRecords = has("hasMedicalRecords");
-  const lockedHint = `Prontuário está no plano Avançado — o ${planName} não inclui.`;
+  const lockedHint = `Prontuário e fotos antes/depois estão no plano Avançado — o ${planName} não inclui.`;
 
   if (error) {
     return <ErrorServer message={error.message} onRetry={() => refetch()} />;
