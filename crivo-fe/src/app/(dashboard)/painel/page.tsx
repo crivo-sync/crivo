@@ -4,6 +4,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import { DashboardHome } from "@/features/dashboard/components/DashboardHome";
+import { OnboardingChecklist } from "@/features/tenant/components/OnboardingChecklist";
 
 export const metadata: Metadata = {
   title: "Painel — Crivo",
@@ -18,6 +19,10 @@ const DashboardPage = () => {
           Visão geral do dia na clínica.
         </Typography>
       </Box>
+      {/* Antes do resumo do dia: clínica que ainda não configurou nada vê um
+          painel todo zerado, e o checklist é o que explica o porquê. Some
+          sozinho quando a clínica está operando. */}
+      <OnboardingChecklist />
       <DashboardHome />
     </Stack>
   );

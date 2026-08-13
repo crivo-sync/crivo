@@ -31,6 +31,7 @@ import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-cas
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
 import { GetTenantBrandingUseCase } from '../../application/use-cases/get-tenant-branding.use-case';
 import { UpdateTenantLogoUseCase } from '../../application/use-cases/update-tenant-logo.use-case';
+import { GetOnboardingStatusUseCase } from '../../application/use-cases/get-onboarding-status.use-case';
 
 @ApiTags('Clínicas')
 @Controller('tenants')
@@ -40,6 +41,7 @@ export class TenantController {
     private readonly updateTenant: UpdateTenantUseCase,
     private readonly getTenantBranding: GetTenantBrandingUseCase,
     private readonly updateTenantLogo: UpdateTenantLogoUseCase,
+    private readonly getOnboardingStatus: GetOnboardingStatusUseCase,
   ) {}
 
   @Get('branding/:subdomain')
@@ -60,6 +62,23 @@ export class TenantController {
   // sem forma de descobrir por quê.
   async me(@Tenant('tenantId') tenantId: string) {
     return this.getTenant.execute(tenantId);
+  }
+
+  @Get('me/onboarding')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @ApiOperation({
+    summary: 'O que ainda falta para a clínica começar a operar',
+  })
+  // Mesmos guards de `GET me`, pelo mesmo motivo e mais um: sem `TrialGuard`,
+  // quem venceu o teste ainda vê o que falta; sem `PlanFeatureGuard`, o Solo
+  // também vê — é justamente o plano de entrada que mais precisa disso, e o
+  // painel com gráficos (que traria esses números de graça) é pago.
+  //
+  // Registrado ANTES de `@Patch('me')` não importa (métodos HTTP diferentes),
+  // mas fica junto de `me` por ser a mesma família de rota.
+  async onboarding(@Tenant('tenantId') tenantId: string) {
+    return this.getOnboardingStatus.execute(tenantId);
   }
 
   @Patch('me')
