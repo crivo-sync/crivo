@@ -41,6 +41,20 @@ export type Tenant = {
   updatedAt: string;
 };
 
+/**
+ * O que falta para a clínica começar a operar. Clínica nova nasce sem
+ * profissional e sem procedimento, e sem os dois a agenda não calcula
+ * horário nem a página `/agendar` funciona.
+ */
+export type OnboardingStatus = {
+  hasProfessional: boolean;
+  hasProcedure: boolean;
+  hasAppointment: boolean;
+  /** Para montar o link do `/agendar` que a clínica divulga. */
+  subdomain: string;
+  isComplete: boolean;
+};
+
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; data?: undefined };

@@ -41,7 +41,7 @@ export class ConfirmByTokenUseCase {
     const appointment = await this.prisma.appointment.findUnique({
       where: { confirmationToken: token },
       include: {
-        patient: { select: { name: true, phone: true } },
+        patient: { select: { id: true, name: true, phone: true } },
         professional: { select: { name: true } },
         procedure: { select: { name: true } },
         tenant: { select: { name: true } },
@@ -100,9 +100,15 @@ export class ConfirmByTokenUseCase {
     const receipt = await this.messageRepository.create({
       tenantId: appointment.tenantId,
       appointmentId: appointment.id,
+      patientId: appointment.patient.id,
       type: MessageType.APPOINTMENT_CONFIRMATION_RECEIPT,
       toPhone: appointment.patient.phone,
-      body: this.templates.confirmationReceipt(appointment.tenant.name),
+      body: this.templates.confirmationReceipt(appointment.tenant.name, {
+        patientName: appointment.patient.name,
+        professionalName: appointment.professional.name,
+        procedureName: appointment.procedure.name,
+        startsAt: appointment.startsAt,
+      }),
     });
 
     await this.queue.add('send', { messageId: receipt.id }, SEND_JOB_OPTIONS);

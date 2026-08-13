@@ -54,6 +54,13 @@ export class MessageResponseDto {
     patient: { id: string; name: string; phone: string };
   } | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Paciente direto — populado mesmo sem agendamento (ex.: MANUAL)',
+  })
+  patient!: { id: string; name: string; phone: string } | null;
+
   static fromEntity(message: MessageWithPatient): MessageResponseDto {
     return {
       id: message.id,
@@ -69,6 +76,7 @@ export class MessageResponseDto {
       scheduledFor: message.scheduledFor,
       createdAt: message.createdAt,
       appointment: message.appointment,
+      patient: message.patient,
     };
   }
 }

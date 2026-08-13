@@ -4,6 +4,7 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 
 import type { SubscriptionStatus } from "@/features/tenant/types";
+import { trialDaysLeft } from "@/lib/trial";
 
 type TrialBannerProps = {
   status: SubscriptionStatus;
@@ -13,11 +14,6 @@ type TrialBannerProps = {
 /** Só avisa nos últimos 3 dias — antes disso o banner seria ruído para
  * quem ainda tem trial de sobra. */
 const WARN_DAYS = 3;
-
-function daysUntil(iso: string): number {
-  const diffMs = new Date(iso).getTime() - Date.now();
-  return Math.ceil(diffMs / 86_400_000);
-}
 
 export const TrialBanner = ({ status, endsAt }: TrialBannerProps) => {
   if (status === "EXPIRED") {
@@ -31,7 +27,7 @@ export const TrialBanner = ({ status, endsAt }: TrialBannerProps) => {
 
   if (status !== "TRIALING") return null;
 
-  const days = daysUntil(endsAt);
+  const days = trialDaysLeft(endsAt);
   if (days > WARN_DAYS) return null;
 
   return (

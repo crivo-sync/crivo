@@ -17,6 +17,13 @@ export type CheckoutSession = {
   url: string;
 };
 
+export type MessageUsage = {
+  used: number;
+  /** `null` = sem teto (plano Avançado). */
+  limit: number | null;
+  isTrial: boolean;
+};
+
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; data?: undefined };

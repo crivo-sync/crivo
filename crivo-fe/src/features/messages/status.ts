@@ -29,5 +29,6 @@ export const TYPE_LABELS: Record<MessageType, string> = {
   APPOINTMENT_BOOKED: "Aviso de agendamento",
   APPOINTMENT_REMINDER: "Lembrete de agendamento",
   APPOINTMENT_CONFIRMATION_RECEIPT: "Confirmação de presença",
-  MANUAL: "Manual",
+  WAITLIST_OFFER: "Oferta de vaga",
+  MANUAL: "Resposta da clínica",
 };

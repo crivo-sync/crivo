@@ -4,6 +4,7 @@ export type MessageType =
   | "APPOINTMENT_BOOKED"
   | "APPOINTMENT_REMINDER"
   | "APPOINTMENT_CONFIRMATION_RECEIPT"
+  | "WAITLIST_OFFER"
   | "MANUAL";
 
 export type MessageStatus =
@@ -56,6 +57,25 @@ export type InboundMessage = {
  */
 export type InboundMessagesResponse = PaginatedResponse<InboundMessage> & {
   unreadTotal: number;
+};
+
+/**
+ * Uma linha da conversa com o paciente — envio e recebimento achatados no
+ * mesmo formato pelo backend, para a tela renderizar bolhas sem checar de
+ * qual tabela cada uma veio.
+ *
+ * Os campos que não existem na outra ponta vêm nulos: `status`/`type` só em
+ * `OUT` (recebida não tem fila nem tentativa), `intent` só em `IN`.
+ */
+export type ConversationEntry = {
+  id: string;
+  direction: "OUT" | "IN";
+  body: string;
+  at: string;
+  type: MessageType | null;
+  status: MessageStatus | null;
+  lastError: string | null;
+  intent: ReplyIntent | null;
 };
 
 export type PaginationMeta = {

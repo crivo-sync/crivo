@@ -112,7 +112,11 @@ export class PublicBookingController {
         logoUrl: tenant.logoUrl,
         primaryColor: tenant.primaryColor,
         phone: tenant.phone,
+        email: tenant.email,
         address: tenant.address,
+        businessHoursStart: tenant.businessHoursStart,
+        businessHoursEnd: tenant.businessHoursEnd,
+        businessDays: tenant.businessDays,
       },
       professionals,
       procedures,
@@ -175,7 +179,11 @@ export class PublicBookingController {
         logoUrl: true,
         primaryColor: true,
         phone: true,
+        email: true,
         address: true,
+        businessHoursStart: true,
+        businessHoursEnd: true,
+        businessDays: true,
       },
     });
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/ui/logo";
+import { SHOW_SOCIAL_PROOF } from "@/app/(website)/_data/social-proof";
 
 const footerLinks = {
   Produto: [
@@ -13,7 +14,10 @@ const footerLinks = {
   Empresa: [
     { label: "Sobre", href: "/#produto" },
     { label: "Diferenciais", href: "/#diferenciais" },
-    { label: "Depoimentos", href: "/#depoimentos" },
+    // Mesma flag da seção: sem ela, a âncora não existe na página.
+    ...(SHOW_SOCIAL_PROOF
+      ? [{ label: "Depoimentos", href: "/#depoimentos" }]
+      : []),
     { label: "Comece grátis", href: "/cadastro" },
   ],
 };

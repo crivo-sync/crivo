@@ -8,6 +8,7 @@ import { GetTenantUseCase } from './application/use-cases/get-tenant.use-case';
 import { UpdateTenantUseCase } from './application/use-cases/update-tenant.use-case';
 import { GetTenantBrandingUseCase } from './application/use-cases/get-tenant-branding.use-case';
 import { UpdateTenantLogoUseCase } from './application/use-cases/update-tenant-logo.use-case';
+import { GetOnboardingStatusUseCase } from './application/use-cases/get-onboarding-status.use-case';
 import { GuardsModule } from '../../shared/guards/guards.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     UpdateTenantUseCase,
     GetTenantBrandingUseCase,
     UpdateTenantLogoUseCase,
+    GetOnboardingStatusUseCase,
   ],
   exports: [TENANT_REPOSITORY],
 })

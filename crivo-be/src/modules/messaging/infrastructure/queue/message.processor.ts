@@ -4,6 +4,7 @@ import { MessageStatus } from '@prisma/client';
 import { Job } from 'bullmq';
 
 import { MessageProviderResolver } from '../../application/services/message-provider-resolver.service';
+import { CheckMessageQuotaUseCase } from '../../application/use-cases/check-message-quota.use-case';
 import {
   MESSAGE_REPOSITORY,
   type MessageRepository,
@@ -26,6 +27,7 @@ export class MessageProcessor extends WorkerHost {
     // provider diferente, e a escolha muda em runtime pela tela de
     // Configurações — um provider injetado no boot ficaria congelado.
     private readonly providerResolver: MessageProviderResolver,
+    private readonly checkQuota: CheckMessageQuotaUseCase,
   ) {
     super();
   }
@@ -61,7 +63,7 @@ export class MessageProcessor extends WorkerHost {
       [
         `tentativa ${attempt}/${total}`,
         `tipo=${message.type}`,
-        `paciente=${message.appointment?.patient.name ?? '—'}`,
+        `paciente=${message.patient?.name ?? message.appointment?.patient.name ?? '—'}`,
         `telefone=${message.toPhone}`,
         `atendimento=${message.appointmentId ?? '—'}`,
         `provider=${provider.name}`,
@@ -86,6 +88,21 @@ export class MessageProcessor extends WorkerHost {
         'Ignorada: agendamento foi remarcado, este texto tem a data antiga.',
       );
       return { outcome: 'skipped', reason: 'cancelada por reagendamento' };
+    }
+
+    // Franquia do mês estourada. Falha (e não "skip") de propósito: a
+    // mensagem aparece na lista de falhas, que é a tela onde a recepção vê
+    // quem precisa de ligação. Sumir em silêncio deixaria o paciente sem
+    // aviso e a clínica sem saber.
+    const quota = await this.checkQuota.execute(message.tenantId);
+    if (!quota.allowed) {
+      const motivo = quota.isTrial
+        ? `Franquia do teste esgotada (${quota.used}/${quota.limit} mensagens). Escolha um plano em Configurações → Assinatura para continuar enviando.`
+        : `Franquia do plano esgotada (${quota.used}/${quota.limit} mensagens neste mês). Faça upgrade em Configurações → Assinatura.`;
+
+      await this.messageRepository.markFailed(message.id, motivo);
+      await this.trace(job, `Bloqueada: ${motivo}`);
+      return { outcome: 'skipped', reason: 'franquia esgotada' };
     }
 
     await this.messageRepository.incrementAttempts(message.id);
@@ -149,7 +166,10 @@ export class MessageProcessor extends WorkerHost {
     // Última tentativa: aqui a recepção vira responsável por ligar, então o
     // log precisa dizer PARA QUEM, não só o id da mensagem.
     const message = await this.messageRepository.findById(job.data.messageId);
-    const who = message?.appointment?.patient.name ?? 'paciente desconhecido';
+    const who =
+      message?.patient?.name ??
+      message?.appointment?.patient.name ??
+      'paciente desconhecido';
     const phone = message?.toPhone ?? '—';
 
     await this.trace(

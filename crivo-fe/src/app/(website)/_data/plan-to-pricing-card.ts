@@ -3,12 +3,14 @@ import type { Plan } from "@/features/billing/types";
 import type { PricingPlan, PricingTier } from "../_components/pricing-card";
 
 const TIER_BY_KEY: Record<string, PricingTier> = {
+  SOLO: "solo",
   BASICO: "basico",
   INTERMEDIARIO: "intermediario",
   AVANCADO: "avancado",
 };
 
 const TAGLINE_BY_KEY: Record<string, string> = {
+  SOLO: "Para quem atende sozinho e quer parar de perder horário.",
   BASICO: "Para quem está começando a organizar a agenda.",
   INTERMEDIARIO: "Para quem já sente o peso das faltas na agenda.",
   AVANCADO: "Para quem também precisa de prontuário clínico.",

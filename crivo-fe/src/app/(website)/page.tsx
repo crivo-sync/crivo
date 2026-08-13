@@ -9,6 +9,7 @@ import { SocialProof } from "./_components/social-proof";
 import { Testimonials } from "./_components/testimonials";
 import { PricingTeaser } from "./_components/pricing-teaser";
 import { FinalCta } from "./_components/final-cta";
+import { SHOW_SOCIAL_PROOF } from "./_data/social-proof";
 
 export const metadata: Metadata = {
   title: "Crivo — O motor que evita buracos na sua agenda",
@@ -24,8 +25,13 @@ const HomePage = () => {
       <ImpactBand />
       <ModuleTabs />
       <Differentiators />
-      <SocialProof />
-      <Testimonials />
+      {/* Escondidas até haver cliente real — ver `_data/social-proof.ts`. */}
+      {SHOW_SOCIAL_PROOF && (
+        <>
+          <SocialProof />
+          <Testimonials />
+        </>
+      )}
       <PricingTeaser />
       <FinalCta />
     </>

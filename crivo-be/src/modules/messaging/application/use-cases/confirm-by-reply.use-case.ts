@@ -147,7 +147,12 @@ export class ConfirmByReplyUseCase {
       },
       orderBy: { startsAt: 'asc' },
       include: {
-        patient: { select: { phone: true } },
+        // `name`, profissional e procedimento entram para o recibo repetir os
+        // dados da consulta — é a última mensagem antes do atendimento, e a
+        // que o paciente procura na conversa para lembrar do horário.
+        patient: { select: { name: true, phone: true } },
+        professional: { select: { name: true } },
+        procedure: { select: { name: true } },
         tenant: { select: { name: true } },
       },
     });
@@ -156,15 +161,25 @@ export class ConfirmByReplyUseCase {
   private async sendReceipt(appointment: {
     id: string;
     tenantId: string;
-    patient: { phone: string };
+    patientId: string;
+    startsAt: Date;
+    patient: { name: string; phone: string };
+    professional: { name: string };
+    procedure: { name: string };
     tenant: { name: string };
   }): Promise<void> {
     const receipt = await this.messageRepository.create({
       tenantId: appointment.tenantId,
       appointmentId: appointment.id,
+      patientId: appointment.patientId,
       type: MessageType.APPOINTMENT_CONFIRMATION_RECEIPT,
       toPhone: appointment.patient.phone,
-      body: this.templates.confirmationReceipt(appointment.tenant.name),
+      body: this.templates.confirmationReceipt(appointment.tenant.name, {
+        patientName: appointment.patient.name,
+        professionalName: appointment.professional.name,
+        procedureName: appointment.procedure.name,
+        startsAt: appointment.startsAt,
+      }),
     });
 
     await this.queue.add('send', { messageId: receipt.id }, SEND_JOB_OPTIONS);

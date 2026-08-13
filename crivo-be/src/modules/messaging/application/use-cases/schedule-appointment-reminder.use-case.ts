@@ -49,7 +49,7 @@ export class ScheduleAppointmentReminderUseCase {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
-        patient: { select: { name: true, phone: true } },
+        patient: { select: { id: true, name: true, phone: true } },
         professional: { select: { name: true } },
         procedure: { select: { name: true } },
         tenant: { select: { name: true, aiMessagesEnabled: true } },
@@ -117,6 +117,7 @@ export class ScheduleAppointmentReminderUseCase {
       const message = await this.messageRepository.create({
         tenantId: appointment.tenantId,
         appointmentId: appointment.id,
+        patientId: appointment.patient.id,
         type: MessageType.APPOINTMENT_REMINDER,
         toPhone: appointment.patient.phone,
         body,
@@ -162,7 +163,7 @@ export class ScheduleAppointmentReminderUseCase {
       id: string;
       tenantId: string;
       startsAt: Date;
-      patient: { name: string; phone: string };
+      patient: { id: string; name: string; phone: string };
       professional: { name: string };
       procedure: { name: string };
       tenant: { name: string };
@@ -186,6 +187,7 @@ export class ScheduleAppointmentReminderUseCase {
     const message = await this.messageRepository.create({
       tenantId: appointment.tenantId,
       appointmentId: appointment.id,
+      patientId: appointment.patient.id,
       type: MessageType.APPOINTMENT_BOOKED,
       toPhone: appointment.patient.phone,
       body,

@@ -19,6 +19,7 @@ const WITH_PATIENT = {
       patient: { select: { id: true, name: true, phone: true } },
     },
   },
+  patient: { select: { id: true, name: true, phone: true } },
 } satisfies Prisma.MessageInclude;
 
 @Injectable()
@@ -33,6 +34,13 @@ export class PrismaMessageRepository implements MessageRepository {
     return this.prisma.message.findUnique({
       where: { id },
       include: WITH_PATIENT,
+    });
+  }
+
+  findByPatient(tenantId: string, patientId: string): Promise<Message[]> {
+    return this.prisma.message.findMany({
+      where: { tenantId, patientId },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

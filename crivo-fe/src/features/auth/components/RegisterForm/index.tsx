@@ -2,6 +2,7 @@
 
 import { Controller } from "react-hook-form";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -9,6 +10,12 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 
+import { MaskedTextField } from "@/components/masked-text-field";
+import { PHONE_MASK } from "@/lib/br-masks";
+import {
+  PasswordField,
+  PasswordStrength,
+} from "@/components/password-field";
 import { useRegister } from "../../hooks/use-register";
 
 export const RegisterForm = () => {
@@ -109,18 +116,41 @@ export const RegisterForm = () => {
 
       <Controller
         control={control}
-        name="password"
+        name="phone"
         render={({ field, fieldState }) => (
-          <TextField
+          <MaskedTextField
             {...field}
-            id="password"
-            type="password"
-            label="Senha"
-            autoComplete="new-password"
+            {...PHONE_MASK}
+            id="phone"
+            label="WhatsApp da clínica"
             error={!!fieldState.error}
-            helperText={fieldState.error?.message}
+            helperText={
+              fieldState.error?.message ??
+              "É por aqui que falamos com você sobre a conta"
+            }
             fullWidth
           />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="password"
+        render={({ field, fieldState }) => (
+          <Box>
+            <PasswordField
+              {...field}
+              id="password"
+              label="Senha"
+              autoComplete="new-password"
+              error={!!fieldState.error}
+              helperText={fieldState.error?.message}
+              fullWidth
+            />
+            {/* Medidor abaixo do campo, não no `helperText`: ali ele
+                brigaria com a mensagem de erro do Zod. */}
+            <PasswordStrength password={field.value} />
+          </Box>
         )}
       />
 

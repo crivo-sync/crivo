@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
@@ -11,6 +12,7 @@ import { ErrorServer } from "@/components/ui/error-server";
 import { useAppointmentFormOptions } from "../../hooks/use-appointment-form-options";
 import { useAppointmentsFiltersState } from "../../hooks/use-appointments-filters-state";
 import { useAppointments } from "../../hooks/use-appointments";
+import { useNewAppointments } from "../../hooks/use-new-appointments";
 import type { Appointment, AppointmentStatus } from "../../types";
 import { AppointmentFilters } from "../AppointmentFilters";
 import { AppointmentsTable } from "../AppointmentsTable";
@@ -43,6 +45,11 @@ export const AppointmentManagement = () => {
   });
   const { professionals, patients } = useAppointmentFormOptions();
   const changeStatus = useChangeAppointmentStatus();
+  const {
+    count: newCount,
+    newIds,
+    clear: clearNewIds,
+  } = useNewAppointments(appointments);
 
   const [formOpen, setFormOpen] = useState(false);
   const [reschedulingAppointment, setReschedulingAppointment] = useState<
@@ -107,10 +114,37 @@ export const AppointmentManagement = () => {
         </Button>
       </Box>
 
+      {/* O aviso é o que faz a chegada ser notada: a linha nova entra no meio
+          da tabela e, sozinha, passa despercebida por quem não estava olhando
+          na hora. Some ao ser reconhecido — não é estado permanente.
+
+          A contagem vem do servidor, não de `newIds`: a lista é ordenada por
+          data de atendimento, então quem marca para daqui a dias cai em outra
+          página, e um aviso baseado só no que está carregado nunca apareceria
+          para quem está na página 1. */}
+      {newCount > 0 && (
+        <Alert
+          severity="info"
+          onClose={clearNewIds}
+          sx={{ alignItems: "center" }}
+        >
+          {newCount === 1
+            ? "1 agendamento novo chegou"
+            : `${newCount} agendamentos novos chegaram`}
+          {/* Só promete destaque quando a linha está mesmo visível: pode ter
+              chegado em outra página, e mandar procurar destaque que não
+              existe é pior que não dizer nada. */}
+          {newIds.size > 0
+            ? " — destacado(s) na lista abaixo."
+            : " — em outra página da lista."}
+        </Alert>
+      )}
+
       <AppointmentsTable
         appointments={appointments}
         meta={meta}
         loading={isLoading}
+        newIds={newIds}
         onReschedule={setReschedulingAppointment}
         onChangeStatus={handleChangeStatus}
         onUpdateParams={updateParams}

@@ -77,12 +77,13 @@ test.describe("Novo agendamento", () => {
     await dialog.getByLabel("Procedimento").click();
     await page.getByRole("option").first().click();
 
-    // Escolhe um dia útil futuro pelo campo de data.
-    const dia = proximoDiaUtil(7);
-    await preencherDia(dialog, dia);
-
-    const chip = dialog.getByRole("button", { name: /\d{2}:\d{2} → \d{2}:\d{2}/ });
-    await expect(chip.first()).toBeVisible();
+    // Procura um dia com vaga em vez de fixar `hoje + 7`: aquele dia caía num
+    // dia da semana qualquer, e o primeiro profissional da lista (Dr. Paulo)
+    // não atende às quintas. O teste passava o ano inteiro e falhava toda vez
+    // que a suíte rodasse numa quinta-feira — bug de calendário no teste, não
+    // no produto.
+    const chip = await primeiroDiaComVaga(dialog, page);
+    await expect(chip).toBeVisible();
   });
 
   test("cria o agendamento e ele aparece na lista", async ({ page }) => {

@@ -10,6 +10,7 @@ import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { TenantContextGuard } from 'src/shared/tenant-context/tenant-context.guard';
 import { Role } from '@prisma/client';
 import { CreateCheckoutSessionUseCase } from '../../application/use-cases/create-checkout-session.use-case';
+import { CheckMessageQuotaUseCase } from '../../../messaging/application/use-cases/check-message-quota.use-case';
 
 export class CreateCheckoutSessionDto {
   @IsString()
@@ -22,6 +23,7 @@ export class BillingController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly createCheckoutSession: CreateCheckoutSessionUseCase,
+    private readonly checkMessageQuota: CheckMessageQuotaUseCase,
   ) {}
 
   @Get('plans')
@@ -31,6 +33,19 @@ export class BillingController {
       where: { isActive: true },
       orderBy: { priceInCents: 'asc' },
     });
+  }
+
+  @Get('billing/usage')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @ApiOperation({
+    summary: 'Mensagens usadas no mês corrente e o limite do plano',
+  })
+  // Sem `TrialGuard` de propósito: é a mesma exceção de `GET /tenants/me` —
+  // clínica com trial vencido precisa continuar vendo o próprio consumo
+  // para entender o motivo do bloqueio, não ficar sem informação nenhuma.
+  async messageUsage(@Tenant('tenantId') tenantId: string) {
+    return this.checkMessageQuota.usage(tenantId);
   }
 
   @Post('billing/checkout')

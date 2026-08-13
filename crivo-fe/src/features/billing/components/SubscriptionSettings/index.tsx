@@ -9,14 +9,13 @@ import Typography from "@mui/material/Typography";
 
 import { ErrorServer } from "@/components/ui/error-server";
 import { useIsAdmin } from "@/components/providers/session-provider";
+import { trialDaysLeft } from "@/lib/trial";
 import { useTenant } from "@/features/tenant/hooks/use-tenant";
 import { useCheckout } from "../../hooks/use-checkout";
+import { useMessageUsage } from "../../hooks/use-message-usage";
 import { usePlans } from "../../hooks/use-plans";
+import { MessageUsageCard } from "../MessageUsageCard";
 import { PlanCard } from "./plan-card";
-
-function daysUntil(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
-}
 
 /** Mostra o plano atual (ou o estado do trial) e a lista de planos para
  * assinar/trocar. Some sem quebrar se a busca falhar — a tela de
@@ -36,6 +35,9 @@ export const SubscriptionSettings = () => {
     refetch: refetchPlans,
   } = usePlans();
   const { startCheckout, loadingPlanId } = useCheckout();
+  // Falha aqui não impede o resto da tela: o card só some, os planos
+  // continuam navegáveis.
+  const { usage } = useMessageUsage();
 
   if (tenantError) {
     return (
@@ -63,9 +65,9 @@ export const SubscriptionSettings = () => {
     <Stack spacing={3}>
       {tenant.subscriptionStatus === "TRIALING" && (
         <Alert severity="info">
-          Período de teste — {Math.max(daysUntil(tenant.trialEndsAt), 0)}{" "}
-          dia(s) restante(s). Escolha um plano abaixo para continuar depois
-          que o teste acabar.
+          Período de teste — {trialDaysLeft(tenant.trialEndsAt)} dia(s)
+          restante(s). Escolha um plano abaixo para continuar depois que o
+          teste acabar.
         </Alert>
       )}
       {tenant.subscriptionStatus === "PAST_DUE" && (
@@ -88,6 +90,8 @@ export const SubscriptionSettings = () => {
         />
       )}
 
+      {usage && <MessageUsageCard usage={usage} />}
+
       {!canManage && (
         <Typography variant="body2" color="text.secondary">
           Apenas administradores podem alterar a assinatura da clínica.
@@ -97,7 +101,7 @@ export const SubscriptionSettings = () => {
       <Box>
         <Grid container spacing={2}>
           {plans.map((plan) => (
-            <Grid key={plan.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={plan.id} size={{ xs: 12, sm: 6, md: 3 }}>
               <PlanCard
                 plan={plan}
                 isCurrent={tenant.planId === plan.id}
