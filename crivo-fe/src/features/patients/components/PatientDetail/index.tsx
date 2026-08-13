@@ -11,6 +11,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import LockIcon from "@mui/icons-material/Lock";
 
 import { ErrorServer } from "@/components/ui/error-server";
 import { useIsClinical } from "@/components/providers/session-provider";
@@ -18,6 +19,7 @@ import { formatPhone } from "@/lib/br-masks";
 import { AnamnesisForm } from "@/features/medical-records/components/AnamnesisForm";
 import { ClinicalNotes } from "@/features/medical-records/components/ClinicalNotes";
 import { PatientConversation } from "@/features/messages/components/PatientConversation";
+import { usePlanFeatures } from "@/features/tenant/hooks/use-plan-features";
 import { usePatient } from "../../hooks/use-patient";
 
 type TabValue = "data" | "conversation" | "anamnesis" | "notes";
@@ -29,6 +31,13 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
   // A recepção não vê prontuário. Esconder a aba é conveniência: a
   // autoridade é o `@Roles` do crivo-be, que devolve 403 de qualquer forma.
   const isClinical = useIsClinical();
+
+  // Prontuário também é feature de plano — só o Avançado inclui, e é o que
+  // justifica o preço dele. A aba fica visível com cadeado (não some) para
+  // quem é clínico: sem ver, a clínica não sabe que existe.
+  const { has, planName } = usePlanFeatures();
+  const canRecords = has("hasMedicalRecords");
+  const lockedHint = `Prontuário está no plano Avançado — o ${planName} não inclui.`;
 
   if (error) {
     return <ErrorServer message={error.message} onRetry={() => refetch()} />;
@@ -71,8 +80,29 @@ export const PatientDetail = ({ patientId }: { patientId: string }) => {
             {/* Sem `isClinical`: responder ao paciente é trabalho da recepção,
                 mesma decisão já tomada na caixa de entrada. */}
             <Tab label="Conversa" value="conversation" />
-            {isClinical && <Tab label="Anamnese" value="anamnesis" />}
-            {isClinical && <Tab label="Evolução" value="notes" />}
+            {/* Visíveis com cadeado quando o plano não inclui: a clínica
+                precisa saber que o prontuário existe — é o diferencial do
+                plano Avançado. Some de vez só para quem não é clínico. */}
+            {isClinical && (
+              <Tab
+                label="Anamnese"
+                value="anamnesis"
+                disabled={!canRecords}
+                icon={canRecords ? undefined : <LockIcon sx={{ fontSize: 14 }} />}
+                iconPosition="end"
+                title={canRecords ? undefined : lockedHint}
+              />
+            )}
+            {isClinical && (
+              <Tab
+                label="Evolução"
+                value="notes"
+                disabled={!canRecords}
+                icon={canRecords ? undefined : <LockIcon sx={{ fontSize: 14 }} />}
+                iconPosition="end"
+                title={canRecords ? undefined : lockedHint}
+              />
+            )}
           </Tabs>
         </Box>
 
