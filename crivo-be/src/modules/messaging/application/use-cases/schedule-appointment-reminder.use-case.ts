@@ -52,7 +52,17 @@ export class ScheduleAppointmentReminderUseCase {
         patient: { select: { id: true, name: true, phone: true } },
         professional: { select: { name: true } },
         procedure: { select: { name: true } },
-        tenant: { select: { name: true, aiMessagesEnabled: true } },
+        tenant: {
+          select: {
+            name: true,
+            aiMessagesEnabled: true,
+            // O toggle sozinho não basta: `hasAiMessages` é feature de plano,
+            // e sem cruzar os dois uma clínica no Solo/Básico ligava a IA em
+            // Configurações e usava um recurso que não paga (débito que o
+            // ROADMAP registrava desde 11/08).
+            plan: { select: { hasAiMessages: true } },
+          },
+        },
       },
     });
 
@@ -79,7 +89,11 @@ export class ScheduleAppointmentReminderUseCase {
       procedureName: appointment.procedure.name,
       startsAt: appointment.startsAt,
       confirmationToken,
-      aiMessagesEnabled: appointment.tenant.aiMessagesEnabled,
+      // Trial (`plan: null`) mantém a IA: é assim que a clínica experimenta o
+      // recurso antes de escolher plano — mesma regra do `PlanFeatureGuard`.
+      aiMessagesEnabled:
+        appointment.tenant.aiMessagesEnabled &&
+        (appointment.tenant.plan?.hasAiMessages ?? true),
     });
 
     /**
