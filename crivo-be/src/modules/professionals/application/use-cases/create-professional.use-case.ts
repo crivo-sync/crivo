@@ -55,6 +55,14 @@ export class CreateProfessionalUseCase {
    * produto inteiro. Profissional removido (soft delete) não conta: deletar
    * libera vaga de verdade, senão a clínica ficaria travada num limite que
    * já não reflete a equipe atual.
+   *
+   * ⚠️ **Ainda bloqueia no teto, mas os planos já têm
+   * `pricePerExtraProfessionalInCents`** (revisão de preço de 14/08/2026).
+   * O modelo vendido é "N incluídos, depois R$ X cada" — e cobrar o
+   * adicional exige acrescentar um item à assinatura no Stripe
+   * (`subscriptions.update` com quantidade), o que ainda não existe. Até lá
+   * o comportamento é o antigo: recusa e sugere upgrade. **O site não pode
+   * anunciar o adicional antes disso.** Ver ROADMAP → Fase 3.
    */
   private async assertWithinPlanLimit(tenantId: string): Promise<void> {
     const tenant = await this.prisma.tenant.findUniqueOrThrow({

@@ -585,75 +585,142 @@ async function seedSchedules(tenantId: string): Promise<number> {
 }
 
 /**
- * Planos do Stripe (sandbox de teste). Preços e `stripePriceId` são os
- * valores reais criados no Dashboard — ainda não são o preço final de
- * venda, mas precisam bater com o Stripe para o checkout funcionar em
- * qualquer ambiente que rode este seed do zero.
+ * Planos do Stripe (sandbox de teste), revisados em 14/08/2026.
+ *
+ * **A tabela anterior (R$ 79/149/289/399) tinha dois problemas de negócio:**
+ *
+ * 1. **Preço em degrau contra um mercado que cobra contínuo.** O Agendiva
+ *    cobra base + R$ 29,90 por profissional adicional; nós saltávamos
+ *    +R$ 140 do Básico para o Intermediário, exatamente quando a clínica
+ *    contrata o terceiro profissional e está comparando. Agora cada faixa
+ *    tem `pricePerExtraProfessionalInCents`.
+ * 2. **A entrada não tinha nada.** Solo e Básico eram o plano do meio
+ *    capado: sem prontuário, sem fotos, sem nada. O concorrente entrega
+ *    prontuário e fotos antes/depois já nos R$ 39,90 — e o próprio ROADMAP
+ *    registra que isso virou commodity. `hasMedicalRecords` passou a valer
+ *    em todos os planos; o que continua pago é o que é **nosso**: risco de
+ *    falta, lista de espera, painel de gráficos e IA nas mensagens.
+ *
+ * **A franquia de mensagem deixou de ser número redondo.** Está ancorada no
+ * uso real (~150 atendimentos/profissional/mês × ~2,5 mensagens = ~375 por
+ * profissional) com 35% de folga. Isso importa porque **a partir de
+ * 01/10/2026 a Meta cobra toda mensagem de utilidade** (~R$ 0,035–0,09
+ * cada), inclusive dentro da janela de 24h: no modelo antigo, o "Avançado
+ * ilimitado" podia gerar R$ 700/mês de custo num plano de R$ 399. Nenhum
+ * plano é ilimitado hoje.
+ *
+ * ⚠️ Seguem sendo **preços de teste, não validados com cliente real**. O que
+ * mudou é que agora eles têm uma conta por trás (custo de mensagem + rateio
+ * de infra) em vez de serem hipótese redonda.
  */
 const PLANS = [
   {
     key: 'SOLO',
     name: 'Solo',
-    priceInCents: 7900,
+    priceInCents: 4900,
     maxProfessionals: 1,
+    pricePerExtraProfessionalInCents: null,
+    maxMessagesPerMonth: 500,
     hasPrediction: false,
     hasAiMessages: false,
     hasWaitlist: false,
     hasDashboard: false,
-    hasMedicalRecords: false,
-    stripeProductId: 'prod_V3jU0Bb4kjEMD0',
-    stripePriceId: 'price_1U3c1H64chrm4OaKBTF77AJ1',
+    // Commodity no mercado: cobrar por prontuário nos deixaria piores que a
+    // concorrência justamente onde o cliente compara primeiro.
+    hasMedicalRecords: true,
+    stripeProductId: 'prod_V4UHD3wrKcCUM7',
+    stripePriceId: 'price_1U4LIh64chrm4OaKdKeutDfE',
   },
   {
-    key: 'BASICO',
-    name: 'Básico',
-    priceInCents: 14900,
+    key: 'ESSENCIAL',
+    name: 'Essencial',
+    priceInCents: 8900,
     maxProfessionals: 2,
+    pricePerExtraProfessionalInCents: 3500,
+    maxMessagesPerMonth: 1000,
     hasPrediction: false,
     hasAiMessages: false,
     hasWaitlist: false,
     hasDashboard: false,
-    hasMedicalRecords: false,
-    stripeProductId: 'prod_V3QEEFHXf1InQt',
-    stripePriceId: 'price_1U3JNm64chrm4OaKUwcNr0AY',
+    hasMedicalRecords: true,
+    stripeProductId: 'prod_V4UH6mhalhGEB7',
+    stripePriceId: 'price_1U4LIh64chrm4OaKfpEijb6I',
   },
   {
-    key: 'INTERMEDIARIO',
-    name: 'Intermediário',
-    priceInCents: 28900,
-    maxProfessionals: null,
-    hasPrediction: true,
-    hasAiMessages: true,
-    hasWaitlist: true,
-    hasDashboard: true,
-    hasMedicalRecords: false,
-    stripeProductId: 'prod_V3QFWHwYZvozeV',
-    stripePriceId: 'price_1U3JOw64chrm4OaKuHHHINZk',
-  },
-  {
-    key: 'AVANCADO',
-    name: 'Avançado',
-    priceInCents: 39900,
-    maxProfessionals: null,
+    key: 'PROFISSIONAL',
+    name: 'Profissional',
+    priceInCents: 17900,
+    maxProfessionals: 4,
+    pricePerExtraProfessionalInCents: 3000,
+    maxMessagesPerMonth: 2000,
+    // A partir daqui entra o que nenhum concorrente da faixa entrega.
     hasPrediction: true,
     hasAiMessages: true,
     hasWaitlist: true,
     hasDashboard: true,
     hasMedicalRecords: true,
-    stripeProductId: 'prod_V3QFzoziEp5xOX',
-    stripePriceId: 'price_1U3JP964chrm4OaKe7ZkCp7H',
+    stripeProductId: 'prod_V4UHlY144qG79S',
+    stripePriceId: 'price_1U4LIi64chrm4OaK3LQWKfBC',
+  },
+  {
+    key: 'CLINICA',
+    name: 'Clínica',
+    priceInCents: 29900,
+    maxProfessionals: 8,
+    pricePerExtraProfessionalInCents: 2500,
+    maxMessagesPerMonth: 4100,
+    hasPrediction: true,
+    hasAiMessages: true,
+    hasWaitlist: true,
+    hasDashboard: true,
+    hasMedicalRecords: true,
+    stripeProductId: 'prod_V4UHog8VhNJkFi',
+    stripePriceId: 'price_1U4LIj64chrm4OaKmgEnb2l8',
   },
 ];
 
 async function full() {
   const hashedPassword = await bcrypt.hash(DEV_PASSWORD, SALT_ROUNDS);
 
+  /**
+   * ⚠️ **`SOLO` reusa a chave de um plano que já existia com outro preço.**
+   *
+   * O upsert sobrescreve o registro, então qualquer assinatura que aponte
+   * para `SOLO` passa a *dizer* R$ 49 enquanto o Stripe segue cobrando o
+   * valor que estava vigente quando ela foi criada (o Stripe congela o
+   * `price` no ato da assinatura — mudar o catálogo não altera cobrança
+   * existente).
+   *
+   * Em desenvolvimento isso é inofensivo. **Em produção não**: exige migrar
+   * cada assinatura para o `stripePriceId` novo (`subscriptions.update`)
+   * antes ou depois de rodar o seed, senão o painel mostra um preço e a
+   * fatura chega com outro. Ver ROADMAP → revisão de preço de 14/08/2026.
+   */
   for (const plan of PLANS) {
     await prisma.plan.upsert({
       where: { key: plan.key },
       update: plan,
       create: plan,
     });
+  }
+
+  /**
+   * Aposenta os planos que saíram da tabela (revisão de preço de 14/08/2026:
+   * `BASICO`, `INTERMEDIARIO`, `AVANCADO`).
+   *
+   * **Desativa, não apaga.** `Tenant.planId` aponta para eles: deletar
+   * derrubaria a assinatura de quem já contratou, e o histórico de qual
+   * plano a clínica tinha some. `isActive: false` some da vitrine
+   * (`GET /plans` filtra por ele) e mantém o vínculo de pé até a migração
+   * de cada assinatura.
+   */
+  const aposentados = await prisma.plan.updateMany({
+    where: { key: { notIn: PLANS.map((plan) => plan.key) } },
+    data: { isActive: false },
+  });
+
+  if (aposentados.count > 0) {
+    console.log(`   ${aposentados.count} plano(s) antigo(s) desativado(s).`);
   }
 
   for (const seedTenant of TENANTS) {

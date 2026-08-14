@@ -120,21 +120,38 @@ model Plan {
   /// `Procedure`/`Appointment`) — evita erro de arredondamento de float.
   priceInCents Int    @map("price_in_cents")
 
-  /// Limites e features por plano. `null` em `maxProfessionals` = sem
-  /// limite (usado pelo plano maior, "Rede"), não "zero profissionais".
+  /// Profissionais **incluídos** na mensalidade. `null` = sem limite.
   maxProfessionals    Int?    @map("max_professionals")
+
+  /// Quanto custa cada profissional **além** dos incluídos.
+  ///
+  /// Existe porque o mercado cobra contínuo e nós cobrávamos em degrau: sair
+  /// de uma faixa para a outra custava +R$ 140 de uma vez, exatamente no
+  /// momento em que a clínica contrata alguém e compara preço. `null` = a
+  /// faixa não aceita adicional (o plano de entrada, de um profissional só).
+  pricePerExtraProfessionalInCents Int? @map("price_per_extra_professional_in_cents")
+
   /// Mensagens de saída por mês (`null` = sem teto). É o único custo
-  /// variável por clínica: a Meta cobra por conversa iniciada pela
-  /// empresa. Resposta a paciente dentro da janela de 24h não conta —
-  /// nem para a Meta, nem aqui (ver `CheckMessageQuotaUseCase`).
+  /// variável por clínica.
+  ///
+  /// ⚠️ **A partir de 01/10/2026 a Meta cobra toda mensagem de utilidade**,
+  /// inclusive dentro da janela de 24h — a isenção de "resposta ao paciente"
+  /// acaba. Por isso nenhum plano é ilimitado: no modelo antigo, uma clínica
+  /// grande no plano topo podia gerar mais custo de mensagem do que pagava
+  /// de mensalidade. As franquias são dimensionadas pelo uso real
+  /// (~375 mensagens por profissional/mês) com folga.
   maxMessagesPerMonth Int?    @map("max_messages_per_month")
   hasPrediction       Boolean @default(false) @map("has_prediction")
   hasAiMessages       Boolean @default(false) @map("has_ai_messages")
   hasWaitlist         Boolean @default(false) @map("has_waitlist")
   hasDashboard        Boolean @default(false) @map("has_dashboard")
-  /// Prontuário (anamnese + evolução) **e fotos antes/depois**. Diferencial
-  /// do plano topo: o concorrente cobra o prontuário à parte (R$29/mês
-  /// avulso), e as fotos são o argumento de venda para estética.
+  /// Prontuário (anamnese + evolução) **e fotos antes/depois**.
+  ///
+  /// **Liberado em todos os planos desde 14/08/2026.** Era diferencial do
+  /// topo, mas virou commodity: o concorrente de R$ 39,90 já entrega os
+  /// dois. Mantê-lo pago nos deixava piores na comparação exatamente onde o
+  /// cliente olha primeiro. O que continua pago é o que é nosso — risco de
+  /// falta, lista de espera, painel de gráficos e IA nas mensagens.
   ///
   /// As duas coisas sob a mesma flag de propósito: é o mesmo dado sensível
   /// de saúde, com a mesma restrição de papel (ADMIN/PROFESSIONAL). Separar
