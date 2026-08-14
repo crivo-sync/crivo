@@ -36,9 +36,13 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > - **Template aprovado pela Meta** — só existe com conta Meta
 > - **Webhook de `DELIVERED`** — a Evolution não entrega esse status de forma
 >   confiável; faz sentido junto com a Meta
-> - **Validar preço com clínica real** — os R$ 79/149/289/399 seguem sendo
->   hipótese; migraram de "número no README" para "produto no Stripe", não
->   para "validado com cliente"
+> - **Validar preço com clínica real** — a tabela nova (R$ 49/89/179/299,
+>   14/08/2026) tem uma conta por trás (custo de mensagem + margem
+>   verificada), mas **ninguém pagou por ela ainda**. Ver
+>   [Revisão de preço](#revisão-de-preço-14082026)
+> - ⚠️ **Cobrança do profissional adicional** — o preço existe no plano e no
+>   Stripe, mas o backend ainda recusa cadastro acima do teto. Exige item na
+>   assinatura; até lá o site não anuncia o adicional
 >
 > **Chat com IA foi avaliado e descartado** (12/08/2026), no público e no
 > painel. Mas o recheque de 13/08 encontrou algo diferente e maior: a
@@ -130,8 +134,8 @@ no mapeamento original e muda a leitura da faixa de entrada:
 
 - **A faixa de entrada real é R$ 24–100, não R$ 39–120** (corrigido em
   13/08/2026). O mapeamento de 30/07 não viu a camada de agendamento puro
-  (Bellagenda, SPAgenda, Agendiva, Elenya). Nosso Solo a R$ 79 está **dentro**
-  dessa faixa, mas competindo com quem entrega menos por menos.
+  (Bellagenda, SPAgenda, Agendiva, Elenya). Nosso Solo a R$ 49 (14/08/2026,
+  antes R$ 79) está **no meio** dessa faixa, e não mais no teto dela.
 - **O mercado é fragmentado e ninguém domina.** Cada player é forte em um nicho (estética, odonto, convênio) e fraco nos outros — há espaço, mas não por preço.
 - **Todos já têm agenda, prontuário e WhatsApp.** Isso é commodity. Competir nessas três é chegar tarde.
 - **Fotos antes/depois também são commodity** (13/08/2026): Iter Clinic,
@@ -144,21 +148,18 @@ no mapeamento original e muda a leitura da faixa de entrada:
   R$ 49,90 (2 prof) +R$ 39,90; Studio R$ 99,90 (5 prof) +R$ 19,90 e
   +R$ 79,90 por clínica extra. Comparação no mesmo cenário:
 
-  | Profissionais | Agendiva | Crivo |
-  | --- | --- | --- |
-  | 1 | R$ 39,90 | R$ 79,00 (Solo) |
-  | 2 | R$ 69,80 | R$ 149,00 (Básico) |
-  | 5 | R$ 99,90 (Studio) | R$ 289,00 (Intermediário) |
+  | Profissionais | Agendiva | Crivo (antes) | Crivo (14/08) |
+  | --- | --- | --- | --- |
+  | 1 | R$ 39,90 | R$ 79,00 | **R$ 49,00** |
+  | 2 | R$ 69,80 | R$ 149,00 | **R$ 89,00** |
+  | 5 | R$ 99,90 (Studio) | R$ 289,00 | **R$ 179,00** |
 
   São **~2x na entrada**, e a distância cresce. O problema não é só o valor:
   é a **forma**. No modelo deles, contratar mais um profissional custa
   +R$ 29,90; no nosso, sair do Básico para o Intermediário custa **+R$ 140 de
   uma vez** — um degrau que aparece exatamente no momento em que a clínica
   está crescendo e comparando.
-  **Decisão pendente do dono do produto** (14/08/2026): registrado, não
-  alterado. Mudar para base+adicional significa novos preços no Stripe,
-  migração das assinaturas existentes e mexer em checkout, troca de plano e
-  tela de assinatura — não é ajuste de número, é mudança de modelo.
+  → **Resolvido em 14/08/2026** — ver [Revisão de preço](#revisão-de-preço-14082026).
   > ⚠️ **Nota de método**: o site anunciava "preço por profissional ativo" e
   > eu removi isso em 13/08 classificando como "afirmação falsa". Era falso
   > sobre o que cobramos, mas apagou a evidência de um problema comercial em
@@ -257,7 +258,7 @@ em duas semanas.** Reconferido em 13/08/2026:
    decidido** — chat na landing e "IA que conversa sobre o painel" seguem sem
    função. O que apareceu é **outra coisa**: agente que *executa* (marca,
    remarca, cobra), não que conversa.
-2. **Não é ameaça no nosso preço, ainda.** Quem paga R$ 79–149 não está
+2. **Não é ameaça no nosso preço, ainda.** Quem paga R$ 49–89 não está
    comparando com o Premium da Clinicorp. Vira ameaça quando (a) o preço do
    agente cair para a faixa de entrada, ou (b) a Clinicorp usar o agente como
    argumento para puxar cliente pequeno para cima.
@@ -277,6 +278,59 @@ em duas semanas.** Reconferido em 13/08/2026:
 diferencial a avaliar depois de ter cliente pagante**, com escopo estreito
 (um agente só, o de agendamento, com confirmação humana antes de gravar) em
 vez de copiar os três de uma vez. Ver [Riscos](#riscos).
+
+### Revisão de preço (14/08/2026)
+
+**Tabela nova, criada no Stripe (modo teste):**
+
+| Plano | Preço | Profissionais | +profissional | Mensagens/mês | Diferenciais |
+| --- | --- | --- | --- | --- | --- |
+| Solo | R$ 49 | 1 | — | 500 | — |
+| Essencial | R$ 89 | 2 | R$ 35 | 1.000 | — |
+| Profissional | R$ 179 | 4 | R$ 30 | 2.000 | risco, espera, painel, IA |
+| Clínica | R$ 299 | 8 | R$ 25 | 4.100 | risco, espera, painel, IA |
+
+Prontuário, fotos antes/depois, agenda, lembretes e agendamento online estão
+em **todos** os planos.
+
+**A conta por trás** (o que faltava na tabela antiga, que era hipótese
+redonda):
+
+- **Custo variável**: a Meta cobra ~R$ 0,035–0,09 por mensagem de utilidade.
+  **A partir de 01/10/2026 isso vale para toda mensagem**, inclusive dentro
+  da janela de 24h — a isenção de "resposta ao paciente" acaba.
+- **Franquia = uso real, não número bonito**: ~150 atendimentos por
+  profissional/mês × ~2,5 mensagens ≈ 375 por profissional, +35% de folga.
+- **Margem**: ~50% no uso típico; **positiva mesmo se a clínica consumir a
+  franquia inteira** (o pior caso vai de 39% no Solo a 18% no Clínica).
+- **Infra**: ~US$ 25/mês (Railway: API + web + Postgres + Redis) rateados
+  entre todas as clínicas — some ~R$ 135/mês fixos, não por cliente.
+
+**Decisões:**
+
+1. **Acabou o ilimitado.** Era um prejuízo sem teto por cliente: com
+   mensagem paga, uma clínica grande no antigo Avançado geraria ~R$ 700/mês
+   de custo Meta num plano de R$ 399.
+2. **Prontuário e fotos saíram da parte paga** — viraram commodity (o
+   concorrente de R$ 39,90 entrega os dois). Cobrar por eles nos deixava
+   piores exatamente onde o cliente compara primeiro. O que continua pago é
+   o que é nosso: risco de falta, lista de espera, painel e IA.
+3. **Planos antigos desativados, não apagados** — `Tenant.planId` aponta
+   para eles.
+
+**⚠️ O que NÃO está pronto:**
+
+- **Cobrança do profissional adicional.** O preço existe no plano e no
+  Stripe, mas o backend continua **recusando** cadastro acima do teto —
+  cobrar exige acrescentar item à assinatura (`subscriptions.update` com
+  quantidade). **Por isso o site não anuncia o adicional**; anunciá-lo antes
+  seria a mesma divergência site×sistema que a auditoria de 13/08 removeu.
+- **Migração das assinaturas existentes.** `SOLO` reusou a chave do plano
+  antigo, então o banco diz R$ 49 enquanto o Stripe segue cobrando o valor
+  congelado no ato da assinatura (verificado: `g3developer` paga R$ 79).
+  Em produção, migrar cada assinatura **antes** de rodar o seed.
+- **Validação com cliente real.** Os valores agora têm uma conta por trás,
+  mas ninguém pagou por eles ainda.
 
 ### Modelo de preço deles (conferido em 11/08/2026)
 
@@ -300,21 +354,23 @@ duração declarada**.
 
 **O que isso significa para o nosso preço:**
 
-- **A porta de entrada deles é R$ 39, a nossa é R$ 149.** Na primeira
-  comparação que o cliente faz — e ele faz — aparecemos ~4x mais caros, mesmo
-  que a conta real feche perto (o "solo" deles dá R$ 166).
+- ~~**A porta de entrada deles é R$ 39, a nossa é R$ 149**~~ → **R$ 49 desde
+  14/08/2026.** Na primeira comparação que o cliente faz — e ele faz —
+  aparecíamos ~4x mais caros. Hoje a diferença na entrada é de R$ 9.
 - **Somos mais baratos no meio da tabela.** Uma clínica que lá paga R$ 362
-  paga R$ 289 aqui, com WhatsApp e predição inclusos. O problema é de
-  *percepção de entrada*, não de valor entregue.
+  paga R$ 179 aqui, com WhatsApp e predição inclusos.
 - **O modular favorece quem quer pouco; o pacote favorece quem quer tudo.**
-  Nosso Intermediário embute IA, predição, lista de espera e painel — que lá
+  Nosso Profissional embute IA, predição, lista de espera e painel — que lá
   seriam R$ 39+79+49+39 = R$ 206 só em módulos, sem contar prontuário.
-- **Eles cobram R$ 29/mês só pelo prontuário.** Isso justifica tê-lo como
-  diferencial do plano topo (Avançado), como ficou em 11/08/2026.
-- **Resolvido em 12/08/2026:** criado o plano **Solo (R$ 79, 1 profissional)**
-  como porta de entrada. A escada virou R$ 79 → 149 → 289 → 399. Os valores
-  seguem sendo **hipótese não validada com cliente nenhum** — o que mudou foi
-  a faixa de entrada, não a confiança no número.
+- ~~**Eles cobram R$ 29/mês só pelo prontuário, o que justifica tê-lo como
+  diferencial do plano topo**~~ → **revertido em 14/08/2026.** Esse era o
+  raciocínio de 11/08, e ele olhava para o concorrente errado: a Iter Clinic
+  cobra à parte, mas o **Agendiva entrega prontuário e fotos no plano de
+  R$ 39,90**, e o próprio ROADMAP já registrava (13/08) que fotos viraram
+  commodity. Prontuário e fotos passaram a valer em **todos** os planos.
+- **Escada atual: R$ 49 → 89 → 179 → 299** (antes: 79 → 149 → 289 → 399).
+  Ver [Revisão de preço](#revisão-de-preço-14082026) para a conta que
+  sustenta cada faixa.
 
 ### O que o Agendiva faz melhor que nós (13/08/2026)
 
@@ -776,6 +832,7 @@ Quatro observações:
 
 - [x] **Faixas fechadas, não cobrança por assento** (11/08/2026) — os planos vendem limite de profissionais por faixa (Solo 1, Básico 2, Intermediário/Avançado ilimitados) em vez de +R$49 por profissional extra. Resolve o "caros justamente no cliente bom": 5 profissionais custariam R$436 no modelo de assento contra R$289 na faixa
 - [x] **Plano de entrada criado** (12/08/2026) — Solo a R$ 79, 1 profissional. A escada virou 79 → 149 → 289 → 399. Ainda acima dos R$39 do Estetia, mas dentro da faixa de entrada do mercado (R$39–120)
+- [x] **Tabela inteira revisada** (14/08/2026) — **R$ 49 → 89 → 179 → 299**, com franquia de mensagem em todos os planos (acabou o ilimitado) e prontuário/fotos na base. Primeira tabela com uma conta por trás em vez de número redondo: custo de mensagem da Meta × uso real por profissional. Ver [Revisão de preço](#revisão-de-preço-14082026)
 - [x] **Franquia de conversas por plano** (12/08/2026) — Solo 500, Básico 1.500, Intermediário 5.000, Avançado sem teto; trial 30 (`TRIAL_MESSAGE_QUOTA`). Bloqueio no `MessageProcessor`, antes do `provider.send()`: a mensagem é marcada `FAILED` com o motivo, então **aparece na lista de falhas** onde a recepção age — sumir em silêncio deixaria o paciente sem aviso e a clínica sem saber. Conta só `SENT` do mês corrente: mensagem na fila ainda pode ser cancelada por reagendamento, e falha não gera custo. Resposta de paciente (`InboundMessage`) não conta, porque a Meta não cobra dentro da janela de 24h. **Preço do excedente ainda não definido** — hoje bloqueia, não cobra a mais
 - [x] **Duração do trial e expiração** (12/08/2026) — 14 dias, sem cartão. `SubscriptionGuard` marca `EXPIRED` em request-time e o `ExpireTrialsCron` (3h da manhã) pega quem parou de entrar. Franquia de 30 mensagens no teste, com contador na tela de Assinatura
 - [ ] Validar com clínicas reais — os preços do README seguem sendo **hipótese não validada**

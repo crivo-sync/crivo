@@ -2,7 +2,13 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-14 (rev. 21 — aba **WhatsApp** nas
+> Última atualização: 2026-08-14 (rev. 22 — **tabela de preços nova**:
+> R$ 49/89/179/299. Prontuário e fotos desceram para a base (viraram
+> commodity), a franquia de mensagem virou linha de feature, e nenhum plano
+> é mais ilimitado — a Meta passa a cobrar toda mensagem de utilidade em
+> 01/10/2026).
+>
+> Rev. 21 (14/08): aba **WhatsApp** nas
 > Configurações: a clínica conecta o próprio número lendo um **QR code**, em
 > vez de digitar o "nome da instância" da Evolution num campo de texto. Era o
 > último ponto do produto que não sobrevivia a uma clínica assinando
@@ -326,6 +332,12 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - Rota `GET /dashboard/no-show-cost` fora do `hasDashboard`, como o `summary` — esconder isso de quem está no Solo esconderia o próprio argumento de venda.
 - ~~**O resumo do painel estava travado por plano**~~ — ✅ 13/08/2026. `hasDashboard` cobria o `/painel` inteiro, então a clínica no Solo abria o sistema e a **primeira coisa** que via era uma tela de erro. A trava passou a ser por rota: resumo e custo das faltas abertos a todos, gráficos e faturamento seguem pagos. No lugar dos gráficos, `UpgradeChartsCard` convida ao upgrade — quem não tem o recurso vê o que está perdendo, em vez de um buraco na página.
 
+- ~~**A tabela de preços era hipótese redonda**~~ — ✅ 14/08/2026. Site e painel passaram a mostrar **R$ 49 / 89 / 179 / 299** (antes 79/149/289/399), lendo tudo de `GET /plans` como já faziam. Mudanças na apresentação:
+  - **Prontuário e fotos saíram da lista de diferenciais** para a base comum. Com `hasMedicalRecords` valendo em todos os planos, mantê-los entre os diferenciais mostraria ✓ em todas as colunas e não separaria nada.
+  - **A franquia de mensagem virou linha de feature** ("500 mensagens de WhatsApp por mês"). Cada mensagem tem custo real; esconder o teto criaria a surpresa que o produto existe para evitar.
+  - **O `detail` do card deixou de repetir o limite de profissionais** — a primeira linha de features já o diz. Passou a dizer o que a lista não diz: "14 dias grátis, sem cartão".
+  - **As chaves antigas seguem mapeadas** (`BASICO`, `INTERMEDIARIO`, `AVANCADO`): os planos continuam no banco como inativos, e clínica que assinou um deles precisa continuar vendo o próprio plano na tela de Assinatura — sem a entrada, o card apareceria sem estilo e sem descrição.
+  - ⚠️ **O preço do profissional adicional NÃO é anunciado**, embora exista no plano e no Stripe: o backend ainda recusa cadastro acima do teto. Mostrá-lo prometeria algo que o sistema nega na hora — a mesma divergência site×sistema que a auditoria de 13/08 removeu.
 - ~~**Conectar o WhatsApp exigia alguém do time**~~ — ✅ 14/08/2026. Aba **WhatsApp** nas Configurações (`features/tenant/components/WhatsAppConnection`): a clínica clica em "Conectar WhatsApp", lê o QR no celular e a tela avisa sozinha quando pareia. Antes, o vínculo era um campo de texto onde ela digitava o "nome da instância" da Evolution — pergunta que nenhum dono de clínica sabe responder, e ainda por cima texto livre que permitia apontar para a instância de outra clínica. Decisões:
   - **A aba não aparece para STAFF** — no backend até a leitura é ADMIN (`whatsapp-connection` responde 403), então ela abriria só para mostrar erro.
   - **Polling de 3s enquanto pareia**, e não os 8s de `LIVE_REFETCH_INTERVAL_MS`: com o QR na frente, alguém está olhando e esperando — 8s depois de ler o código parecem travamento.
