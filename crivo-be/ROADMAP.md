@@ -303,8 +303,33 @@ redonda):
   profissional/mês × ~2,5 mensagens ≈ 375 por profissional, +35% de folga.
 - **Margem**: ~50% no uso típico; **positiva mesmo se a clínica consumir a
   franquia inteira** (o pior caso vai de 39% no Solo a 18% no Clínica).
-- **Infra**: ~US$ 25/mês (Railway: API + web + Postgres + Redis) rateados
-  entre todas as clínicas — some ~R$ 135/mês fixos, não por cliente.
+- **Infra** (stack informada pelo dono do produto em 14/08/2026): Railway
+  para API + Redis, Supabase para o banco, Vercel para o front, com migração
+  para DigitalOcean depois.
+
+  | Cenário | Composição | US$/mês | R$/mês |
+  | --- | --- | --- | --- |
+  | Hoje (dev) | Railway $10 + Supabase Free + Vercel Hobby | 10 | ~54 |
+  | **Lançamento** | Railway $10 + **Supabase Pro $25** + **Vercel Pro $20** | **55** | **~297** |
+  | Crescendo | Railway $20 + Supabase Pro + Vercel Pro | 65 | ~351 |
+  | DigitalOcean | Droplet $24 + Postgres $15 + Spaces $5 | 44 | ~238 |
+
+  ⚠️ **O Vercel Hobby proíbe uso comercial** — no momento em que houver
+  cliente pagando, tem que ser Pro ($20/mês). O Supabase Free também pausa
+  projeto inativo e permite só dois projetos.
+
+**Ponto de equilíbrio** (infra de lançamento, R$ 297/mês, uso típico):
+
+| Plano | Preço | Custo de mensagem | Sobra por cliente | Clientes para pagar a infra |
+| --- | --- | --- | --- | --- |
+| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **12** |
+| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **7** |
+| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **4** |
+| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **3** |
+
+**12 clínicas no plano de entrada cobrem servidor, banco e hospedagem.** A
+infra é custo fixo: do 13º cliente em diante, os ~R$ 26 de sobra viram
+margem limpa.
 
 **Decisões:**
 
@@ -317,6 +342,12 @@ redonda):
    o que é nosso: risco de falta, lista de espera, painel e IA.
 3. **Planos antigos desativados, não apagados** — `Tenant.planId` aponta
    para eles.
+4. **Stripe limpo em 14/08/2026**: os 4 produtos antigos foram **arquivados**
+   e as **4 assinaturas de teste ativas canceladas** (Solo R$79, Básico
+   R$149 ×2, Avançado R$399 — resquício dos experimentos de checkout). O
+   catálogo tem exatamente os 4 planos novos e zero assinaturas ativas.
+   Detalhe do Stripe: o `default_price` de um produto **não pode ser
+   arquivado sozinho** — arquivar o produto já o torna inalcançável.
 
 **⚠️ O que NÃO está pronto:**
 
@@ -621,6 +652,11 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 ### Fase 3 — Monetização e retenção
 
 8. **`billing`** — 🟢 **checkout, webhook, limites por plano, tela de assinatura e site conectado — tudo entregue em 11/08/2026** (Stripe modo teste)
+   - [ ] 🔴 **Cobrar o profissional adicional** — o item que falta para o modelo de preço de 14/08 funcionar de verdade. Hoje: a clínica no Essencial (2 profissionais) tenta cadastrar o terceiro e **é recusada** com "faça upgrade"; deveria passar a pagar R$ 89 + R$ 35 = R$ 124. O preço já existe no `Plan` (`pricePerExtraProfessionalInCents`) e no Stripe (preço separado com `metadata.tipo: 'profissional_adicional'`), mas nada o consome. O que falta:
+     - acrescentar um **segundo item** à assinatura (`subscriptions.update` com `items: [{ price: <adicional>, quantity: N }]`), atualizando a quantidade a cada cadastro/remoção de profissional
+     - decidir o comportamento na **remoção**: reduzir a quantidade na hora (crédito proporcional) ou só no fim do ciclo — o mesmo dilema já resolvido no downgrade de plano
+     - trocar a recusa de `CreateProfessionalUseCase` por um **aviso de que a fatura vai aumentar**, com confirmação. Cobrar mais sem avisar é pior que recusar
+     - **Enquanto não existir, o site não anuncia o adicional** — está coberto por teste E2E (`planos.spec.ts`), que falha se o texto voltar
    - [x] **Model `Plan`** — 3 planos seedados a partir dos produtos reais do Stripe Dashboard (`Básico`/`Intermediário`/`Avançado`, `stripeProductId`+`stripePriceId`). Preço ainda é placeholder (R$149/289/399) — o dono do produto vai validar os valores finais antes de qualquer lançamento comercial; ver aviso em "Website — o que falta"
    - [x] **`Tenant.planId`/`stripeCustomerId`/`stripeSubscriptionId`** — a assinatura continua como colunas do próprio Tenant, não um model `Subscription` separado (é sempre 1:1, nunca precisou da tabela própria que o Stripe-por-usuário do snap-financial tem)
    - [x] **`POST /billing/checkout`** — cria/reaproveita o Stripe Customer, abre Checkout Session com `metadata: {tenantId, planId}` (não `client_reference_id` — é o que o webhook lê de volta, mesmo padrão do snap-financial)
