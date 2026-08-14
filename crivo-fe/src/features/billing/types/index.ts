@@ -3,8 +3,15 @@ export type Plan = {
   key: string;
   name: string;
   priceInCents: number;
-  /** `null` = sem limite (planos maiores), não "zero profissionais". */
+  /** Profissionais **incluídos** na mensalidade. `null` = sem limite. */
   maxProfessionals: number | null;
+  /**
+   * Quanto custa cada profissional além dos incluídos. `null` = a faixa não
+   * aceita adicional (o plano de entrada, de um profissional só).
+   */
+  pricePerExtraProfessionalInCents: number | null;
+  /** Mensagens de WhatsApp por mês. `null` = sem teto. */
+  maxMessagesPerMonth: number | null;
   hasPrediction: boolean;
   hasAiMessages: boolean;
   hasWaitlist: boolean;

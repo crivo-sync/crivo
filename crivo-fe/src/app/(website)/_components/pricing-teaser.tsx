@@ -54,8 +54,8 @@ export const PricingTeaser = () => {
 
           <ScrollReveal direction="up" delay={250} duration={850}>
             <p className="mt-5 text-lg leading-relaxed text-gray-600">
-              Cobrança por profissional ativo, nunca por agendamento. 14 dias de
-              teste grátis em qualquer plano.
+              O plano acompanha o tamanho da sua equipe, nunca o número de
+              agendamentos. 14 dias de teste grátis em qualquer plano.
             </p>
           </ScrollReveal>
         </div>

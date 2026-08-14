@@ -10,7 +10,7 @@ import { PricingCta } from "./_components/pricing-cta";
 export const metadata: Metadata = {
   title: "Planos — Crivo",
   description:
-    "Cobrança por profissional ativo. O preço cresce junto com a sua operação, não com o número de agendamentos.",
+    "A partir de R$ 49/mês. O plano acompanha o tamanho da sua equipe, não o número de agendamentos. 14 dias grátis, sem cartão.",
 };
 
 const PlanosPage = () => {
