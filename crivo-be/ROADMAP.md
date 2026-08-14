@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-13.
+> Última atualização: 2026-08-14.
 >
 > **O que era construível está construído.** `billing` completo (checkout,
 > webhook, 4 planos com limites e features por faixa — travados no backend
@@ -22,35 +22,61 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 >
 > Desde 14/08 a clínica **conecta o próprio WhatsApp lendo um QR code** nas
 > Configurações — o último ponto do produto que ainda exigia alguém do time
-> configurando à mão.
->
-> **O que segue aberto e depende de código:** nada bloqueante. As lacunas
-> competitivas conhecidas (modelo de preço em degrau e multi-unidade) estão
-> registradas com o tamanho real do trabalho — ver Leitura do mercado e
-> Fase 4.
->
-> **O que segue aberto e não depende de código:**
-> - **Credenciais da Meta** — adiado por custo. O provider está pronto e
->   selecionável; sem as chaves, escolher META faz o envio falhar. Até lá o
->   WhatsApp roda em Evolution, com risco de banimento **assumido**
-> - **Template aprovado pela Meta** — só existe com conta Meta
-> - **Webhook de `DELIVERED`** — a Evolution não entrega esse status de forma
->   confiável; faz sentido junto com a Meta
-> - **Validar preço com clínica real** — a tabela nova (R$ 49/89/179/299,
->   14/08/2026) tem uma conta por trás (custo de mensagem + margem
->   verificada), mas **ninguém pagou por ela ainda**. Ver
->   [Revisão de preço](#revisão-de-preço-14082026)
-> - ⚠️ **Cobrança do profissional adicional** — o preço existe no plano e no
->   Stripe, mas o backend ainda recusa cadastro acima do teto. Exige item na
->   assinatura; até lá o site não anuncia o adicional
+> configurando à mão. No mesmo dia, a tabela de preços foi revisada
+> (R$ 49/89/179/299) com uma conta por trás, e o site ganhou uma
+> **calculadora que indica o plano** pelo tamanho da clínica.
 >
 > **Chat com IA foi avaliado e descartado** (12/08/2026), no público e no
-> painel. Mas o recheque de 13/08 encontrou algo diferente e maior: a
-> Clinicorp lançou **agentes de IA que executam** no WhatsApp — ver
+> painel. Mas o recheque de 13/08 encontrou algo maior: a Clinicorp lançou
+> **agentes de IA que executam** no WhatsApp — ver
 > [A IA mudou de patamar](#a-ia-mudou-de-patamar-13082026).
->
-> Análise competitiva baseada em material público consultado em 30/07/2026 —
-> preços não reconfirmados desde então.
+
+---
+
+## Próximos passos (14/08/2026)
+
+**O produto está construído. O que falta não é feature — é colocar no ar e
+descobrir se alguém paga.** Em ordem:
+
+**1. 🔴 Deploy (DigitalOcean)** — é o que destrava todo o resto. Sem ele não
+há como validar preço, testar o túnel, receber webhook da Meta ou ter
+cliente. Decidido em 14/08: Droplet + Managed Postgres + Spaces, ~US$ 44/mês
+(~R$ 238). Implica assumir Redis e Postgres (backup, atualização,
+monitoramento) e montar o deploy do front, que hoje seria "git push" no
+Vercel.
+
+**2. 🔴 Primeira clínica real** — a resposta que nenhuma análise deste
+documento substitui. Os preços têm uma conta por trás (custo de mensagem +
+margem verificada), mas **ninguém pagou por eles ainda**. Nove clínicas no
+Solo cobrem a infra inteira.
+
+**3. 🟡 Cobrar o profissional adicional** — o modelo de preço de 14/08 está
+pela metade: o valor existe no `Plan` e no Stripe, mas a clínica que tenta
+cadastrar acima do teto **é recusada** em vez de pagar a mais. Enquanto
+isso, o site não pode anunciar o adicional (há teste E2E garantindo). Ver
+[Fase 3](#fase-3--monetização-e-retenção).
+
+**4. 🟡 Credenciais da Meta** — adiado por custo, mas o WhatsApp roda em
+Evolution com **risco de banimento assumido**. Vira urgente no momento em
+que houver cliente pagando: perder o número de uma clínica real é diferente
+de perder o de desenvolvimento. Traz junto o template aprovado e o webhook
+de `DELIVERED`.
+
+**5. ⚪ Multi-unidade** — o Agendiva vende por R$ 99,90 + R$ 79,90/clínica
+extra. É o item de maior impacto estrutural (`Tenant` é ao mesmo tempo
+escopo de dados e assinante) e **não deve ser feito antes de haver demanda
+real** — a alternativa barata (unidade como campo da agenda) cobre o caso
+comum de duas salas. Ver [Fase 4](#fase-4--escala).
+
+> ⚠️ **Prazo externo: 01/10/2026.** A Meta passa a cobrar toda mensagem de
+> utilidade, inclusive dentro da janela de 24h. As franquias já foram
+> dimensionadas para isso (nenhum plano é ilimitado), mas o custo real por
+> clínica sobe — vale remedir a margem quando entrar em vigor.
+
+---
+
+> Análise competitiva baseada em material público consultado em 30/07/2026,
+> com recheques em 11, 13 e 14/08 (Agendiva, Clinicorp, faixa de entrada).
 
 ---
 
@@ -142,8 +168,9 @@ no mapeamento original e muda a leitura da faixa de entrada:
   Simples Agenda, Belle Software e Booksy já têm. Entregá-las nos tira de
   desvantagem, mas **não** é diferencial — o valor está em estarem ligadas ao
   atendimento e com entrega autenticada, que ninguém anuncia.
-- 🔴 **Nosso modelo de preço é degrau; o do mercado é contínuo** (14/08/2026,
-  conferido na página de planos do Agendiva). Eles cobram **base + adicional
+- 🟡 **Nosso modelo de preço é degrau; o do mercado é contínuo** (14/08/2026,
+  conferido na página de planos do Agendiva). **Preço já ajustado; falta a
+  cobrança do adicional** — ver Fase 3. Eles cobram **base + adicional
   por profissional**: Solo R$ 39,90 (1 prof) +R$ 29,90 cada extra; Pro
   R$ 49,90 (2 prof) +R$ 39,90; Studio R$ 99,90 (5 prof) +R$ 19,90 e
   +R$ 79,90 por clínica extra. Comparação no mesmo cenário:
@@ -303,33 +330,36 @@ redonda):
   profissional/mês × ~2,5 mensagens ≈ 375 por profissional, +35% de folga.
 - **Margem**: ~50% no uso típico; **positiva mesmo se a clínica consumir a
   franquia inteira** (o pior caso vai de 39% no Solo a 18% no Clínica).
-- **Infra** (stack informada pelo dono do produto em 14/08/2026): Railway
-  para API + Redis, Supabase para o banco, Vercel para o front, com migração
-  para DigitalOcean depois.
+- **Infra** — **decidido em 14/08/2026: DigitalOcean.** Mais barato que a
+  combinação Railway+Supabase+Vercel e concentra tudo num fornecedor só.
 
   | Cenário | Composição | US$/mês | R$/mês |
   | --- | --- | --- | --- |
   | Hoje (dev) | Railway $10 + Supabase Free + Vercel Hobby | 10 | ~54 |
-  | **Lançamento** | Railway $10 + **Supabase Pro $25** + **Vercel Pro $20** | **55** | **~297** |
-  | Crescendo | Railway $20 + Supabase Pro + Vercel Pro | 65 | ~351 |
-  | DigitalOcean | Droplet $24 + Postgres $15 + Spaces $5 | 44 | ~238 |
+  | Railway+Supabase+Vercel | Railway $10 + Supabase Pro $25 + Vercel Pro $20 | 55 | ~297 |
+  | **DigitalOcean (escolhido)** | Droplet $24 + Managed Postgres $15 + Spaces $5 | **44** | **~238** |
 
   ⚠️ **O Vercel Hobby proíbe uso comercial** — no momento em que houver
-  cliente pagando, tem que ser Pro ($20/mês). O Supabase Free também pausa
-  projeto inativo e permite só dois projetos.
+  cliente pagando, teria que ser Pro ($20/mês). O Supabase Free também pausa
+  projeto inativo e limita a dois projetos. Foi o que pesou na decisão: os
+  planos gratuitos não sobrevivem ao primeiro cliente pagante.
 
-**Ponto de equilíbrio** (infra de lançamento, R$ 297/mês, uso típico):
+  **O que a escolha implica de trabalho** (não é só apontar DNS): Redis e
+  Postgres passam a ser responsabilidade nossa (backup, atualização,
+  monitoramento), e o deploy do front sai do "git push" do Vercel para um
+  processo próprio.
+
+**Ponto de equilíbrio** (DigitalOcean, R$ 238/mês, uso típico):
 
 | Plano | Preço | Custo de mensagem | Sobra por cliente | Clientes para pagar a infra |
 | --- | --- | --- | --- | --- |
-| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **12** |
-| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **7** |
-| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **4** |
-| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **3** |
+| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **9** |
+| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **6** |
+| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **3** |
+| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **2** |
 
-**12 clínicas no plano de entrada cobrem servidor, banco e hospedagem.** A
-infra é custo fixo: do 13º cliente em diante, os ~R$ 26 de sobra viram
-margem limpa.
+**9 clínicas no plano de entrada cobrem toda a infraestrutura.** Ela é custo
+fixo: do 10º cliente em diante, os ~R$ 26 de sobra viram margem limpa.
 
 **Decisões:**
 
