@@ -11,9 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
-  Matches,
   Max,
-  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -75,23 +73,15 @@ export class UpdateTenantDto {
   @IsEnum(MessagingProvider)
   messagingProvider?: MessagingProvider;
 
-  @ApiPropertyOptional({
-    example: 'clinica-sorriso',
-    description:
-      'Instância da Evolution desta clínica — na prática, o número de ' +
-      'WhatsApp dela, pareado por QR code no painel da Evolution. Uma por ' +
-      'clínica: sem isso todas enviariam pelo mesmo número. Vazio = usa o ' +
-      'padrão do servidor (EVOLUTION_INSTANCE).',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  // Nome de instância vai direto na URL da Evolution: barra ou espaço
-  // quebrariam a rota, e caractere estranho abriria caminho para injeção.
-  @Matches(/^[a-zA-Z0-9_-]*$/, {
-    message: 'Use apenas letras, números, hífen e underscore.',
-  })
-  evolutionInstance?: string;
+  /**
+   * `evolutionInstance` **não é editável por aqui** — removido em 14/08/2026.
+   *
+   * Era um campo de texto livre: além de ser uma pergunta que nenhum dono de
+   * clínica sabe responder, permitia digitar o nome da instância de **outra
+   * clínica** e passar a enviar pelo WhatsApp dela. O nome agora é derivado
+   * do `tenantId` no pareamento (`POST /whatsapp-connection`), então não há
+   * mais campo onde escrever o nome alheio.
+   */
 
   @ApiPropertyOptional({
     example: 480,

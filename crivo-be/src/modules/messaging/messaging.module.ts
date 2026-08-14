@@ -24,6 +24,9 @@ import { ConfirmationController } from './infrastructure/http/confirmation.contr
 import { InboundWebhookController } from './infrastructure/http/inbound-webhook.controller';
 import { InboundMessageController } from './infrastructure/http/inbound-message.controller';
 import { MessageTemplateController } from './infrastructure/http/message-template.controller';
+import { WhatsAppConnectionController } from './infrastructure/http/whatsapp-connection.controller';
+import { EvolutionInstanceClient } from './infrastructure/providers/evolution-instance.client';
+import { ManageWhatsAppConnectionUseCase } from './application/use-cases/manage-whatsapp-connection.use-case';
 import { MessageTemplateService } from './application/services/message-template.service';
 import { MessageComposerService } from './application/services/message-composer.service';
 import { MessageProviderResolver } from './application/services/message-provider-resolver.service';
@@ -91,6 +94,7 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     InboundWebhookController,
     InboundMessageController,
     MessageTemplateController,
+    WhatsAppConnectionController,
   ],
   providers: [
     {
@@ -125,6 +129,11 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     CheckMessageQuotaUseCase,
     GetConversationUseCase,
     SendManualMessageUseCase,
+    // Gestão da instância (parear/desconectar) fica fora do contrato
+    // `MessageProvider`: parear por QR é específico da Evolution — na Meta
+    // oficial o número é homologado no painel deles.
+    EvolutionInstanceClient,
+    ManageWhatsAppConnectionUseCase,
   ],
   // `MessageTemplateService` é exportado para a lista de espera montar o
   // texto da oferta de vaga sem duplicar formatação de data/hora.
