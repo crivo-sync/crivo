@@ -133,6 +133,32 @@ no mapeamento original e muda a leitura da faixa de entrada:
   Simples Agenda, Belle Software e Booksy já têm. Entregá-las nos tira de
   desvantagem, mas **não** é diferencial — o valor está em estarem ligadas ao
   atendimento e com entrega autenticada, que ninguém anuncia.
+- 🔴 **Nosso modelo de preço é degrau; o do mercado é contínuo** (14/08/2026,
+  conferido na página de planos do Agendiva). Eles cobram **base + adicional
+  por profissional**: Solo R$ 39,90 (1 prof) +R$ 29,90 cada extra; Pro
+  R$ 49,90 (2 prof) +R$ 39,90; Studio R$ 99,90 (5 prof) +R$ 19,90 e
+  +R$ 79,90 por clínica extra. Comparação no mesmo cenário:
+
+  | Profissionais | Agendiva | Crivo |
+  | --- | --- | --- |
+  | 1 | R$ 39,90 | R$ 79,00 (Solo) |
+  | 2 | R$ 69,80 | R$ 149,00 (Básico) |
+  | 5 | R$ 99,90 (Studio) | R$ 289,00 (Intermediário) |
+
+  São **~2x na entrada**, e a distância cresce. O problema não é só o valor:
+  é a **forma**. No modelo deles, contratar mais um profissional custa
+  +R$ 29,90; no nosso, sair do Básico para o Intermediário custa **+R$ 140 de
+  uma vez** — um degrau que aparece exatamente no momento em que a clínica
+  está crescendo e comparando.
+  **Decisão pendente do dono do produto** (14/08/2026): registrado, não
+  alterado. Mudar para base+adicional significa novos preços no Stripe,
+  migração das assinaturas existentes e mexer em checkout, troca de plano e
+  tela de assinatura — não é ajuste de número, é mudança de modelo.
+  > ⚠️ **Nota de método**: o site anunciava "preço por profissional ativo" e
+  > eu removi isso em 13/08 classificando como "afirmação falsa". Era falso
+  > sobre o que cobramos, mas apagou a evidência de um problema comercial em
+  > vez de resolvê-lo. O texto errado estava descrevendo **o modelo que o
+  > mercado usa e nós não**.
 - **Franquia de mensagens já é praticada na faixa de entrada** — há plano de
   R$ 57 com 20 notificações/mês e R$ 99,86 com 50. Isso **valida a decisão de
   cota** do Crivo (Solo 500, Básico 1.500): não é invenção nossa, é como o
@@ -583,6 +609,23 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 ### Fase 4 — Escala
 
 13. **Gestão multi-unidade** — uma rede com várias unidades sob o mesmo dono. **Não é o mesmo que multi-tenant**: hoje cada clínica é um `Tenant` isolado, sem nenhum conceito de "grupo de unidades", agenda consolidada ou usuário que enxerga mais de uma. Exige modelar hierarquia (`Organization` → `Tenant`) e rever todo o `TenantContextGuard`, que hoje assume **um** tenant por token. É o item de maior impacto estrutural da lista
+    - 🔴 **Deixou de ser hipótese: o Agendiva vende isso** (14/08/2026) — plano
+      Studio a R$ 99,90 anuncia "várias clínicas com equipes e finanças
+      separadas, troque entre elas sem logout" e "dashboard multi-unidade",
+      cobrando **+R$ 79,90 por clínica extra**. É a mesma faixa em que nós
+      cobramos R$ 289 por **uma** unidade.
+    - **O que torna caro aqui**: `Tenant` não é só o escopo dos dados — é
+      também quem assina (`planId`, `subscriptionStatus`, `stripeCustomerId`),
+      quem tem subdomínio e quem tem identidade visual. "Várias clínicas sob o
+      mesmo dono" obriga a decidir **onde mora a assinatura**: uma por unidade
+      (simples, mas o dono paga cheio por cada) ou uma no grupo com as
+      unidades como recurso do plano (é o modelo do concorrente, e o que muda
+      billing inteiro).
+    - **Alternativa mais barata a considerar antes**: o caso real mais comum
+      não é rede — é a clínica com **duas salas/endereços** e a mesma equipe.
+      Isso talvez caiba em `Professional`/agenda com um campo de unidade, sem
+      hierarquia de tenant nem mudança no billing. Vale medir a demanda antes
+      de pagar o preço estrutural do item completo.
 
 ### Fora de escopo do prontuário v1
 

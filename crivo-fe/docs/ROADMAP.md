@@ -327,9 +327,9 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Campo zerado pede o dado** em vez de exibir "R$ 0,00 por ano", que se lê como defeito, não como resposta.
   - Entra **depois** da dor e **antes** da lista de recursos: recurso só interessa a quem já aceitou que tem o problema.
 - ~~**O site falava em jargão de engenharia**~~ — ✅ 13/08/2026. "Predição de no-show", "tríade integrada", "multi-tenant white-label" e "retry com backoff" saíram da home, da tabela de planos e do rodapé. Um teste E2E (`home.spec.ts`) falha se voltarem. A revisão achou **quatro afirmações erradas**, não só mal escritas — o tipo de dívida que só aparece na renovação do contrato:
-  - **"Preço por profissional ativo"** — a cobrança é mensalidade fixa por faixa. Prometia uma conta diferente da que o Stripe cobra.
+  - **"Preço por profissional ativo"** — a cobrança é mensalidade fixa por faixa. Prometia uma conta diferente da que o Stripe cobra. ⚠️ **Correção de leitura (14/08/2026)**: remover o texto tirou a mentira, mas apagou a evidência de um problema real — esse é **o modelo que o mercado usa e nós não** (Agendiva: base + R$ 29,90 por profissional extra). Somos ~2x na entrada e o degrau entre faixas pune quem cresce. Registrado como decisão de preço pendente no [ROADMAP do backend](../../crivo-be/ROADMAP.md).
   - **"Disponível a partir do plano Clínica"** — plano extinto na migração para Básico/Intermediário/Avançado. Conferido em `GET /plans`: a predição liga no **Intermediário**.
-  - **"Relatórios consolidados para múltiplas unidades"** — não existe em linha nenhuma de código (a mesma família de promessa falsa que a auditoria de 11/08 já tinha removido dos planos).
+  - **"Relatórios consolidados para múltiplas unidades"** — não existe em linha nenhuma de código (a mesma família de promessa falsa que a auditoria de 11/08 já tinha removido dos planos). ⚠️ Mas o **Agendiva entrega** multi-unidade por R$ 99,90 + R$ 79,90/clínica extra: aqui também não é só texto errado, é lacuna de produto — registrada na Fase 4 do backend.
   - **Predição e financeiro marcados "em desenvolvimento"** — os dois estão no ar desde 10 e 11/08; subestimar o produto entregue custa venda tanto quanto exagerar.
 
 ### Fase 3 — Qualidade
