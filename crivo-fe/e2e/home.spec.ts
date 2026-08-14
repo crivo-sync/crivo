@@ -82,6 +82,23 @@ test.describe("Home — quanto as faltas custam", () => {
     await expect(page).toHaveURL(/\/cadastro/);
   });
 
+  test("a home também indica o plano pelo tamanho da clínica", async ({
+    page,
+  }) => {
+    // Duas calculadoras com papéis distintos: `#calculadora` mostra a perda
+    // (por que assinar), `#calculadora-plano` mostra qual plano (o quê
+    // assinar). Quem chega pela home não deveria precisar ir até /planos
+    // para descobrir a segunda resposta.
+    const calc = page.locator("#calculadora-plano");
+    await calc.scrollIntoViewIfNeeded();
+
+    await page.fill("#profissionais", "3");
+    await page.fill("#atendimentos", "140");
+
+    await expect(calc).toContainText("Profissional");
+    await expect(calc).toContainText("de folga");
+  });
+
   test("a home não fala em jargão de engenharia", async ({ page }) => {
     // Termos que já estiveram na página e que dono de clínica não lê:
     // "multi-tenant white-label", "tríade integrada", "predição de no-show".

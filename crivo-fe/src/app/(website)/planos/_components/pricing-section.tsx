@@ -7,7 +7,7 @@ import { usePlans } from "@/features/billing/hooks/use-plans";
 import { planToPricingCard } from "../../_data/plan-to-pricing-card";
 import { PricingCard } from "../../_components/pricing-card";
 import { FreeTrialCard } from "../../_components/free-trial-card";
-import { PlanCalculator } from "./plan-calculator";
+import { PlanCalculator } from "../../_components/plan-calculator";
 
 /**
  * Grade + calculadora sob o mesmo `usePlans()`.

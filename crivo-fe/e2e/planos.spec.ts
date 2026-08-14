@@ -82,6 +82,37 @@ test.describe("Planos — calculadora", () => {
     ).toBeVisible();
   });
 
+  test("estourar só o teto de equipe mostra o plano-base, não descarta a clínica", async ({
+    page,
+  }) => {
+    // 9 profissionais é **um** a mais que o teto do maior plano, e as 2.700
+    // mensagens ainda cabem na franquia de 4.100. Mandar essa clínica para
+    // "fale conosco" com a mesma mensagem de uma rede de 40 tratava os dois
+    // casos como iguais — e essa é a cliente mais valiosa.
+    const calc = await calcular(page, 9, 120);
+
+    await expect(calc).toContainText("Seu ponto de partida");
+    await expect(calc).toContainText("Clínica");
+    await expect(calc).toContainText("R$ 299");
+    // Diz o que falta, com concordância correta no singular.
+    await expect(calc).toContainText("Para o profissional que passa disso");
+    await expect(calc).not.toContainText("maior que os planos");
+  });
+
+  test("avisa quando a franquia fica apertada", async ({ page }) => {
+    // 8 profissionais × 200 atendimentos = 4.000 de 4.100 disponíveis.
+    // Sem o aviso, a clínica descobre no dia 20 que as mensagens acabaram.
+    const calc = await calcular(page, 8, 200);
+
+    await expect(calc).toContainText("Fica apertado");
+  });
+
+  test("folga confortável não dispara o aviso", async ({ page }) => {
+    const calc = await calcular(page, 1, 100);
+
+    await expect(calc).not.toContainText("Fica apertado");
+  });
+
   test("os quatro planos aparecem com os preços do backend", async ({
     page,
   }) => {

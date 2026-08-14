@@ -8,6 +8,7 @@ import { usePlans } from "@/features/billing/hooks/use-plans";
 import { planToPricingCard } from "../_data/plan-to-pricing-card";
 import { PricingCard } from "./pricing-card";
 import { FreeTrialCard } from "./free-trial-card";
+import { PlanCalculator } from "./plan-calculator";
 
 export const PricingTeaser = () => {
   const { plans, isLoading } = usePlans();
@@ -84,6 +85,14 @@ export const PricingTeaser = () => {
         </div>
 
         <FreeTrialCard />
+
+        {/* Logo abaixo dos cards: quem se decidiu olhando as colunas segue em
+            frente; quem ficou entre duas resolve aqui, sem sair da home. */}
+        {!isLoading && (
+          <div className="mt-12">
+            <PlanCalculator plans={plans} embedded />
+          </div>
+        )}
 
         {/* Comparison link */}
         <ScrollReveal direction="up" delay={450} duration={700}>
