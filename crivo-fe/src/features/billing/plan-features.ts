@@ -3,6 +3,15 @@ import type { Plan } from "./types";
 export type PlanFeatureLine = {
   text: string;
   included: boolean;
+  /**
+   * Marca as linhas cujo **valor muda** de plano para plano (limite de
+   * profissionais, franquia de mensagens), diferente das que são só ✓/✗.
+   *
+   * Os cards compactos usam isto para decidir o que cabe no corte: uma
+   * linha idêntica nas quatro colunas não ajuda a escolher, mas uma que
+   * varia é exatamente o que separa um plano do outro.
+   */
+  varies?: boolean;
 };
 
 /**
@@ -82,7 +91,7 @@ export function planComparableFeatures(plan: Plan): PlanFeatureLine[] {
     { text: "Prontuário (anamnese e evolução)", included: true },
     { text: "Fotos antes/depois por atendimento", included: true },
     { text: "Agenda com controle de conflito de horário", included: true },
-    { text: messagesQuotaLabel(plan), included: true },
+    { text: messagesQuotaLabel(plan), included: true, varies: true },
     { text: "Confirmação por link ou respondendo no WhatsApp", included: true },
     { text: "Agendamento online pelo paciente", included: true },
   ];
@@ -112,7 +121,7 @@ function messagesQuotaLabel(plan: Plan): string {
  */
 export function planFeatureLines(plan: Plan): PlanFeatureLine[] {
   return [
-    { text: professionalsLimitLabel(plan), included: true },
+    { text: professionalsLimitLabel(plan), included: true, varies: true },
     ...planComparableFeatures(plan),
   ];
 }

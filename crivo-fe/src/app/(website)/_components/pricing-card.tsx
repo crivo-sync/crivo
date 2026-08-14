@@ -10,6 +10,8 @@ export type PricingTier =
 export type PricingFeature = {
   text: string;
   included: boolean;
+  /** Linha cujo valor muda entre planos — sobrevive ao corte do compacto. */
+  varies?: boolean;
 };
 
 export type PricingPlan = {
@@ -128,11 +130,23 @@ export const PricingCard = ({
   compact?: boolean;
 }) => {
   const accent = PLAN_ACCENT[plan.tier];
-  // 6 no compacto: é quanto cobre todos os itens que **variam** entre os
-  // planos (`planFeatureLines` põe os diferenciais primeiro, justamente
-  // para caberem aqui). Cortar antes disso mostrava três colunas com as
-  // mesmas linhas, sem diferencial nenhum à vista.
-  const features = compact ? plan.features.slice(0, 6) : plan.features;
+  /**
+   * O compacto (home) mostra só o que **varia** entre os planos: limite de
+   * profissionais + os 4 diferenciais. Depois deles vem a base comum, que
+   * repetida em quatro colunas idênticas não ajuda a escolher.
+   *
+   * A franquia de mensagem entra junto por ser o segundo número que decide
+   * a compra — e por ser o único item da base que muda de plano para plano.
+   */
+  const features = compact
+    ? plan.features.filter(
+        (feature, index) =>
+          // Os diferenciais vêm primeiro em `planFeatureLines`…
+          index < 5 ||
+          // …e `varies` recupera o que muda de plano mas ficou na base.
+          feature.varies,
+      )
+    : plan.features;
 
   return (
     <div
