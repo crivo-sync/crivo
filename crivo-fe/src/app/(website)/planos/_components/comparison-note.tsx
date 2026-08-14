@@ -25,7 +25,11 @@ const Cell = ({ included }: { included: boolean }) =>
       stroke="currentColor"
       strokeWidth="2"
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 18L18 6M6 6l12 12"
+      />
     </svg>
   );
 
@@ -51,7 +55,9 @@ export const ComparisonNote = () => {
     name: plan.name,
     // Só o número (ou "Ilimitados") — a coluna já se chama "Profissionais".
     professionals:
-      plan.maxProfessionals === null ? "Ilimitados" : String(plan.maxProfessionals),
+      plan.maxProfessionals === null
+        ? "Ilimitados"
+        : String(plan.maxProfessionals),
     included: new Map(
       planComparableFeatures(plan).map((line) => [line.text, line.included]),
     ),
@@ -61,7 +67,7 @@ export const ComparisonNote = () => {
     <section className="relative overflow-hidden px-6 pt-20 text-gray-900">
       <div className="pointer-events-none absolute top-1/2 left-1/4 h-100 w-100 -translate-y-1/2 rounded-full bg-indigo-600/3 blur-[140px]" />
 
-      <div className="relative z-10 mx-auto max-w-4xl">
+      <div className="relative z-10 w-full">
         <div className="mx-auto mb-12 flex max-w-2xl flex-col items-center text-center">
           <ScrollReveal direction="up" delay={50} duration={600}>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-black/3 px-4 py-1.5 text-xs font-semibold tracking-wider text-gray-600 uppercase">
@@ -151,7 +157,7 @@ export const ComparisonNote = () => {
         )}
 
         {/* Notes */}
-        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+        <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
           {[
             {
               title: "Teste antes de pagar",
@@ -167,7 +173,12 @@ export const ComparisonNote = () => {
               description: "não por agendamento — conta previsível todo mês",
             },
           ].map((note, idx) => (
-            <ScrollReveal key={note.title} direction="up" delay={idx * 80} duration={700}>
+            <ScrollReveal
+              key={note.title}
+              direction="up"
+              delay={idx * 80}
+              duration={700}
+            >
               <div className="text-center">
                 <div className="mb-1.5 text-base font-bold text-gray-900">
                   {note.title}

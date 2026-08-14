@@ -25,7 +25,7 @@ export const PricingSection = () => {
       <section className="relative overflow-hidden px-6 pt-8 pb-6 text-gray-900">
         <div className="pointer-events-none absolute right-1/4 bottom-0 h-125 w-125 rounded-full bg-indigo-600/3 blur-[120px]" />
 
-        <div className="relative z-10 mx-auto max-w-6xl">
+        <div className="relative z-10 w-full">
           <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
             {isLoading
               ? [0, 1, 2, 3].map((idx) => (

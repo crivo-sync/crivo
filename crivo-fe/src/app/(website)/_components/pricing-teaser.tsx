@@ -22,7 +22,7 @@ export const PricingTeaser = () => {
       <div className="pointer-events-none absolute top-0 left-1/2 h-100 w-225 -translate-x-1/2 rounded-full bg-indigo-600/4 blur-[160px]" />
       <div className="pointer-events-none absolute right-1/4 bottom-0 h-125 w-125 rounded-full bg-indigo-600/3 blur-[120px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
+      <div className="relative z-10 w-full px-6">
         {/* Header */}
         <div className="mx-auto mb-14 flex max-w-3xl flex-col items-center text-center">
           <ScrollReveal direction="up" delay={50} duration={600}>
@@ -62,7 +62,7 @@ export const PricingTeaser = () => {
         </div>
 
         {/* Plan cards */}
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
           {isLoading
             ? [0, 1, 2, 3].map((idx) => (
                 <Skeleton

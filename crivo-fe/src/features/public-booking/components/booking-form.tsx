@@ -87,6 +87,19 @@ export const BookingForm = ({ subdomain }: { subdomain: string }) => {
   }
 
   const availableProcedures = proceduresFor(options, booking.professionalId);
+
+  // Dias em que o profissional selecionado atende, pela grade do admin.
+  // Grade vazia = herda o expediente da clínica (mesma regra do backend),
+  // então "sem grade" não pode virar "não atende em dia nenhum".
+  const selectedProfessional = options.professionals.find(
+    (p) => p.id === booking.professionalId,
+  );
+  const professionalHasSchedule =
+    (selectedProfessional?.schedules.length ?? 0) > 0;
+  const professionalWorkDays = new Set(
+    (selectedProfessional?.schedules ?? []).map((s) => s.weekday),
+  );
+
   const canSubmit =
     patientName.trim().length >= 2 &&
     isValidPhone(patientPhone) &&
@@ -159,9 +172,19 @@ export const BookingForm = ({ subdomain }: { subdomain: string }) => {
         // Mesma regra do painel (`SlotPicker` da agenda): dia fora do
         // funcionamento da clínica já aparece cinza, em vez de deixar
         // escolher e só recusar depois de buscar os horários.
-        shouldDisableDate={(day: Dayjs) =>
-          !options.clinic.businessDays.includes(day.day())
-        }
+        //
+        // A grade do profissional entra aqui também: com grade cadastrada,
+        // os dias em que ele não atende aparecem desabilitados no calendário
+        // — a regra de herança é a mesma do backend (grade vazia = atende no
+        // expediente da clínica). Sem isso o paciente escolhia um dia, o
+        // SlotPicker avisava "O profissional não atende neste dia" e ele
+        // tinha que voltar e trocar.
+        shouldDisableDate={(day: Dayjs) => {
+          if (!options.clinic.businessDays.includes(day.day())) return true;
+          return (
+            professionalHasSchedule && !professionalWorkDays.has(day.day())
+          );
+        }}
         onChange={(next) => {
           if (!next || !next.isValid()) return;
           booking.setDate(next.format("YYYY-MM-DD"));

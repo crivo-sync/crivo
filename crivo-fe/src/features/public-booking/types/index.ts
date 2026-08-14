@@ -18,6 +18,15 @@ export type BookingProfessional = {
   specialty: string | null;
   /** Lista vazia = atende todos os procedimentos da clínica. */
   procedures: { id: string }[];
+  /**
+   * Dias da semana em que o profissional atende, pela grade cadastrada no
+   * admin (`Date.getDay()`: 0 = domingo … 6 = sábado).
+   *
+   * Lista vazia = profissional **sem grade**, atende no expediente da
+   * clínica — a mesma regra do backend (`ProfessionalAvailabilityService`).
+   * Por isso o front não pode ler "vazio" como "não atende em dia nenhum".
+   */
+  schedules: { weekday: number }[];
 };
 
 export type BookingProcedure = {
