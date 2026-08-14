@@ -20,9 +20,14 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > jargão de engenharia fora de todas as páginas — com teste que falha se
 > voltar.
 >
-> **O que segue aberto e depende de código:**
-> - **Pareamento da Evolution por QR code** — hoje o nome da instância é
->   digitado à mão nas Configurações
+> Desde 14/08 a clínica **conecta o próprio WhatsApp lendo um QR code** nas
+> Configurações — o último ponto do produto que ainda exigia alguém do time
+> configurando à mão.
+>
+> **O que segue aberto e depende de código:** nada bloqueante. As lacunas
+> competitivas conhecidas (modelo de preço em degrau e multi-unidade) estão
+> registradas com o tamanho real do trabalho — ver Leitura do mercado e
+> Fase 4.
 >
 > **O que segue aberto e não depende de código:**
 > - **Credenciais da Meta** — adiado por custo. O provider está pronto e
@@ -438,6 +443,16 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Sem `@Roles`** — responder ao paciente é trabalho da recepção (STAFF), mesma decisão da caixa de entrada. Paciente de outro tenant devolve 404, conferido no use case
      - 7 testes unitários + 4 E2E. Verificado ao vivo: `MANUAL` criada → fila → worker → `SENT`; 400 em corpo vazio, 404 em paciente inexistente, 400 em uuid inválido, 401 sem token
    - ❌ **Chat com IA — descartado em 12/08/2026.** Cogitado nos dois lugares e recusado nos dois: no público, quem conversa é visitante anônimo (custo DeepSeek variável sem dono, e risco de a IA prometer horário ou preço errado para quem nem é cliente); no painel interno, não apareceu pergunta que a clínica faria a um chat e que as telas de Agenda, Risco de falta e Painel já não respondam melhor — seria custo por uso para reembalar dado que já está na tela. A IA segue onde tem função definida e verificável: **reescrever a mensagem de lembrete** (`aiMessagesEnabled`, com validação literal de nome/data/hora/link)
+   - [x] **Pareamento do WhatsApp por QR code** (14/08/2026) — `GET/POST/DELETE /whatsapp-connection` + aba nas Configurações. Era o **último ponto do produto que exigia alguém do time configurando à mão**: a clínica digitava o "nome da instância" da Evolution num campo de texto. Além de ser uma pergunta que nenhum dono de clínica sabe responder, era texto livre — dava para digitar o nome da instância de **outra clínica** e passar a enviar pelo WhatsApp dela. Decisões:
+     - **O nome é derivado do `tenantId`** (`crivo-<id>`) e nunca sai do backend: não há mais campo onde escrever o nome alheio, e a tela não o exibe (é detalhe do servidor Evolution que não ajuda a clínica, mas ajudaria quem quisesse alcançar a instância de outra). O campo saiu do `UpdateTenantDto`
+     - **`EvolutionInstanceClient` fica fora do contrato `MessageProvider`** — parear por QR é específico da Evolution; na Meta oficial o número é homologado no painel deles. Colocar no contrato obrigaria o provider da Meta a implementar método sem sentido
+     - **`POST` idempotente**: instância existente recebe QR novo em vez de ser recriada (o QR expira em segundos, então "gerar de novo" é o caminho normal), e **já conectado não gera QR** — pedir um derrubaria a sessão que funciona
+     - **Desconectar é `logout`, não `delete`** — a instância fica de pé para reparear
+     - **Instância sumida do servidor limpa o vínculo** em vez de deixar a clínica presa num estado que a tela não resolve
+     - **Leitura também é `@Roles(ADMIN)`**, diferente da maioria das telas: o estado revela por qual número a clínica fala, e desconectar interrompe todo lembrete
+     - **Duas descobertas do contrato real** (Evolution 2.3.7), que só apareceram testando contra a API: `fetchInstances` responde **404** — não lista vazia — para instância inexistente, que é o estado inicial de toda clínica nova; e `delete` responde `SUCCESS` mas leva segundos para a instância sumir de fato
+     - 🐞 **O QR sumia sozinho 3s depois de aparecer**, com "Aguardando leitura" ainda na tela — achado no navegador, não pelos testes. Só o `POST` gera código; o `GET` do polling devolve `qrCode: null` e sobrescrevia o cache. Corrigido com `structuralSharing`
+     - 10 testes unitários + 4 E2E contra a Evolution real. Ciclo verificado ao vivo: parear → QR de 13KB → segundo POST sem duplicar instância → STAFF recebe 403 → `PATCH` tentando injetar `crivo-dev` ignorado → desconectar
    - [ ] Webhook de status de entrega (`DELIVERED`)
    - [x] **Reenvio manual a partir da lista de falhas** (06/08/2026) — `POST /messages/:id/resend`, com ação na tela de Mensagens. Antes o retry só existia no Bull Board, ferramenta de dev protegida por Basic Auth que expõe a fila inteira; a lista "ligar para estes pacientes" era um beco sem saída. Detalhes que não são óbvios:
      - **Só aceita `FAILED`** — reenviar uma `SENT` duplicaria a mensagem no WhatsApp do paciente, e uma `PENDING` já está na fila. Nos dois casos recusa com 400 em vez de criar um segundo envio silencioso
@@ -779,7 +794,7 @@ Quatro observações:
 | Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
 | Migração de clínica que já usa concorrente | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar |
 | Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
-| ~~Instância do WhatsApp única para o servidor inteiro~~ | ✅ **Resolvido em 13/08/2026.** Era um bloqueio de multi-tenant: `EVOLUTION_INSTANCE` é variável de ambiente, então **todas as clínicas enviariam pelo mesmo número** — o paciente da Clínica A receberia mensagem do número da Clínica B. Hoje não aparece porque só há uma clínica real. Resolver exige: campo `evolutionInstance` por `Tenant`, o `MessageProviderResolver` passando a instância ao provider (hoje ele resolve só *qual* provider), e uma tela para a clínica parear o próprio número por QR code. **Vale a mesma decisão para a Meta**: lá é um `phone_number_id` por clínica, mesma modelagem. Agora `Tenant.evolutionInstance` guarda o número de cada clínica, o `MessageProviderResolver` devolve **provider + remetente** juntos (são a mesma decisão), e o `PATCH /tenants/me` valida o formato — nome com barra viraria path traversal na URL da Evolution. `null` cai no padrão do servidor, aceitável enquanto há uma clínica. **Falta a tela de pareamento por QR code**, hoje o nome é digitado à mão |
+| ~~Instância do WhatsApp única para o servidor inteiro~~ | ✅ **Resolvido em 13/08/2026.** Era um bloqueio de multi-tenant: `EVOLUTION_INSTANCE` é variável de ambiente, então **todas as clínicas enviariam pelo mesmo número** — o paciente da Clínica A receberia mensagem do número da Clínica B. Hoje não aparece porque só há uma clínica real. Resolver exige: campo `evolutionInstance` por `Tenant`, o `MessageProviderResolver` passando a instância ao provider (hoje ele resolve só *qual* provider), e uma tela para a clínica parear o próprio número por QR code. **Vale a mesma decisão para a Meta**: lá é um `phone_number_id` por clínica, mesma modelagem. Agora `Tenant.evolutionInstance` guarda o número de cada clínica, o `MessageProviderResolver` devolve **provider + remetente** juntos (são a mesma decisão), e o `PATCH /tenants/me` valida o formato — nome com barra viraria path traversal na URL da Evolution. `null` cai no padrão do servidor, aceitável enquanto há uma clínica. **Pareamento por QR code entregue em 14/08/2026** — e o campo digitável saiu do `PATCH /tenants/me`: além de ser uma pergunta que nenhum dono de clínica sabe responder, era texto livre que permitia digitar o nome da instância de **outra clínica** e passar a enviar pelo WhatsApp dela. O nome agora é derivado do `tenantId` e nunca sai do backend |
 | **Evolution API em produção** (decidido em 05/08/2026 por custo) | ⚠️ **Risco aceito, não mitigado.** Banimento é permanente e sem recurso — perderíamos o número junto com a agenda do cliente. Mitigações possíveis enquanto durar: número dedicado (nunca o pessoal do dono), volume baixo, opt-in real do paciente, e a lista de falhas já existente para a recepção ligar. Migrar para a Meta assim que houver caixa é o plano, e o código já é plugável (`MESSAGING_PROVIDER`), então a troca é de env var, não de refactor |
 | Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |
 | Custo do DeepSeek por mensagem (feature de IA opcional) | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano |

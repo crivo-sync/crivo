@@ -2,7 +2,13 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-13 (rev. 20 — o `/painel` abre dizendo **quanto
+> Última atualização: 2026-08-14 (rev. 21 — aba **WhatsApp** nas
+> Configurações: a clínica conecta o próprio número lendo um **QR code**, em
+> vez de digitar o "nome da instância" da Evolution num campo de texto. Era o
+> último ponto do produto que não sobrevivia a uma clínica assinando
+> sozinha).
+>
+> Rev. 20 (13/08): o `/painel` abre dizendo **quanto
 > as faltas custaram este mês, em reais**; o resumo do dia foi **liberado em
 > todos os planos** — travá-lo fazia a clínica no Solo abrir o sistema e ver
 > uma tela de erro como primeira coisa; onde havia gráficos, quem não tem
@@ -42,14 +48,14 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | 🟢 Três abas: **Histórico**, **Falhas** (com reenvio manual e erro em português) e **Recebidas** (caixa de entrada do que o paciente respondeu). Responder é na aba **Conversa** da ficha do paciente. Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
-| `configuracoes` (tenants/me) | 🟢 Três abas: **Dados da clínica** (leitura para todos, edição ADMIN), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
+| `configuracoes` (tenants/me) | 🟢 Quatro abas: **Dados da clínica** (leitura para todos, edição ADMIN), **WhatsApp** (pareamento por QR code, aba escondida de STAFF), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
 | `onboarding` | 🟢 Checklist no topo do `/painel` (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar (profissional, procedimento, primeiro agendamento) e some sozinho quando ela está operando |
 | `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `medical-records`, `hasAiMessages` (no envio **e** no toggle das Configurações) e nos **gráficos** do `dashboard` — o resumo do dia e o custo das faltas ficam abertos em todos os planos |
 | `public-booking` (`/agendar/:subdomain`) | 🟢 Página pública onde o paciente marca sozinho, sem login. Cascata profissional → procedimento → dia → horário, com o mesmo cálculo de vaga do painel |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🟡 **45 testes E2E (Playwright)** em 10 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas, bloqueio do `/painel` e a **home** (a conta da calculadora e um teste que falha se o jargão de engenharia voltar ao site). Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
+| Testes automatizados | 🟡 **49 testes E2E (Playwright)** em 11 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas, bloqueio do `/painel`, a **home** (a conta da calculadora e um teste que falha se o jargão de engenharia voltar ao site) e a **conexão do WhatsApp** (contra a Evolution real: o QR é gerado de verdade). Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
 
 A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje abre com **o custo das faltas do mês em reais**, seguido de cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
@@ -320,6 +326,14 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - Rota `GET /dashboard/no-show-cost` fora do `hasDashboard`, como o `summary` — esconder isso de quem está no Solo esconderia o próprio argumento de venda.
 - ~~**O resumo do painel estava travado por plano**~~ — ✅ 13/08/2026. `hasDashboard` cobria o `/painel` inteiro, então a clínica no Solo abria o sistema e a **primeira coisa** que via era uma tela de erro. A trava passou a ser por rota: resumo e custo das faltas abertos a todos, gráficos e faturamento seguem pagos. No lugar dos gráficos, `UpgradeChartsCard` convida ao upgrade — quem não tem o recurso vê o que está perdendo, em vez de um buraco na página.
 
+- ~~**Conectar o WhatsApp exigia alguém do time**~~ — ✅ 14/08/2026. Aba **WhatsApp** nas Configurações (`features/tenant/components/WhatsAppConnection`): a clínica clica em "Conectar WhatsApp", lê o QR no celular e a tela avisa sozinha quando pareia. Antes, o vínculo era um campo de texto onde ela digitava o "nome da instância" da Evolution — pergunta que nenhum dono de clínica sabe responder, e ainda por cima texto livre que permitia apontar para a instância de outra clínica. Decisões:
+  - **A aba não aparece para STAFF** — no backend até a leitura é ADMIN (`whatsapp-connection` responde 403), então ela abriria só para mostrar erro.
+  - **Polling de 3s enquanto pareia**, e não os 8s de `LIVE_REFETCH_INTERVAL_MS`: com o QR na frente, alguém está olhando e esperando — 8s depois de ler o código parecem travamento.
+  - **Mostra o número conectado**, não só "Conectado": é assim que a clínica confere que pareou o telefone certo.
+  - **Desconectar pede confirmação dizendo a consequência** ("seus pacientes deixam de receber lembretes"). A consequência é invisível — a clínica só descobriria quando alguém faltasse.
+  - **A tela nunca exibe o nome da instância** (há teste E2E para isso): é detalhe do servidor Evolution, não ajuda a clínica e ajudaria quem quisesse alcançar a instância de outra.
+  - 🐞 **O QR aparecia e sumia sozinho 3s depois**, com "Aguardando leitura" ainda na tela — achado olhando o navegador, não pelos testes. Só o `POST` gera código; o `GET` do polling devolve `qrCode: null` e sobrescrevia o cache do React Query. Corrigido com `structuralSharing`, que preserva o QR enquanto o pareamento segue pendente.
+  - 4 testes E2E contra a Evolution API real, com `beforeEach` que zera a conexão pela API: sem isso, o teste do QR deixava o seguinte num estado que não era o que ele descrevia — e teste que passa conforme a ordem é pior que teste ausente.
 - ~~**A home vendia mecanismo, não dinheiro**~~ — ✅ 13/08/2026. A manchete era *"O motor que evita buracos na sua agenda"*: bonita, mas o dono da clínica precisava traduzir sozinho para reais — enquanto o Agendiva abre com *"recupere até R$ 1.500/mês que sua clínica perde com faltas"*. Agora é *"Cada falta leva embora o faturamento do dia"*, e logo depois da seção de dor entra a **`LossCalculator`**. Decisões:
   - **A conta é do visitante, não nossa** — ele informa faltas por semana e ticket médio. Copiar o "R$ 1.500" do concorrente exigiria um cliente que não temos, e inventar número contradiz a régua do produto (a medição de acurácia se recusa a concluir com menos de 30 casos). Assim o número é grande e é dele.
   - **4,33 semanas por mês** (52/12), não 4 — arredondar subestimaria a perda em ~8%, e subestimar enfraquece o próprio argumento.
