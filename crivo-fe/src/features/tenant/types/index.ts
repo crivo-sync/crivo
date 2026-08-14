@@ -73,6 +73,22 @@ export type PlanFeatures = {
   maxMessagesPerMonth: number | null;
 };
 
+/**
+ * Conexão do WhatsApp da clínica (pareamento por QR code).
+ *
+ * Não traz o nome da instância de propósito: é detalhe do servidor Evolution
+ * e não ajuda a clínica em nada — mas ajudaria quem quisesse alcançar a
+ * instância de outra.
+ */
+export type WhatsAppConnection = {
+  status: "DISCONNECTED" | "CONNECTING" | "CONNECTED";
+  /** Data URI do QR, presente só enquanto o pareamento está pendente. */
+  qrCode: string | null;
+  /** Número conectado, para a clínica conferir que pareou o telefone certo. */
+  phone: string | null;
+  profileName: string | null;
+};
+
 export type ActionResult<T = undefined> =
   | { success: true; message: string; data: T }
   | { success: false; message: string; data?: undefined };

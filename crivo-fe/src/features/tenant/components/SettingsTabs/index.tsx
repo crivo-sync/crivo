@@ -9,8 +9,9 @@ import { useIsAdmin } from "@/components/providers/session-provider";
 import { SubscriptionSettings } from "@/features/billing/components/SubscriptionSettings";
 import { MessageTemplates } from "../MessageTemplates";
 import { TenantSettings } from "../TenantSettings";
+import { WhatsAppConnection } from "../WhatsAppConnection";
 
-type TabValue = "clinic" | "messages" | "subscription";
+type TabValue = "clinic" | "whatsapp" | "messages" | "subscription";
 
 /**
  * Separa "dados da clínica" de "textos das mensagens".
@@ -28,6 +29,10 @@ export const SettingsTabs = () => {
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs value={tab} onChange={(_, value: TabValue) => setTab(value)}>
           <Tab label="Dados da clínica" value="clinic" />
+          {/* Escondida para STAFF: no backend até a **leitura** é ADMIN
+              (`whatsapp-connection` responde 403), então a aba abriria só
+              para mostrar erro. */}
+          {canManage && <Tab label="WhatsApp" value="whatsapp" />}
           <Tab label="Mensagens automáticas" value="messages" />
           <Tab label="Assinatura" value="subscription" />
         </Tabs>
@@ -37,6 +42,7 @@ export const SettingsTabs = () => {
           e deixá-las todas no ar pagaria essa requisição em toda visita a
           Configurações. */}
       {tab === "clinic" && <TenantSettings />}
+      {tab === "whatsapp" && canManage && <WhatsAppConnection />}
       {tab === "messages" && <MessageTemplates canManage={canManage} />}
       {tab === "subscription" && <SubscriptionSettings />}
     </Box>
