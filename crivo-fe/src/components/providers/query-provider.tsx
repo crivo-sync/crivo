@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   MutationCache,
   QueryCache,
@@ -30,8 +29,6 @@ type QueryProviderProps = {
  * adicionar isso.
  */
 export const QueryProvider = ({ children }: QueryProviderProps) => {
-  const router = useRouter();
-
   const [queryClient] = useState(() => {
     // Objeto plain (não `useRef`): a factory do `useState` roda durante o
     // render/mount, e o React Compiler bloqueia leitura de `ref.current`
@@ -46,10 +43,13 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
       if (message !== SESSION_EXPIRED_MESSAGE || handledState.handled) return;
 
       handledState.handled = true;
-      void logoutAction().then(() => {
-        router.push("/login");
-        router.refresh();
-      });
+      // Navegação de página completa em vez de `router.push` + `router.refresh`:
+      // com a sessão já morta, o refresh re-buscava o RSC do /painel e o
+      // middleware respondia com um redirect que o router cliente não sabia
+      // interpretar — o painel travava em "An unexpected response was received
+      // from the server." em vez de cair na tela de login.
+      void logoutAction();
+      window.location.assign("/login");
     };
 
     return new QueryClient({
