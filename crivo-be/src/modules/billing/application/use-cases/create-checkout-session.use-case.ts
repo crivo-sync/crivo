@@ -14,6 +14,14 @@ export type CreateCheckoutSessionInput = {
 };
 
 /**
+ * Ou manda para o checkout (primeira assinatura), ou confirma a troca de
+ * plano feita direto na assinatura existente.
+ */
+export type CheckoutOrChangeResult =
+  | { kind: 'checkout'; url: string }
+  | { kind: 'changed'; message: string };
+
+/**
  * Abre o checkout de assinatura para um plano específico.
  *
  * Cria (ou reaproveita) o Stripe Customer do tenant, e associa a sessão ao
@@ -29,7 +37,9 @@ export class CreateCheckoutSessionUseCase {
     private readonly config: ConfigService,
   ) {}
 
-  async execute(input: CreateCheckoutSessionInput): Promise<{ url: string }> {
+  async execute(
+    input: CreateCheckoutSessionInput,
+  ): Promise<CheckoutOrChangeResult> {
     const [tenant, plan] = await Promise.all([
       this.prisma.tenant.findUniqueOrThrow({ where: { id: input.tenantId } }),
       this.prisma.plan.findUnique({ where: { id: input.planId } }),
@@ -43,6 +53,40 @@ export class CreateCheckoutSessionUseCase {
       throw new BadRequestException(
         'This plan does not have a Stripe price configured yet.',
       );
+    }
+
+    if (tenant.planId === plan.id) {
+      throw new BadRequestException('Este já é o plano contratado.');
+    }
+
+    /**
+     * **Downgrade** não passa pelo checkout: o cliente já pagou o mês do
+     * plano maior, e cobrar de novo para descer de plano seria absurdo. A
+     * assinatura existente é atualizada e a troca vale no fim do ciclo.
+     *
+     * **Upgrade e primeira assinatura** vão para o checkout do Stripe: é onde
+     * o cliente vê o que está sendo cobrado e confirma o pagamento. A
+     * assinatura anterior é cancelada pelo webhook, quando a nova confirma —
+     * ver `handleCheckoutCompleted`. Sem isso ficariam duas ativas e o
+     * cliente pagaria as duas (aconteceu: três simultâneas, R$ 727/mês).
+     */
+    if (tenant.stripeSubscriptionId && tenant.planId) {
+      const current = await this.prisma.plan.findUnique({
+        where: { id: tenant.planId },
+        select: { name: true, priceInCents: true },
+      });
+
+      const isDowngrade =
+        !!current && plan.priceInCents < current.priceInCents;
+
+      if (isDowngrade) {
+        return this.scheduleDowngrade(
+          tenant.stripeSubscriptionId,
+          plan.name,
+          plan.stripePriceId,
+          current.name,
+        );
+      }
     }
 
     let stripeCustomerId = tenant.stripeCustomerId;
@@ -83,6 +127,35 @@ export class CreateCheckoutSessionUseCase {
       throw new BadRequestException('Stripe did not return a checkout URL.');
     }
 
-    return { url: session.url };
+    return { kind: 'checkout', url: session.url };
+  }
+
+  /**
+   * Downgrade: agenda a troca sem cobrar nada agora.
+   *
+   * `immediate: false` → `proration_behavior: 'none'`, então o cliente
+   * mantém os recursos do plano maior até o fim do período já pago. O
+   * `planId` no banco **não** muda aqui: quem grava é o webhook
+   * `customer.subscription.updated`, quando o ciclo virar. Rebaixar agora
+   * tiraria recurso que já foi pago.
+   */
+  private async scheduleDowngrade(
+    subscriptionId: string,
+    targetPlanName: string,
+    targetPriceId: string,
+    currentPlanName: string,
+  ): Promise<CheckoutOrChangeResult> {
+    await this.stripe.updateSubscriptionPrice({
+      subscriptionId,
+      priceId: targetPriceId,
+      immediate: false,
+    });
+
+    return {
+      kind: 'changed',
+      message:
+        `Mudança para ${targetPlanName} agendada. Você continua com os ` +
+        `recursos do plano ${currentPlanName} até o fim do período já pago.`,
+    };
   }
 }

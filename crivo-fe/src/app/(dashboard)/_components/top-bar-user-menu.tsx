@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
@@ -30,7 +29,6 @@ export const TopBarUserMenu = () => {
   // Sessão (JWT) não carrega avatar — busca via React Query, invalidada pela
   // própria página de perfil quando a foto troca, então reflete sem reload.
   const { profile } = useProfile();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = !!anchorEl;
@@ -45,8 +43,10 @@ export const TopBarUserMenu = () => {
     handleClose();
     startTransition(async () => {
       await logoutAction();
-      router.push("/login");
-      router.refresh();
+      // Navegação de página completa: `router.refresh` pós-logout re-buscava
+      // o RSC da página atual com a sessão já removida, e o middleware
+      // respondia com um redirect que o router cliente não interpretava.
+      window.location.assign("/login");
     });
   };
 
@@ -117,11 +117,7 @@ export const TopBarUserMenu = () => {
 
         <Divider />
 
-        <MenuItem
-          onClick={handleClose}
-          component="a"
-          href="/painel/perfil"
-        >
+        <MenuItem onClick={handleClose} component="a" href="/painel/perfil">
           <ListItemIcon>
             <PersonOutlineOutlinedIcon fontSize="small" />
           </ListItemIcon>

@@ -8,6 +8,7 @@ import { usePlans } from "@/features/billing/hooks/use-plans";
 import { planToPricingCard } from "../_data/plan-to-pricing-card";
 import { PricingCard } from "./pricing-card";
 import { FreeTrialCard } from "./free-trial-card";
+import { PlanCalculator } from "./plan-calculator";
 
 export const PricingTeaser = () => {
   const { plans, isLoading } = usePlans();
@@ -21,7 +22,7 @@ export const PricingTeaser = () => {
       <div className="pointer-events-none absolute top-0 left-1/2 h-100 w-225 -translate-x-1/2 rounded-full bg-indigo-600/4 blur-[160px]" />
       <div className="pointer-events-none absolute right-1/4 bottom-0 h-125 w-125 rounded-full bg-indigo-600/3 blur-[120px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
+      <div className="relative z-10 w-full px-6">
         {/* Header */}
         <div className="mx-auto mb-14 flex max-w-3xl flex-col items-center text-center">
           <ScrollReveal direction="up" delay={50} duration={600}>
@@ -54,14 +55,14 @@ export const PricingTeaser = () => {
 
           <ScrollReveal direction="up" delay={250} duration={850}>
             <p className="mt-5 text-lg leading-relaxed text-gray-600">
-              Cobrança por profissional ativo, nunca por agendamento. 14 dias de
-              teste grátis em qualquer plano.
+              O plano acompanha o tamanho da sua equipe, nunca o número de
+              agendamentos. 14 dias de teste grátis em qualquer plano.
             </p>
           </ScrollReveal>
         </div>
 
         {/* Plan cards */}
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-1 items-stretch gap-6 md:grid-cols-2 lg:grid-cols-4">
           {isLoading
             ? [0, 1, 2, 3].map((idx) => (
                 <Skeleton
@@ -84,6 +85,14 @@ export const PricingTeaser = () => {
         </div>
 
         <FreeTrialCard />
+
+        {/* Logo abaixo dos cards: quem se decidiu olhando as colunas segue em
+            frente; quem ficou entre duas resolve aqui, sem sair da home. */}
+        {!isLoading && (
+          <div className="mt-12">
+            <PlanCalculator plans={plans} embedded />
+          </div>
+        )}
 
         {/* Comparison link */}
         <ScrollReveal direction="up" delay={450} duration={700}>

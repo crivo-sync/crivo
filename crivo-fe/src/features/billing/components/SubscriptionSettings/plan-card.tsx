@@ -27,6 +27,12 @@ type PlanCardProps = {
   isLoading: boolean;
   /** `false` quando o usuário logado não é ADMIN — o botão fica desabilitado. */
   canSelect: boolean;
+  /**
+   * Mais barato que o plano atual. Muda o texto do botão para dizer o que
+   * vai acontecer — não desabilita: descer de plano é direito do cliente, e
+   * um botão morto o obrigaria a procurar suporte para economizar.
+   */
+  isDowngrade?: boolean;
   onSelect: (planId: string) => void;
 };
 
@@ -35,6 +41,7 @@ export const PlanCard = ({
   isCurrent,
   isLoading,
   canSelect,
+  isDowngrade = false,
   onSelect,
 }: PlanCardProps) => {
   return (
@@ -95,7 +102,10 @@ export const PlanCard = ({
       </List>
 
       <Button
-        variant={isCurrent ? "outlined" : "contained"}
+        // Downgrade sai do azul cheio: o botão principal da tela deve ser o
+        // que faz a clínica subir de plano, não o que a faz descer.
+        variant={isCurrent || isDowngrade ? "outlined" : "contained"}
+        color={isDowngrade ? "inherit" : "primary"}
         disabled={isCurrent || isLoading || !canSelect}
         startIcon={
           isLoading ? (
@@ -107,8 +117,24 @@ export const PlanCard = ({
         onClick={() => onSelect(plan.id)}
         fullWidth
       >
-        {isCurrent ? "Plano contratado" : "Assinar este plano"}
+        {isCurrent
+          ? "Plano contratado"
+          : isDowngrade
+            ? "Mudar para este plano"
+            : "Assinar este plano"}
       </Button>
+
+      {/* O texto do botão sozinho não diz que o acesso continua até o fim do
+          ciclo já pago — e é justamente essa a dúvida de quem hesita em
+          descer de plano. */}
+      {isDowngrade && !isCurrent && (
+        <Typography
+          variant="caption"
+          sx={{ mt: -1, textAlign: "center", color: "text.secondary" }}
+        >
+          Você mantém os recursos atuais até o fim do período já pago.
+        </Typography>
+      )}
     </Card>
   );
 };

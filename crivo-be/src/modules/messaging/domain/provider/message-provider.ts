@@ -1,6 +1,21 @@
 export type SendMessageInput = {
   toPhone: string;
   body: string;
+  /**
+   * De qual número da clínica a mensagem sai.
+   *
+   * **Sem isto o produto não é multi-tenant de verdade**: a instância vinha
+   * de variável de ambiente, então todas as clínicas enviariam pelo mesmo
+   * WhatsApp — o paciente da Clínica A receberia mensagem do número da
+   * Clínica B (achado em 13/08/2026, antes de existir a segunda clínica).
+   *
+   * Cada provider usa o campo que lhe cabe: `evolution` usa o nome da
+   * instância pareada; `meta` usará o `phone_number_id` da conta. `null`
+   * cai no padrão do servidor, que é o certo enquanto há uma clínica só.
+   */
+  sender?: {
+    evolutionInstance: string | null;
+  };
 };
 
 export type SendMessageResult = {

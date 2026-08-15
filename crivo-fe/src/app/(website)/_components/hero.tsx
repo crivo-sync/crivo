@@ -3,16 +3,43 @@ import Link from "next/link";
 import { RegisterCta } from "./register-cta";
 
 /**
- * Números que o produto de fato entrega — conferidos contra o backend, não
- * escritos por impressão:
- * - `REMINDER_HOURS_BY_RISK`: risco alto recebe 72h **e** 24h antes
- * - `SEND_JOB_OPTIONS.attempts: 4`
- * - `ConfirmByTokenUseCase` (link) e `ConfirmByReplyUseCase` ("sim")
+ * O que o produto **faz**, não como funciona por dentro.
+ *
+ * A versão anterior anunciava "3x mais lembrete" e "4x reenvio antes de
+ * desistir": números verdadeiros (conferidos em `REMINDER_HOURS_BY_RISK` e
+ * `SEND_JOB_OPTIONS.attempts`), mas que descrevem o motor. Quem lê é dono de
+ * clínica decidindo onde gastar R$ 149/mês, e "4x reenvio" não é benefício —
+ * é implementação.
+ *
+ * Continuam sendo afirmações verificáveis no código, não promessa de
+ * resultado: nenhum diz "reduz faltas em X%", porque isso nós não medimos.
  */
 const STATS = [
-  { value: "3x", label: "mais lembrete para quem tende a faltar" },
-  { value: "4x", label: "reenvio antes de desistir" },
-  { value: "0 apps", label: "confirma pelo link ou respondendo" },
+  {
+    icon: "📵",
+    value: "Sem app",
+    label: "o paciente confirma respondendo “sim”",
+  },
+  {
+    icon: "🎯",
+    value: "Sem furo",
+    label: "mensagem que falha vira lista pra ligar",
+  },
+  {
+    icon: "👐",
+    value: "Vaga aberta",
+    label: "quem está na espera é chamado na hora",
+  },
+  {
+    icon: "😓",
+    value: "Vaga fechada",
+    label: "quem não confirma é bloqueado na agenda",
+  },
+  {
+    icon: "😩",
+    value: "Vaga cancelada",
+    label: "quem não confirma é bloqueado na agenda",
+  },
 ];
 
 export const Hero = () => {
@@ -34,17 +61,23 @@ export const Hero = () => {
             </p>
           </div>
 
+          {/*
+            A versão anterior era "O motor que evita buracos na sua agenda":
+            bonita, mas mecanismo — o dono da clínica tinha que traduzir
+            sozinho para dinheiro. Agora a manchete é a perda dele, e a
+            calculadora logo abaixo deixa que ele mesmo faça a conta.
+          */}
           <h1 className="text-5xl leading-[1.05] font-bold text-gray-900 md:text-6xl lg:text-7xl">
-            O motor que evita{" "}
+            Cada falta leva embora{" "}
             <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 via-indigo-500 to-indigo-400">
-              buracos na sua agenda
+              o faturamento do dia
             </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600">
-            Agenda, predição de no-show e mensageria automática num único motor.
-            O Crivo avisa quando um horário está em risco — e age antes de virar
-            buraco na sua operação.
+            O paciente não aparece, o horário fica vazio e ninguém entra no
+            lugar. O Crivo lembra quem tende a faltar, avisa a recepção quando a
+            mensagem não chega e oferece a vaga a quem está esperando.
           </p>
 
           <div className="flex flex-col gap-4 pt-8 sm:flex-row">
@@ -62,24 +95,29 @@ export const Hero = () => {
               Ver planos
             </Link>
           </div>
-
-          <div className="flex flex-wrap gap-8 pt-12">
-            {STATS.map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl font-bold tracking-tight text-gray-900">
-                  {stat.value}
-                </div>
-                <div className="mt-0.5 text-[13px] text-gray-500">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent p-7 shadow-2xl backdrop-blur-xl">
           <RegisterCta />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between max-w-7xl mx-auto gap-6 pt-12 text-gray-700">
+        {STATS.map((stat) => (
+          <div key={stat.label}>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/5 text-lg">
+                {stat.icon}
+              </span>
+              <div className="text-2xl font-bold tracking-tight text-gray-900">
+                {stat.value}
+              </div>
+              <div className="text-center mt-0.5 text-[13px] text-gray-500">
+                {stat.label}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

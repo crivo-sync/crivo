@@ -7,6 +7,7 @@ import { ProceduresModule } from '../procedures/procedures.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { DashboardController } from './infrastructure/http/dashboard.controller';
 import { GetDashboardSummaryUseCase } from './application/use-cases/get-dashboard-summary.use-case';
+import { GetNoShowCostUseCase } from './application/use-cases/get-no-show-cost.use-case';
 import { GetDashboardAnalyticsUseCase } from './application/use-cases/get-dashboard-analytics.use-case';
 import { GuardsModule } from '../../shared/guards/guards.module';
 
@@ -26,6 +27,10 @@ import { GuardsModule } from '../../shared/guards/guards.module';
     GuardsModule,
   ],
   controllers: [DashboardController],
-  providers: [GetDashboardSummaryUseCase, GetDashboardAnalyticsUseCase],
+  providers: [
+    GetDashboardSummaryUseCase,
+    GetDashboardAnalyticsUseCase,
+    GetNoShowCostUseCase,
+  ],
 })
 export class DashboardModule {}

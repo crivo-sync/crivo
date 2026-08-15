@@ -19,9 +19,9 @@ const stats = [
         />
       </svg>
     ),
-    value: "3 em 1",
-    label: "Tríade integrada",
-    description: "Agenda + predição + mensageria no mesmo motor",
+    value: "1 tela",
+    label: "Nada de planilha paralela",
+    description: "Agenda, histórico do paciente e WhatsApp no mesmo lugar",
     iconClass: "text-indigo-600 bg-indigo-500/10 border-indigo-500/20",
     valueFrom: "from-indigo-600",
     valueTo: "to-violet-500",
@@ -43,9 +43,12 @@ const stats = [
         />
       </svg>
     ),
-    value: "D-1",
-    label: "Lembrete automático",
-    description: "Aviso por WhatsApp um dia antes da consulta",
+    // Era "D-1 / aviso um dia antes", o que subestima o produto e contradiz
+    // `REMINDER_HOURS_BY_RISK`: quem tende a faltar recebe 72h **e** 24h
+    // antes; quem sempre comparece recebe um só, para não virar spam.
+    value: "2 avisos",
+    label: "Mais insistência em quem falta",
+    description: "Quem sempre comparece não vira spam: recebe um só",
     iconClass: "text-violet-600 bg-violet-500/10 border-violet-500/20",
     valueFrom: "from-violet-500",
     valueTo: "to-indigo-400",
@@ -67,9 +70,9 @@ const stats = [
         />
       </svg>
     ),
-    value: "1 clique",
-    label: "Confirmação sem app",
-    description: "Paciente confirma pelo link, sem baixar nada",
+    value: "“sim”",
+    label: "Confirmar dá uma palavra",
+    description: "Sem baixar app, sem cadastro, sem precisar abrir link",
     iconClass: "text-gray-700 bg-gray-500/10 border-gray-500/20",
     valueFrom: "from-gray-700",
     valueTo: "to-gray-500",

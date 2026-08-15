@@ -6,7 +6,11 @@ import { getDashboardAnalyticsAction } from "../actions/get-dashboard-analytics-
 
 export const DASHBOARD_ANALYTICS_QUERY_KEY = ["dashboard", "analytics"] as const;
 
-export function useDashboardAnalytics(revenueDays?: number) {
+export function useDashboardAnalytics(
+  revenueDays?: number,
+  /** `false` no plano sem gráficos: evita disparar uma busca que dá 403. */
+  enabled = true,
+) {
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     // A janela entra na chave: cada período vira uma entrada de cache própria,
     // então voltar para um período já visitado não refaz a busca.
@@ -18,6 +22,7 @@ export function useDashboardAnalytics(revenueDays?: number) {
       }
       return result.data;
     },
+    enabled,
     staleTime: 60 * 1000,
     // Mantém o gráfico anterior na tela enquanto o novo período carrega, em
     // vez de piscar o skeleton a cada troca de filtro.

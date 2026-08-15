@@ -86,11 +86,18 @@ export class PublicBookingController {
         where: { tenantId: tenant.id, isActive: true, deletedAt: null },
         // Só o que serve para escolher. `phone`, `email` e `councilCode`
         // ficam de fora: é página aberta na internet.
+        //
+        // `schedules` traz só o `weekday` da grade: o front usa para cinzar
+        // no calendário os dias em que o profissional não atende (mesma
+        // regra do `get-availability`). Lista vazia = sem grade, atende no
+        // expediente da clínica — por isso `startMinutes`/`endMinutes` não
+        // saem daqui.
         select: {
           id: true,
           name: true,
           specialty: true,
           procedures: { select: { id: true } },
+          schedules: { select: { weekday: true } },
         },
         orderBy: { name: 'asc' },
       }),

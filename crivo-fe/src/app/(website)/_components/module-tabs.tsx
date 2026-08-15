@@ -67,15 +67,19 @@ const MODULES: ModuleFeature[] = [
   },
   {
     id: "predicao",
-    badge: "Core · em desenvolvimento",
-    title: "O motor que avalia o risco antes da falta acontecer",
+    // Não é mais "em desenvolvimento": a regra, a tela e o escalonamento de
+    // lembretes estão no ar desde 10/08/2026.
+    badge: "Core · disponível",
+    title: "Saiba para quem ligar antes da cadeira ficar vazia",
     description:
-      "Predição de no-show a partir do histórico real de comportamento da clínica — quem costuma faltar, por qual motivo, em qual tipo de procedimento.",
+      "O Crivo olha o histórico da sua clínica e mostra quais consultas de amanhã correm risco — com o motivo de cada uma, para a recepção poder discordar.",
     points: [
-      "Aprende com o histórico de faltas e cancelamentos da própria clínica",
-      "Aciona mensagens diferenciadas quando o risco é alto",
-      "Disponível a partir do plano Clínica",
-      "Especialização por nicho: odontologia e estética, sem ruído de outros segmentos",
+      "Usa as faltas e cancelamentos que já aconteceram na sua clínica",
+      "Quem tende a faltar recebe mais lembrete; quem sempre vem não vira spam",
+      // "plano Clínica" não existe desde a migração para Básico/Intermediário/
+      // Avançado; anunciar plano inexistente confunde na hora de assinar.
+      "Disponível a partir do plano Intermediário",
+      "Feito para odontologia e estética, sem ruído de outros segmentos",
     ],
     accent: {
       icon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
@@ -99,14 +103,15 @@ const MODULES: ModuleFeature[] = [
   {
     id: "mensageria",
     badge: "Core · disponível",
-    title: "Lembrete automático, confirmação sem app",
+    title: "Lembrete no WhatsApp, confirmação sem app",
     description:
-      "Lembrete por WhatsApp um dia antes da consulta, com link de confirmação direto — e nunca falha em silêncio.",
+      "O paciente é lembrado antes da consulta e confirma respondendo “sim”. Se a mensagem não chegar, a recepção fica sabendo — e não a cadeira vazia.",
     points: [
-      "Lembrete automático D-1 e confirmação por link",
-      "Retry automático com backoff antes de desistir do envio",
-      "Falhas viram lista pronta pra recepção ligar",
-      "Texto reescrito por IA de forma opcional, com fallback pro template fixo",
+      "Lembrete automático, com mais insistência em quem tende a faltar",
+      "Confirma respondendo “sim”: sem app, sem cadastro, sem abrir link",
+      "Mensagem que falha vira lista de quem ligar, com nome e telefone",
+      // "retry com backoff" era o termo anterior — implementação, não benefício.
+      "Tenta de novo sozinho antes de desistir de um envio",
     ],
     accent: {
       icon: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
@@ -128,15 +133,22 @@ const MODULES: ModuleFeature[] = [
   },
   {
     id: "financeiro",
-    badge: "Em desenvolvimento",
-    title: "Cobrança por profissional ativo, sem pegadinha de volume",
+    // Estava "em desenvolvimento": checkout, troca de plano e franquia de
+    // mensagens estão no ar desde 11/08/2026.
+    badge: "Disponível",
+    title: "Preço pelo tamanho da clínica, sem pegadinha",
     description:
-      "Assinatura mensal via Stripe, com o preço acompanhando o tamanho da clínica em vez de punir quem está começando.",
+      "Assinatura mensal, com o valor acompanhando quantos profissionais atendem — e não quantos pacientes você marca.",
     points: [
-      "Preço por profissional ativo, não por agendamento",
-      "Predição de no-show liberada a partir do plano Clínica",
-      "Planos com limite de profissionais e upgrade simples",
-      "Relatórios consolidados para clínicas com múltiplas unidades",
+      // O modelo NÃO é cobrança por assento: é mensalidade fixa por faixa,
+      // com teto de profissionais. Dizer "preço por profissional ativo"
+      // prometia uma conta diferente da que o Stripe cobra.
+      "Mensalidade fixa: marcar mais consultas não aumenta a conta",
+      // Teto de profissionais só existe no Solo (1) e no Básico (2);
+      // Intermediário e Avançado são ilimitados.
+      "Começou com um profissional, contratou mais? Troca de plano na hora",
+      "Você vê quantas mensagens já usou no mês, antes de estourar",
+      "14 dias grátis, sem cartão de crédito",
     ],
     accent: {
       icon: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",

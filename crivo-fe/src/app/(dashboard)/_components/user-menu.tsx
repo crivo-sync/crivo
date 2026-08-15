@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -21,14 +20,13 @@ type UserMenuProps = {
 
 export const UserMenu = ({ displayName, open }: UserMenuProps) => {
   const { profile } = useProfile();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const handleLogout = () => {
     startTransition(async () => {
       await logoutAction();
-      router.push("/login");
-      router.refresh();
+      // Navegação de página completa — mesmo motivo de `top-bar-user-menu.tsx`.
+      window.location.assign("/login");
     });
   };
 
@@ -59,11 +57,7 @@ export const UserMenu = ({ displayName, open }: UserMenuProps) => {
         {getInitials(displayName)}
       </Avatar>
 
-      <Typography
-        variant="body2"
-        noWrap
-        sx={{ flex: 1, minWidth: 0 }}
-      >
+      <Typography variant="body2" noWrap sx={{ flex: 1, minWidth: 0 }}>
         {displayName}
       </Typography>
 

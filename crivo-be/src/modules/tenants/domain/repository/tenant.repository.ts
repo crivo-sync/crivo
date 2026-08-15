@@ -11,6 +11,7 @@ export type UpdateTenantData = {
   aiMessagesEnabled?: boolean;
   /** Nulo volta ao padrão do servidor (`MESSAGING_PROVIDER`). */
   messagingProvider?: MessagingProvider | null;
+  evolutionInstance?: string | null;
   businessHoursStart?: number;
   businessHoursEnd?: number;
   businessDays?: number[];

@@ -38,7 +38,9 @@ export const PredictionMock = () => {
             🎯
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">Risco de no-show</h4>
+            {/* Mesmo rótulo da aba real do painel ("Risco de falta"): a
+                prévia deve mostrar o produto que a pessoa vai encontrar. */}
+            <h4 className="text-sm font-semibold text-gray-900">Risco de falta</h4>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
               <span className="text-[10px] text-gray-600">

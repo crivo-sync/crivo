@@ -52,7 +52,12 @@ export class BillingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, TenantContextGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Abre o checkout do Stripe para um plano' })
+  @ApiOperation({
+    summary:
+      'Assina um plano. Sem assinatura, devolve a URL do checkout; com ' +
+      'assinatura existente, troca o preço dela (upgrade na hora, downgrade ' +
+      'no fim do ciclo já pago)',
+  })
   async checkout(
     @Tenant('tenantId') tenantId: string,
     @Body() dto: CreateCheckoutSessionDto,

@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 
+/**
+ * "Predição de no-show" era o primeiro item — jargão, e o **como**. Quem lê
+ * quer saber o que muda na segunda-feira dele.
+ */
 const BULLETS = [
-  "Agenda, predição de no-show e mensageria num painel só",
-  "Link de agendamento online para seus pacientes",
+  "Veja quanto as faltas custaram no seu primeiro mês",
+  "Seus pacientes marcam sozinhos, pelo link, 24h por dia",
   "Sem cartão de crédito para testar",
 ];
 

@@ -3,6 +3,15 @@ import type { Plan } from "./types";
 export type PlanFeatureLine = {
   text: string;
   included: boolean;
+  /**
+   * Marca as linhas cujo **valor muda** de plano para plano (limite de
+   * profissionais, franquia de mensagens), diferente das que são só ✓/✗.
+   *
+   * Os cards compactos usam isto para decidir o que cabe no corte: uma
+   * linha idêntica nas quatro colunas não ajuda a escolher, mas uma que
+   * varia é exatamente o que separa um plano do outro.
+   */
+  varies?: boolean;
 };
 
 /**
@@ -16,9 +25,30 @@ export type PlanFeatureLine = {
  * `planComparableFeatures` (só booleanos) e mostra este texto à parte.
  */
 export function professionalsLimitLabel(plan: Plan): string {
-  return plan.maxProfessionals === null
-    ? "Profissionais ilimitados"
-    : `Até ${plan.maxProfessionals} profissional(is)`;
+  if (plan.maxProfessionals === null) {
+    return "Profissionais ilimitados";
+  }
+
+  const incluidos =
+    plan.maxProfessionals === 1
+      ? "1 profissional"
+      : `${plan.maxProfessionals} profissionais`;
+
+  /**
+   * ⚠️ **O preço do profissional adicional NÃO é anunciado ainda.**
+   *
+   * `pricePerExtraProfessionalInCents` já existe no plano e no Stripe, mas
+   * o backend continua **recusando** o cadastro acima do teto — cobrar o
+   * adicional exige acrescentar um item à assinatura, que não foi feito.
+   * Mostrar "depois R$ 35/mês cada" aqui prometeria algo que o produto
+   * recusa na hora, que é exatamente o tipo de divergência entre site e
+   * sistema que a auditoria de 13/08 existiu para remover.
+   *
+   * Quando a cobrança do adicional entrar, este é o lugar: o limite é o
+   * primeiro critério que a clínica olha, e "até 2 profissionais" sozinho
+   * parece uma parede — quem tem 3 conclui que o plano não serve.
+   */
+  return incluidos;
 }
 
 /**
@@ -37,21 +67,48 @@ export function professionalsLimitLabel(plan: Plan): string {
 export function planComparableFeatures(plan: Plan): PlanFeatureLine[] {
   return [
     // Diferenciais primeiro — é o que decide a compra.
-    { text: "Predição de risco de no-show", included: plan.hasPrediction },
-    { text: "Lista de espera com aviso automático", included: plan.hasWaitlist },
+    // "Predição de risco de no-show" era o texto anterior: jargão numa linha
+    // que a pessoa lê para decidir onde gastar. O nome bate com a aba do
+    // painel ("Risco de falta") e diz o que ela ganha com isso.
     {
-      text: "Prontuário (anamnese e evolução)",
-      included: plan.hasMedicalRecords,
+      text: "Risco de falta: saiba para quem ligar amanhã",
+      included: plan.hasPrediction,
     },
+    { text: "Lista de espera com aviso automático", included: plan.hasWaitlist },
     { text: "Mensagens reescritas por IA", included: plan.hasAiMessages },
     { text: "Painel com gráficos e faturamento", included: plan.hasDashboard },
 
-    // Base comum a todos os planos, no fim da lista.
+    /**
+     * Base comum a todos os planos.
+     *
+     * Prontuário e fotos **saíram da parte paga** em 14/08/2026: viraram
+     * commodity (o concorrente de R$ 39,90 já entrega os dois), e cobrar por
+     * eles nos deixava piores na comparação exatamente onde o cliente olha
+     * primeiro. Continuam com linha própria — para clínica de estética o
+     * antes/depois é o argumento de venda, e diluí-lo dentro de "Prontuário"
+     * esconderia o que mais interessa.
+     */
+    { text: "Prontuário (anamnese e evolução)", included: true },
+    { text: "Fotos antes/depois por atendimento", included: true },
     { text: "Agenda com controle de conflito de horário", included: true },
-    { text: "Lembretes automáticos de WhatsApp", included: true },
+    { text: messagesQuotaLabel(plan), included: true, varies: true },
     { text: "Confirmação por link ou respondendo no WhatsApp", included: true },
     { text: "Agendamento online pelo paciente", included: true },
   ];
+}
+
+/**
+ * A franquia virou informação de compra, não letra miúda.
+ *
+ * Cada mensagem tem custo real (a Meta cobra por mensagem de utilidade), e
+ * esconder o teto criaria a surpresa que o produto existe para evitar.
+ */
+function messagesQuotaLabel(plan: Plan): string {
+  if (plan.maxMessagesPerMonth === null) {
+    return "Lembretes automáticos de WhatsApp";
+  }
+
+  return `${plan.maxMessagesPerMonth.toLocaleString("pt-BR")} mensagens de WhatsApp por mês`;
 }
 
 /**
@@ -64,7 +121,7 @@ export function planComparableFeatures(plan: Plan): PlanFeatureLine[] {
  */
 export function planFeatureLines(plan: Plan): PlanFeatureLine[] {
   return [
-    { text: professionalsLimitLabel(plan), included: true },
+    { text: professionalsLimitLabel(plan), included: true, varies: true },
     ...planComparableFeatures(plan),
   ];
 }

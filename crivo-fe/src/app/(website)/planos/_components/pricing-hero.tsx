@@ -39,8 +39,8 @@ export const PricingHero = () => {
 
         <ScrollReveal direction="up" delay={250} duration={850}>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-gray-600">
-            Cobrança por profissional ativo. O preço cresce junto com a sua
-            operação, não com o número de agendamentos.
+            O plano acompanha o tamanho da sua equipe — e nunca cresce com o
+            número de agendamentos. Marcar mais consultas não aumenta a conta.
           </p>
         </ScrollReveal>
       </div>

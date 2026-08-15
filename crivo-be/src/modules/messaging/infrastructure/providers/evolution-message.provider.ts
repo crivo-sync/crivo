@@ -30,7 +30,16 @@ export class EvolutionMessageProvider implements MessageProvider {
   async send(input: SendMessageInput): Promise<SendMessageResult> {
     const baseUrl = this.config.getOrThrow<string>('EVOLUTION_API_URL');
     const apiKey = this.config.getOrThrow<string>('EVOLUTION_API_KEY');
-    const instance = this.config.getOrThrow<string>('EVOLUTION_INSTANCE');
+
+    /**
+     * A instância é o número da clínica — uma por tenant, pareada por QR
+     * code. Cair no `EVOLUTION_INSTANCE` do ambiente só é aceitável em
+     * desenvolvimento: em produção, com duas clínicas, isso faria a segunda
+     * enviar pelo número da primeira.
+     */
+    const instance =
+      input.sender?.evolutionInstance ??
+      this.config.getOrThrow<string>('EVOLUTION_INSTANCE');
 
     const response = await fetch(
       `${baseUrl.replace(/\/$/, '')}/message/sendText/${instance}`,

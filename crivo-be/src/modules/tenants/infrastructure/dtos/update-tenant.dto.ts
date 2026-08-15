@@ -73,6 +73,16 @@ export class UpdateTenantDto {
   @IsEnum(MessagingProvider)
   messagingProvider?: MessagingProvider;
 
+  /**
+   * `evolutionInstance` **não é editável por aqui** — removido em 14/08/2026.
+   *
+   * Era um campo de texto livre: além de ser uma pergunta que nenhum dono de
+   * clínica sabe responder, permitia digitar o nome da instância de **outra
+   * clínica** e passar a enviar pelo WhatsApp dela. O nome agora é derivado
+   * do `tenantId` no pareamento (`POST /whatsapp-connection`), então não há
+   * mais campo onde escrever o nome alheio.
+   */
+
   @ApiPropertyOptional({
     example: 480,
     description:

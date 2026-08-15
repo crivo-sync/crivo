@@ -50,9 +50,10 @@ export class MessageProcessor extends WorkerHost {
       return { outcome: 'skipped', reason: 'mensagem não existe mais' };
     }
 
-    // Resolvido pelo tenant da mensagem: duas clínicas podem estar em
-    // providers diferentes, e o job só sabe o `messageId`.
-    const provider = await this.providerResolver.resolveForTenant(
+    // Resolvido pelo tenant da mensagem: o job só sabe o `messageId`, e cada
+    // clínica tem o **seu** caminho (provider) e o **seu** número (sender).
+    // Errar o segundo faria o paciente receber pelo WhatsApp de outra clínica.
+    const { provider, sender } = await this.providerResolver.resolveForTenant(
       message.tenantId,
     );
 
@@ -111,6 +112,7 @@ export class MessageProcessor extends WorkerHost {
     const result = await provider.send({
       toPhone: message.toPhone,
       body: message.body,
+      sender,
     });
     const elapsed = Date.now() - startedAt;
 

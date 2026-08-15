@@ -2,10 +2,36 @@
 
 Onde está o painel administrativo hoje e o que falta construir, módulo a módulo.
 
-> Última atualização: 2026-08-13 (rev. 18 — agendamento que chega com a
-> Agenda aberta agora é avisado e destacado; botão "Marcar outra consulta"
-> na confirmação do `/agendar`; 🐞 contador de trial arredondava para cima,
-> mostrando "15 dias" num trial de 14 — conta unificada em `src/lib/trial.ts`).
+> Última atualização: 2026-08-14 (rev. 22 — **tabela de preços nova**:
+> R$ 49/89/179/299. Prontuário e fotos desceram para a base (viraram
+> commodity), a franquia de mensagem virou linha de feature, e nenhum plano
+> é mais ilimitado — a Meta passa a cobrar toda mensagem de utilidade em
+> 01/10/2026).
+>
+> Rev. 21 (14/08): aba **WhatsApp** nas
+> Configurações: a clínica conecta o próprio número lendo um **QR code**, em
+> vez de digitar o "nome da instância" da Evolution num campo de texto. Era o
+> último ponto do produto que não sobrevivia a uma clínica assinando
+> sozinha).
+>
+> Rev. 20 (13/08): o `/painel` abre dizendo **quanto
+> as faltas custaram este mês, em reais**; o resumo do dia foi **liberado em
+> todos os planos** — travá-lo fazia a clínica no Solo abrir o sistema e ver
+> uma tela de erro como primeira coisa; onde havia gráficos, quem não tem
+> `hasDashboard` vê um convite ao upgrade em vez de nada. No site, a home
+> passou a **falar a dor em reais**: manchete nova, **calculadora de perda**
+> com os números do visitante, e o jargão de engenharia removido de todas as
+> páginas — 7 testes E2E novos, um deles falhando se o jargão voltar).
+>
+> Rev. 19 (13/08): **fotos antes/depois** na ficha do paciente, agrupadas por
+> atendimento, com URL assinada que expira e sem botão de download; o painel
+> passou a **esconder o que o plano não inclui** (cadeado nas abas, em vez de
+> 403 numa tela vazia); confirmação antes de descer de plano.
+>
+> Rev. 18 (13/08): agendamento que chega com a Agenda aberta é avisado e
+> destacado; botão "Marcar outra consulta" na confirmação do `/agendar`;
+> 🐞 contador de trial arredondava para cima, mostrando "15 dias" num trial
+> de 14 — conta unificada em `src/lib/trial.ts`.
 >
 > Rev. 16 (12/08): aba **Conversa** na ficha do paciente (a recepção responde
 > pelo painel, sem sair para o WhatsApp), **checklist de onboarding** no
@@ -22,22 +48,22 @@ Onde está o painel administrativo hoje e o que falta construir, módulo a módu
 | Material UI (theme, providers, DataGrid) | 🟢 |
 | `auth` (login, logout, proteção de rota, **cadastro self-service + trial de 14 dias**) | 🟢 |
 | Sidebar / menu (mini variant, filtrado por role) | 🟢 |
-| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF. Ficha com abas: **Dados**, **Conversa** (envio + recebimento na mesma linha do tempo, com resposta manual — aberta a STAFF), **Anamnese** e **Evolução** (as duas últimas só para papéis clínicos) |
+| `pacientes` (patients) | 🟢 CRUD completo, com máscara de telefone/CPF. Ficha com abas: **Dados**, **Conversa** (envio + recebimento na mesma linha do tempo, com resposta manual — aberta a STAFF), **Anamnese**, **Fotos** (antes/depois agrupadas por atendimento) e **Evolução** (as três últimas só para papéis clínicos, e só no plano com prontuário) |
 | `profissionais` (professionals) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `agenda` (appointments) | 🟢 Quatro visões: **Lista** (tabela), **Quadro** (calendário `@mui/x-scheduler`), **Risco de falta** (predição) e **Lista de espera**. Criar/reagendar/mudar status. Aberto a ADMIN e STAFF (sem `@Roles`) |
 | `procedimentos` (procedures) | 🟢 CRUD completo, com escrita restrita a ADMIN |
 | `mensagens` (messaging) | 🟢 Três abas: **Histórico**, **Falhas** (com reenvio manual e erro em português) e **Recebidas** (caixa de entrada do que o paciente respondeu). Responder é na aba **Conversa** da ficha do paciente. Aberto a ADMIN e STAFF |
 | `usuarios` (users) | 🟢 CRUD (sem delete, soft via `isActive`). Restrito a ADMIN — 1ª tela com bloqueio de rota inteira |
-| `configuracoes` (tenants/me) | 🟢 Três abas: **Dados da clínica** (leitura para todos, edição ADMIN), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
+| `configuracoes` (tenants/me) | 🟢 Quatro abas: **Dados da clínica** (leitura para todos, edição ADMIN), **WhatsApp** (pareamento por QR code, aba escondida de STAFF), **Mensagens automáticas** (editor de templates, só ADMIN) e **Assinatura** (plano atual, contador de mensagens do mês/trial e checkout Stripe, só ADMIN) |
 | `onboarding` | 🟢 Checklist no topo do `/painel` (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar (profissional, procedimento, primeiro agendamento) e some sozinho quando ela está operando |
-| `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `dashboard` e `medical-records`; `hasAiMessages` ainda não trava nada |
+| `billing` | 🟢 Checkout real pro Stripe (`POST /billing/checkout`), site institucional lendo `GET /plans`. Trava por plano em `professionals` (contador), `prediction`, `waitlist`, `medical-records`, `hasAiMessages` (no envio **e** no toggle das Configurações) e nos **gráficos** do `dashboard` — o resumo do dia e o custo das faltas ficam abertos em todos os planos |
 | `public-booking` (`/agendar/:subdomain`) | 🟢 Página pública onde o paciente marca sozinho, sem login. Cascata profissional → procedimento → dia → horário, com o mesmo cálculo de vaga do painel |
 | Perfil do usuário (`/painel/perfil`) | 🟢 Editar nome, trocar senha, upload de avatar (Cloudinary) |
 | `prediction` (risco de falta) | 🟡 Tela lendo a regra determinística do backend. Ainda não há ação disparada pela tela — o escalonamento de lembretes acontece no backend, ao agendar |
 | `waitlist` (lista de espera) | 🟢 Fila, inclusão, **sugestão automática ao cancelar** um agendamento e oferta por WhatsApp |
-| Testes automatizados | 🟡 **35 testes E2E (Playwright)** em 8 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas e bloqueio do `/painel`. Ainda **sem teste unitário** — `error-messages.ts` e a prévia de templates seguem descobertos |
+| Testes automatizados | 🟡 **61 testes E2E (Playwright)** em 12 arquivos, cobrindo login, permissões, agendamento (painel e público), conversa com o paciente, onboarding, telas novas, bloqueio do `/painel`, a **home** (a conta da calculadora e um teste que falha se o jargão de engenharia voltar ao site), a **conexão do WhatsApp** (contra a Evolution real: o QR é gerado de verdade) e a **calculadora de plano**. Ainda **sem teste unitário** — `error-messages.ts`, `lib/trial.ts` e a prévia de templates seguem descobertos |
 
-A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje traz cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
+A arquitetura está validada ponta a ponta: `pacientes` implementa todas as camadas do `SKILLS.md` contra o crivo-be real e serve de molde para as demais features. O `/painel` deixou de ser placeholder — hoje abre com **o custo das faltas do mês em reais**, seguido de cards de contagem, alerta de falhas e três gráficos (ver Fase 2).
 
 ---
 
@@ -268,6 +294,13 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Barra lateral + fundo suave, não cor chapada**: a linha continua legível e o destaque não compete com o chip de status, que é o que a recepção lê primeiro.
   - 🐞 **A primeira versão não funcionava no caso comum** (corrigido no mesmo dia): o aviso saía de `newIds.size`, que só enxerga a página carregada. Como a lista é ordenada por **data de atendimento**, quem marca hoje para daqui a duas semanas cai na página 2+ — e a recepção, na página 1, não via nada. Foi assim que o recurso pareceu "não funcionar" no teste real. Agora a contagem vem de `GET /appointments/new-count?since=`, independente de página e filtro; `newIds` continua local só para destacar a linha **quando ela está visível**. O texto do aviso reflete os dois casos: "destacado(s) na lista abaixo" ou "em outra página da lista" — prometer destaque que não existe seria pior que não avisar.
   - **O E2E cobre só o caminho negativo** ("nada é destacado quando nada chegou"). A versão que criava o agendamento pelo fluxo público ficou refém de estado acumulado — cada execução ocupava um horário do seed e a seguinte não achava vaga — e o `DataGrid` virtualiza as linhas, então a linha nova nem entrava no DOM. Um teste que falha por dado saturado é pior que teste nenhum; o caminho positivo foi verificado à mão, com screenshot.
+- ~~**Sem fotos antes/depois, o produto não serve para estética**~~ — ✅ 13/08/2026. Aba **Fotos** na ficha do paciente, agrupada **por atendimento**: uma grade cronológica solta mostraria as mesmas imagens mas perderia o que importa em estética — a comparação. Cada bloco traz data, procedimento e as colunas "Antes" e "Depois" lado a lado. Decisões:
+  - **`<img>` e não `next/image`**: a URL é assinada e expira em minutos; o otimizador do Next cacheia por URL e serviria imagem vencida.
+  - **Cache curto no React Query** (`gcTime` 4 min, abaixo do TTL da assinatura): uma resposta guardada por mais tempo teria links que não abrem, e a foto apareceria quebrada sem explicação.
+  - **Sem botão de download** no lightbox, a pedido: é dado sensível de saúde, e um botão que salva no computador da recepção espalha a cópia para fora de qualquer controle. `onContextMenu` bloqueado também — não é proteção real, mas evita o gesto acidental.
+  - **Validação de tipo e tamanho antes de enviar**: subir 5MB para receber 400 gasta o tempo e a rede da clínica.
+  - **Exclusão com confirmação inline**, no próprio lightbox — a foto errada precisa sair, mas não por um clique só.
+  - **Entrou nas tabelas de plano com linha própria** (`plan-features.ts`, fonte única do site e do painel), embora compartilhe a flag `hasMedicalRecords`: para clínica de estética o antes/depois é o argumento de venda, e escondê-lo dentro de "Prontuário" faria o comprador não ver o que mais lhe interessa. O dialog de downgrade também avisa que **as fotos já enviadas ficam inacessíveis** — quem tem foto guardada precisa ver isso, não deduzir de "prontuário".
 - ~~**O painel oferecia o que o plano não inclui**~~ — ✅ 13/08/2026. O backend já recusava com 403 (`PlanFeatureGuard`), mas o frontend não sabia do plano: só tinha `planId`, sem as flags. A clínica no Solo/Básico via aba de Risco de falta, Lista de espera, Prontuário e o toggle de IA — clicava e levava 403 numa tela vazia, sem entender que era limite de plano e não defeito. `GET /tenants/me` passou a devolver `plan` (features + limites) e `usePlanFeatures()` centraliza a decisão. Decisões:
   - **Cadeado, não sumiço.** A aba fica visível, esmaecida, com ícone e tooltip dizendo qual plano inclui. Esconder deixaria a clínica sem saber que o recurso existe — e é justamente essa a diferença entre o plano dela e o de cima.
   - **Trial libera tudo** (`plan: null`), mesma regra do guard no backend: é assim que a clínica experimenta antes de escolher.
@@ -290,6 +323,50 @@ Replicar o molde de `pacientes`, na ordem abaixo (das menos para as mais acoplad
   - **Botão "Marcar outra consulta"** — antes, quem precisava de um segundo horário (outro procedimento, ou marcar para um familiar) só saía dali recarregando a página na mão. O `reset()` zera a seleção inteira, não só esconde a confirmação: manter profissional/procedimento/dia preenchidos faria a pessoa remarcar o mesmo horário sem perceber. `options` fica em cache — é a lista da clínica, não escolha do paciente.
   - Componente migrado de Tailwind para MUI no caminho: era o último pedaço da página pública fora do padrão. 2 testes E2E novos.
 - ~~**Campo "Dia" do agendamento público era um `<input type="date">` nativo**~~ — ✅ 12/08/2026. Único calendário do produto fora do padrão MUI `DatePicker` usado em todo o painel (`SlotPicker` da Agenda, filtros, lista de espera). Trocado, com `disablePast` e `shouldDisableDate` cinza nos dias fora de `clinic.businessDays` — o dado que a entrega anterior (dados de contato/horário) já tinha trazido para essa página, mas que ainda não era usado para nada. Efeito colateral corrigido de graça: o card de horário vazio mostrava o enum cru do backend (`WINDOW_PASSED`) em vez de texto em português — agora traduzido, igual ao `emptySlotsMessage` do painel. E2E adaptado para o padrão de `agendamento.spec.ts` (`getByRole("spinbutton", { name: "Dia" })`, já que o `DatePicker` expõe três elementos com o mesmo rótulo e `getByLabel` casa com os três).
+
+- ~~**O painel media faltas em contagem, não em dinheiro**~~ — ✅ 13/08/2026. `NoShowCostCard` no topo do `/painel`, acima dos cards de contagem: "As faltas custaram este mês · R$ 350,00 · 1 paciente faltou". Veio da análise do Agendiva, que vende *"recupere até R$ 1.500/mês"* enquanto nós vendíamos mecanismo — e o dado para a conta (`priceInCents`, congelado no ato do agendamento) já existia sem ninguém usar. Decisões:
+  - **Fica acima dos `SummaryCards`** — "R$ 350,00 perdidos" é o que faz o dono da clínica agir; "25 pacientes" é contexto. A ordem na tela é a ordem da urgência.
+  - **Não diz "R$ X recuperados pela lista de espera"**, que seria o número mais vendável: `WaitlistEntry` vira `OFFERED` e nunca registra se a oferta virou agendamento. O que aparece é "falta evitada" (compareceu **e** confirmou pelo WhatsApp).
+  - **A taxa só aparece com 5+ atendimentos concluídos** — "100% de faltas" com um único atendimento no mês é ruído apresentado como diagnóstico.
+  - **Mês sem falta vira card verde**, não um card de alerta zerado: notícia boa com moldura de alerta se lê como problema.
+  - Rota `GET /dashboard/no-show-cost` fora do `hasDashboard`, como o `summary` — esconder isso de quem está no Solo esconderia o próprio argumento de venda.
+- ~~**O resumo do painel estava travado por plano**~~ — ✅ 13/08/2026. `hasDashboard` cobria o `/painel` inteiro, então a clínica no Solo abria o sistema e a **primeira coisa** que via era uma tela de erro. A trava passou a ser por rota: resumo e custo das faltas abertos a todos, gráficos e faturamento seguem pagos. No lugar dos gráficos, `UpgradeChartsCard` convida ao upgrade — quem não tem o recurso vê o que está perdendo, em vez de um buraco na página.
+
+- ~~🐞 **A calculadora descartava a clínica grande por um profissional**~~ — ✅ 14/08/2026. Com 9 profissionais (um a mais que o teto de 8 do Clínica) ela respondia *"sua operação é maior que os planos padrão"* e mandava para o contato — a mesma resposta que daria para uma rede de 40 —, embora as 2.700 mensagens coubessem folgadas na franquia de 4.100. Tratar os dois casos como iguais perde justamente o cliente mais valioso. Agora "falta só profissional" é um estado próprio: mostra o plano-base, diz quantos passam do teto e mantém a conversa aberta. Só quando **nem equipe nem volume** cabem é que vira "fale com a gente". Não mostra o total somando adicionais — o backend ainda não os cobra, e o valor sairia da tela em vez da fatura.
+  - **Aviso de plano apertado** junto: com menos de 15% de folga na franquia, um mês mais cheio estoura o teto. Melhor a clínica saber agora do que descobrir quando as mensagens pararem no dia 20.
+  - **A calculadora também foi para a home** (modo `embedded`, sem título próprio para não competir com o cabeçalho da seção de planos que já existe lá). São duas calculadoras com papéis distintos: `#calculadora` mostra a perda (por que assinar), `#calculadora-plano` mostra qual plano (o que assinar).
+  - 🐞 "Para os 1 restante" — concordância corrigida.
+- ~~**Escolher entre quatro planos era trabalho do visitante**~~ — ✅ 14/08/2026. `PlanCalculator` na `/planos`, abaixo da grade: a pessoa informa quantos profissionais atendem e quantos atendimentos cada um faz por mês, e o plano que cabe aparece com o preço e a folga de mensagens. Decisões:
+  - **Recomenda pelas duas dimensões** (profissionais **e** franquia). Por uma só, a clínica cairia num plano onde não consegue cadastrar a equipe, ou onde as mensagens acabam no meio do mês — os dois viram cancelamento. Testado nos dois sentidos: 3 profissionais × 40 atendimentos sobe de plano pelo teto de equipe; 2 × 400 sobe pela franquia.
+  - **Mostra a folga** ("2.000 inclusas — sobram 950"), não só o plano: sem isso não há como saber se a escolha ficou apertada.
+  - **Operação grande demais convida a conversar** em vez de empurrar o maior plano sabendo que ele não comporta — vender isso é vender cancelamento.
+  - **Grade e calculadora sob o mesmo `usePlans()`** (`PricingSection`): a calculadora só pode recomendar um plano que está na grade logo acima, e duas chamadas separadas abririam espaço para divergirem.
+  - Os cards compactos da home ganharam `varies` na `PlanFeatureLine`: com prontuário e fotos fora dos diferenciais, o corte fixo de 6 itens passou a esconder justamente a franquia, que é a linha que separa os planos.
+- ~~**A tabela de preços era hipótese redonda**~~ — ✅ 14/08/2026. Site e painel passaram a mostrar **R$ 49 / 89 / 179 / 299** (antes 79/149/289/399), lendo tudo de `GET /plans` como já faziam. Mudanças na apresentação:
+  - **Prontuário e fotos saíram da lista de diferenciais** para a base comum. Com `hasMedicalRecords` valendo em todos os planos, mantê-los entre os diferenciais mostraria ✓ em todas as colunas e não separaria nada.
+  - **A franquia de mensagem virou linha de feature** ("500 mensagens de WhatsApp por mês"). Cada mensagem tem custo real; esconder o teto criaria a surpresa que o produto existe para evitar.
+  - **O `detail` do card deixou de repetir o limite de profissionais** — a primeira linha de features já o diz. Passou a dizer o que a lista não diz: "14 dias grátis, sem cartão".
+  - **As chaves antigas seguem mapeadas** (`BASICO`, `INTERMEDIARIO`, `AVANCADO`): os planos continuam no banco como inativos, e clínica que assinou um deles precisa continuar vendo o próprio plano na tela de Assinatura — sem a entrada, o card apareceria sem estilo e sem descrição.
+  - ⚠️ **O preço do profissional adicional NÃO é anunciado**, embora exista no plano e no Stripe: o backend ainda recusa cadastro acima do teto. Mostrá-lo prometeria algo que o sistema nega na hora — a mesma divergência site×sistema que a auditoria de 13/08 removeu.
+- ~~**Conectar o WhatsApp exigia alguém do time**~~ — ✅ 14/08/2026. Aba **WhatsApp** nas Configurações (`features/tenant/components/WhatsAppConnection`): a clínica clica em "Conectar WhatsApp", lê o QR no celular e a tela avisa sozinha quando pareia. Antes, o vínculo era um campo de texto onde ela digitava o "nome da instância" da Evolution — pergunta que nenhum dono de clínica sabe responder, e ainda por cima texto livre que permitia apontar para a instância de outra clínica. Decisões:
+  - **A aba não aparece para STAFF** — no backend até a leitura é ADMIN (`whatsapp-connection` responde 403), então ela abriria só para mostrar erro.
+  - **Polling de 3s enquanto pareia**, e não os 8s de `LIVE_REFETCH_INTERVAL_MS`: com o QR na frente, alguém está olhando e esperando — 8s depois de ler o código parecem travamento.
+  - **Mostra o número conectado**, não só "Conectado": é assim que a clínica confere que pareou o telefone certo.
+  - **Desconectar pede confirmação dizendo a consequência** ("seus pacientes deixam de receber lembretes"). A consequência é invisível — a clínica só descobriria quando alguém faltasse.
+  - **A tela nunca exibe o nome da instância** (há teste E2E para isso): é detalhe do servidor Evolution, não ajuda a clínica e ajudaria quem quisesse alcançar a instância de outra.
+  - 🐞 **O QR aparecia e sumia sozinho 3s depois**, com "Aguardando leitura" ainda na tela — achado olhando o navegador, não pelos testes. Só o `POST` gera código; o `GET` do polling devolve `qrCode: null` e sobrescrevia o cache do React Query. Corrigido com `structuralSharing`, que preserva o QR enquanto o pareamento segue pendente.
+  - 4 testes E2E contra a Evolution API real, com `beforeEach` que zera a conexão pela API: sem isso, o teste do QR deixava o seguinte num estado que não era o que ele descrevia — e teste que passa conforme a ordem é pior que teste ausente.
+- ~~**A home vendia mecanismo, não dinheiro**~~ — ✅ 13/08/2026. A manchete era *"O motor que evita buracos na sua agenda"*: bonita, mas o dono da clínica precisava traduzir sozinho para reais — enquanto o Agendiva abre com *"recupere até R$ 1.500/mês que sua clínica perde com faltas"*. Agora é *"Cada falta leva embora o faturamento do dia"*, e logo depois da seção de dor entra a **`LossCalculator`**. Decisões:
+  - **A conta é do visitante, não nossa** — ele informa faltas por semana e ticket médio. Copiar o "R$ 1.500" do concorrente exigiria um cliente que não temos, e inventar número contradiz a régua do produto (a medição de acurácia se recusa a concluir com menos de 30 casos). Assim o número é grande e é dele.
+  - **4,33 semanas por mês** (52/12), não 4 — arredondar subestimaria a perda em ~8%, e subestimar enfraquece o próprio argumento.
+  - **A ressalva fica colada no número**: "nenhuma ferramenta zera as faltas — o Crivo age sobre as que dá para evitar". Sem ela, o total insinua que assinar recupera tudo aquilo.
+  - **Campo zerado pede o dado** em vez de exibir "R$ 0,00 por ano", que se lê como defeito, não como resposta.
+  - Entra **depois** da dor e **antes** da lista de recursos: recurso só interessa a quem já aceitou que tem o problema.
+- ~~**O site falava em jargão de engenharia**~~ — ✅ 13/08/2026. "Predição de no-show", "tríade integrada", "multi-tenant white-label" e "retry com backoff" saíram da home, da tabela de planos e do rodapé. Um teste E2E (`home.spec.ts`) falha se voltarem. A revisão achou **quatro afirmações erradas**, não só mal escritas — o tipo de dívida que só aparece na renovação do contrato:
+  - **"Preço por profissional ativo"** — a cobrança é mensalidade fixa por faixa. Prometia uma conta diferente da que o Stripe cobra. ⚠️ **Correção de leitura (14/08/2026)**: remover o texto tirou a mentira, mas apagou a evidência de um problema real — esse é **o modelo que o mercado usa e nós não** (Agendiva: base + R$ 29,90 por profissional extra). Somos ~2x na entrada e o degrau entre faixas pune quem cresce. Registrado como decisão de preço pendente no [ROADMAP do backend](../../crivo-be/ROADMAP.md).
+  - **"Disponível a partir do plano Clínica"** — plano extinto na migração para Básico/Intermediário/Avançado. Conferido em `GET /plans`: a predição liga no **Intermediário**.
+  - **"Relatórios consolidados para múltiplas unidades"** — não existe em linha nenhuma de código (a mesma família de promessa falsa que a auditoria de 11/08 já tinha removido dos planos). ⚠️ Mas o **Agendiva entrega** multi-unidade por R$ 99,90 + R$ 79,90/clínica extra: aqui também não é só texto errado, é lacuna de produto — registrada na Fase 4 do backend.
+  - **Predição e financeiro marcados "em desenvolvimento"** — os dois estão no ar desde 10 e 11/08; subestimar o produto entregue custa venda tanto quanto exagerar.
 
 ### Fase 3 — Qualidade
 

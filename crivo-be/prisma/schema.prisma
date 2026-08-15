@@ -34,6 +34,18 @@ model Tenant {
   /// segredo no banco.
   messagingProvider MessagingProvider? @map("messaging_provider")
 
+  /// Instância da Evolution desta clínica — na prática, **o número de
+  /// WhatsApp dela**, pareado por QR code.
+  ///
+  /// Uma por tenant: sem isso a instância vinha do ambiente e todas as
+  /// clínicas enviariam pelo mesmo número, fazendo o paciente da Clínica A
+  /// receber mensagem do número da Clínica B.
+  ///
+  /// `null` cai no padrão do servidor (`EVOLUTION_INSTANCE`), aceitável só
+  /// enquanto existe uma clínica. O equivalente da Meta (`phone_number_id`)
+  /// entra aqui do lado quando as credenciais existirem.
+  evolutionInstance String? @map("evolution_instance")
+
   /// Horário de funcionamento, em minutos desde a meia-noite (480 = 08:00).
   /// Inteiro em vez de String("08:00") de propósito: comparar agendamento com
   /// o expediente vira aritmética simples, sem parsing nem fuso no meio.
@@ -75,6 +87,7 @@ model Tenant {
   waitlistEntries  WaitlistEntry[]
   anamneses        Anamnesis[]
   clinicalNotes    ClinicalNote[]
+  clinicalPhotos   ClinicalPhoto[]
   schedules        ProfessionalSchedule[]
   timeOff          ProfessionalTimeOff[]
 
@@ -107,20 +120,42 @@ model Plan {
   /// `Procedure`/`Appointment`) — evita erro de arredondamento de float.
   priceInCents Int    @map("price_in_cents")
 
-  /// Limites e features por plano. `null` em `maxProfessionals` = sem
-  /// limite (usado pelo plano maior, "Rede"), não "zero profissionais".
+  /// Profissionais **incluídos** na mensalidade. `null` = sem limite.
   maxProfessionals    Int?    @map("max_professionals")
+
+  /// Quanto custa cada profissional **além** dos incluídos.
+  ///
+  /// Existe porque o mercado cobra contínuo e nós cobrávamos em degrau: sair
+  /// de uma faixa para a outra custava +R$ 140 de uma vez, exatamente no
+  /// momento em que a clínica contrata alguém e compara preço. `null` = a
+  /// faixa não aceita adicional (o plano de entrada, de um profissional só).
+  pricePerExtraProfessionalInCents Int? @map("price_per_extra_professional_in_cents")
+
   /// Mensagens de saída por mês (`null` = sem teto). É o único custo
-  /// variável por clínica: a Meta cobra por conversa iniciada pela
-  /// empresa. Resposta a paciente dentro da janela de 24h não conta —
-  /// nem para a Meta, nem aqui (ver `CheckMessageQuotaUseCase`).
+  /// variável por clínica.
+  ///
+  /// ⚠️ **A partir de 01/10/2026 a Meta cobra toda mensagem de utilidade**,
+  /// inclusive dentro da janela de 24h — a isenção de "resposta ao paciente"
+  /// acaba. Por isso nenhum plano é ilimitado: no modelo antigo, uma clínica
+  /// grande no plano topo podia gerar mais custo de mensagem do que pagava
+  /// de mensalidade. As franquias são dimensionadas pelo uso real
+  /// (~375 mensagens por profissional/mês) com folga.
   maxMessagesPerMonth Int?    @map("max_messages_per_month")
   hasPrediction       Boolean @default(false) @map("has_prediction")
   hasAiMessages       Boolean @default(false) @map("has_ai_messages")
   hasWaitlist         Boolean @default(false) @map("has_waitlist")
   hasDashboard        Boolean @default(false) @map("has_dashboard")
-  /// Prontuário (anamnese + evolução). Diferencial do plano topo: é o
-  /// módulo que o concorrente cobra à parte (R$29/mês avulso).
+  /// Prontuário (anamnese + evolução) **e fotos antes/depois**.
+  ///
+  /// **Liberado em todos os planos desde 14/08/2026.** Era diferencial do
+  /// topo, mas virou commodity: o concorrente de R$ 39,90 já entrega os
+  /// dois. Mantê-lo pago nos deixava piores na comparação exatamente onde o
+  /// cliente olha primeiro. O que continua pago é o que é nosso — risco de
+  /// falta, lista de espera, painel de gráficos e IA nas mensagens.
+  ///
+  /// As duas coisas sob a mesma flag de propósito: é o mesmo dado sensível
+  /// de saúde, com a mesma restrição de papel (ADMIN/PROFESSIONAL). Separar
+  /// criaria um plano que vende foto clínica sem prontuário para registrá-la.
   hasMedicalRecords   Boolean @default(false) @map("has_medical_records")
 
   /// IDs do Stripe Dashboard. `stripePriceId` fica opcional porque o produto
@@ -162,6 +197,7 @@ model User {
   refreshTokens    RefreshToken[]
   professional     Professional?
   clinicalNotes    ClinicalNote[]
+  clinicalPhotos   ClinicalPhoto[]
   anamnesesUpdated Anamnesis[]
 
   @@index([tenantId])
@@ -199,6 +235,7 @@ model Patient {
   appointments    Appointment[]
   anamnesis       Anamnesis?
   clinicalNotes   ClinicalNote[]
+  clinicalPhotos  ClinicalPhoto[]
   messages        Message[]
   inboundMessages InboundMessage[]
   waitlistEntries WaitlistEntry[]
@@ -481,6 +518,7 @@ model Appointment {
   messages        Message[]
   inboundMessages InboundMessage[]
   clinicalNotes   ClinicalNote[]
+  clinicalPhotos  ClinicalPhoto[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
   @@index([tenantId, professionalId, startsAt])
@@ -651,6 +689,54 @@ model InboundMessage {
   @@index([tenantId, readAt])
   @@index([patientId])
   @@map("inbound_messages")
+}
+
+/// Momento que a foto clínica registra.
+enum ClinicalPhotoKind {
+  BEFORE
+  AFTER
+}
+
+/// Foto clínica (antes/depois) de um atendimento.
+///
+/// **Dado sensível de saúde**, como o prontuário: mesma restrição de papel
+/// (ADMIN/PROFESSIONAL) e mesma feature de plano (`hasMedicalRecords`).
+///
+/// O arquivo NÃO fica em URL pública. Sobe para o Cloudinary como
+/// `authenticated` e só é servido por URL assinada com expiração — link de
+/// foto clínica acaba em histórico de navegador, print e conversa de
+/// WhatsApp, e um link permanente vaza para sempre.
+///
+/// Ligada ao **atendimento**, não só ao paciente: em estética o que importa
+/// é "resultado da aplicação de 12/08", e é o atendimento que dá data,
+/// procedimento e profissional de graça. A galeria por paciente continua
+/// possível — basta agrupar pelos atendimentos dele.
+model ClinicalPhoto {
+  id            String @id @default(uuid())
+  tenantId      String @map("tenant_id")
+  patientId     String @map("patient_id")
+  appointmentId String @map("appointment_id")
+
+  kind ClinicalPhotoKind
+
+  /// `public_id` no Cloudinary. É com ele que a URL assinada é gerada a cada
+  /// leitura — nunca guardamos uma URL pronta, que expiraria no banco.
+  storageKey String  @map("storage_key")
+  caption    String?
+
+  /// Quem enviou. Foto clínica é registro: sem autor, não há responsável.
+  uploadedByUserId String @map("uploaded_by_user_id")
+
+  createdAt DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  uploadedBy  User        @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([tenantId, patientId, createdAt])
+  @@index([appointmentId])
+  @@map("clinical_photos")
 }
 
 /// Interpretação da resposta do paciente ao lembrete.
