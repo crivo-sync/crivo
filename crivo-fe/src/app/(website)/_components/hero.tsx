@@ -15,10 +15,31 @@ import { RegisterCta } from "./register-cta";
  * resultado: nenhum diz "reduz faltas em X%", porque isso nós não medimos.
  */
 const STATS = [
-  { value: "Sem app", label: "o paciente confirma respondendo “sim”" },
-  { value: "Sem furo", label: "mensagem que falha vira lista pra ligar" },
-  // "14 dias grátis" ficaria aqui, mas o card ao lado já diz isso duas vezes.
-  { value: "Vaga aberta", label: "quem está na espera é chamado na hora" },
+  {
+    icon: "📵",
+    value: "Sem app",
+    label: "o paciente confirma respondendo “sim”",
+  },
+  {
+    icon: "🎯",
+    value: "Sem furo",
+    label: "mensagem que falha vira lista pra ligar",
+  },
+  {
+    icon: "👐",
+    value: "Vaga aberta",
+    label: "quem está na espera é chamado na hora",
+  },
+  {
+    icon: "😓",
+    value: "Vaga fechada",
+    label: "quem não confirma é bloqueado na agenda",
+  },
+  {
+    icon: "😩",
+    value: "Vaga cancelada",
+    label: "quem não confirma é bloqueado na agenda",
+  },
 ];
 
 export const Hero = () => {
@@ -74,24 +95,29 @@ export const Hero = () => {
               Ver planos
             </Link>
           </div>
-
-          <div className="flex flex-wrap gap-8 pt-12">
-            {STATS.map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl font-bold tracking-tight text-gray-900">
-                  {stat.value}
-                </div>
-                <div className="mt-0.5 text-[13px] text-gray-500">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="rounded-3xl border border-black/10 bg-linear-to-b from-black/3 to-transparent p-7 shadow-2xl backdrop-blur-xl">
           <RegisterCta />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between max-w-7xl mx-auto gap-6 pt-12 text-gray-700">
+        {STATS.map((stat) => (
+          <div key={stat.label}>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/5 text-lg">
+                {stat.icon}
+              </span>
+              <div className="text-2xl font-bold tracking-tight text-gray-900">
+                {stat.value}
+              </div>
+              <div className="text-center mt-0.5 text-[13px] text-gray-500">
+                {stat.label}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
