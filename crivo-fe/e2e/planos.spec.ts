@@ -5,11 +5,18 @@ import { expect, test } from "@playwright/test";
  *
  * Escolher entre quatro colunas de onze linhas — e ainda adivinhar se a
  * franquia de mensagens dá conta — é trabalho que sobra para o visitante.
- * Aqui ele informa dois números e o plano se aponta sozinho.
+ * Aqui ele informa dois números e o **primeiro plano cujo teto comporta**
+ * (profissionais e mensagens) se aponta sozinho.
+ *
+ * Não conta com "profissional adicional": `CreateProfessionalUseCase`
+ * recusa sempre o cadastro acima do teto (revertido em 17/08/2026, depois
+ * de um bug breve que cobrava o adicional em vez de recusar e, na prática,
+ * removia o limite do plano). Recomendar um plano menor + adicional
+ * anunciaria uma capacidade que o cadastro não entrega.
  *
  * A recomendação sai de `GET /plans`: se o preço mudar no Stripe, estes
- * testes acompanham. Por isso eles verificam o **critério** (cabe nas duas
- * dimensões) e não valores fixos, exceto onde o valor é o ponto.
+ * testes acompanham. Por isso eles verificam o **critério** (cabe e é o mais
+ * barato) e não valores fixos, exceto onde o valor é o ponto.
  */
 
 async function calcular(
@@ -40,17 +47,40 @@ test.describe("Planos — calculadora", () => {
     await expect(calc).toContainText("R$ 49");
   });
 
-  test("equipe maior que o teto sobe de plano, mesmo com poucas mensagens", async ({
+  test("estourar o teto do plano menor pula para o próximo plano cheio", async ({
     page,
   }) => {
-    // 3 profissionais × 40 atendimentos = 300 mensagens, o que caberia
-    // folgado no Essencial (1.000). Mas 3 não cabem no teto de 2 — e
-    // recomendar por mensagem levaria a clínica a um plano onde ela não
-    // consegue cadastrar a equipe.
+    // 3 profissionais passam do teto do Essencial (2 incluídos). Sem
+    // adicional para cobrir a diferença, o próximo que comporta é o
+    // Profissional (4 incluídos, R$ 179).
     const calc = await calcular(page, 3, 40);
 
     await expect(calc).toContainText("Profissional");
-    await expect(calc).not.toContainText("R$ 89");
+    await expect(calc).toContainText("R$ 179");
+    await expect(calc).not.toContainText("adicional");
+  });
+
+  test("passar do teto por 1 já pula de plano, sem adicional para cobrir a diferença", async ({
+    page,
+  }) => {
+    // 5 profissionais passam do teto do Profissional (4 incluídos) — sem
+    // adicional para o 5º, precisa do Clínica (8 incluídos, R$ 299).
+    const calc = await calcular(page, 5, 100);
+
+    await expect(calc).toContainText("Clínica");
+    await expect(calc).toContainText("R$ 299");
+  });
+
+  test("plano nunca mostra detalhamento de adicional — o preço é sempre o final", async ({
+    page,
+  }) => {
+    // 2 profissionais cabem exatos no teto do Essencial: preço final, sem
+    // nenhuma menção a "adicional" — o cadastro não vende isso mais.
+    const calc = await calcular(page, 2, 120);
+
+    await expect(calc).toContainText("Essencial");
+    await expect(calc).toContainText("R$ 89");
+    await expect(calc).not.toContainText("adicional");
   });
 
   test("volume alto sobe de plano, mesmo com equipe pequena", async ({
@@ -82,21 +112,14 @@ test.describe("Planos — calculadora", () => {
     ).toBeVisible();
   });
 
-  test("estourar só o teto de equipe mostra o plano-base, não descarta a clínica", async ({
+  test("passar do teto de profissionais do maior plano convida a conversar", async ({
     page,
   }) => {
-    // 9 profissionais é **um** a mais que o teto do maior plano, e as 2.700
-    // mensagens ainda cabem na franquia de 4.100. Mandar essa clínica para
-    // "fale conosco" com a mesma mensagem de uma rede de 40 tratava os dois
-    // casos como iguais — e essa é a cliente mais valiosa.
+    // 9 profissionais passa do teto do Clínica (8), o maior plano — sem
+    // adicional para cobrir a diferença, nenhum plano comporta.
     const calc = await calcular(page, 9, 120);
 
-    await expect(calc).toContainText("Seu ponto de partida");
-    await expect(calc).toContainText("Clínica");
-    await expect(calc).toContainText("R$ 299");
-    // Diz o que falta, com concordância correta no singular.
-    await expect(calc).toContainText("Para o profissional que passa disso");
-    await expect(calc).not.toContainText("maior que os planos");
+    await expect(calc).toContainText("maior que os planos");
   });
 
   test("avisa quando a franquia fica apertada", async ({ page }) => {
@@ -145,14 +168,20 @@ test.describe("Planos — calculadora", () => {
     ).toBeVisible();
   });
 
-  test("não anuncia o profissional adicional — o backend ainda não cobra", async ({
+  test("nenhum card anuncia preço de profissional adicional", async ({
     page,
   }) => {
-    // O preço existe no plano e no Stripe, mas cadastrar acima do teto é
-    // recusado. Anunciar "depois R$ 35/mês cada" prometeria o que o sistema
-    // nega na hora.
-    const conteudo = await page.getByRole("main").innerText();
+    // `CreateProfessionalUseCase` recusa sempre o cadastro acima do teto
+    // (revertido em 17/08/2026 — ver comentário no topo do arquivo):
+    // anunciar um preço de adicional aqui prometeria o que o cadastro nega
+    // na hora. O único caminho para crescer além do teto é assinar um plano
+    // maior.
+    const tiers = ["solo", "basico", "intermediario", "avancado"];
 
-    expect(conteudo).not.toContain("/mês cada");
+    for (const tier of tiers) {
+      await expect(page.getByTestId(`plan-card-${tier}`)).not.toContainText(
+        "/mês cada",
+      );
+    }
   });
 });

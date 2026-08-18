@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -19,6 +21,7 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { formatCentsToBRL } from "@/lib/currency";
 import { formatDuration } from "@/lib/duration";
 import { useTenant } from "@/features/tenant/hooks/use-tenant";
+import { useOverLimitStatus } from "@/features/professionals/hooks/use-over-limit";
 import { SlotPicker } from "../SlotPicker";
 import { useAppointmentFormOptions } from "../../hooks/use-appointment-form-options";
 import { useCreateAppointment } from "../../hooks/use-create-appointment";
@@ -48,6 +51,7 @@ export const AppointmentFormDialog = ({
   const { patients, professionals, procedures, isLoading } =
     useAppointmentFormOptions();
   const { tenant } = useTenant();
+  const { status: overLimit } = useOverLimitStatus();
 
   const { control, handleSubmit, reset, watch, setValue, formState } =
     useForm<CreateAppointmentSchema>({
@@ -127,6 +131,44 @@ export const AppointmentFormDialog = ({
             <DialogContentText sx={{ mb: 3 }}>
               Duração e preço são definidos pelo procedimento escolhido.
             </DialogContentText>
+
+            {/**
+             * Acima do teto, o backend recusa o agendamento
+             * (`CreateAppointmentUseCase`). Avisar aqui, antes de a recepção
+             * preencher paciente/procedimento/horário, evita que ela descubra
+             * o bloqueio só no "Salvar" — e diz onde resolver.
+             */}
+            {overLimit?.overLimit ? (
+              <Alert severity="warning" sx={{ mb: 2.5 }}>
+                Sua clínica tem {overLimit.activeCount} profissionais ativos, e
+                o plano {overLimit.planName ?? "atual"} inclui{" "}
+                {overLimit.maxProfessionals}. Novos agendamentos ficam
+                bloqueados até você{" "}
+                <Link href="/painel/profissionais">escolher quem continua</Link>{" "}
+                ou{" "}
+                <Link href="/painel/configuracoes?tab=subscription">
+                  fazer upgrade
+                </Link>
+                . A agenda já marcada continua normal.
+              </Alert>
+            ) : (
+              /**
+               * Informativo, não de erro: plano de 1 profissional é decisão
+               * normal de quem atende sozinho, não um problema a corrigir. Só
+               * aparece nessa faixa — uma clínica com 3+ profissionais não
+               * precisa ser lembrada de um limite que está longe de bater.
+               */
+              tenant?.plan?.maxProfessionals === 1 && (
+                <Alert severity="info" sx={{ mb: 2.5 }}>
+                  Seu plano permite 1 profissional. Para atender com mais de uma
+                  pessoa,{" "}
+                  <Link href="/painel/configuracoes?tab=subscription">
+                    faça upgrade em Configurações → Assinatura
+                  </Link>
+                  .
+                </Alert>
+              )
+            )}
 
             <Stack spacing={2.5}>
               <Controller
@@ -255,10 +297,13 @@ export const AppointmentFormDialog = ({
             >
               Cancelar
             </Button>
+            {/* Acima do teto o backend recusa de qualquer forma; deixar o
+                botão ativo só levaria a recepção a preencher tudo para tomar
+                um erro no fim. */}
             <Button
               type="submit"
               variant="contained"
-              disabled={createAppointment.isPending}
+              disabled={createAppointment.isPending || overLimit?.overLimit}
               startIcon={
                 createAppointment.isPending ? (
                   <CircularProgress size={16} color="inherit" />

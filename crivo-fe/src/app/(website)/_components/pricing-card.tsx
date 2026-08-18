@@ -150,6 +150,9 @@ export const PricingCard = ({
 
   return (
     <div
+      // Só para os testes isolarem "o card do Solo" sem depender de heurística
+      // de DOM — nada visual depende disto.
+      data-testid={`plan-card-${plan.tier}`}
       className={`relative flex h-full flex-col rounded-3xl border bg-linear-to-b from-black/3 to-transparent p-7 backdrop-blur-sm transition-all duration-500 ${accent.border} ${accent.hoverBorder} ${accent.glow} ${accent.popular ? "bg-black/2" : ""}`}
     >
       {accent.badgeLabel && (

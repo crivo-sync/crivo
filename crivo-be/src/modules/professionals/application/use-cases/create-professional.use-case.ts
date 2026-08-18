@@ -10,6 +10,10 @@ import {
   PROFESSIONAL_REPOSITORY,
   type ProfessionalRepository,
 } from '../../domain/repository/professional.repository';
+import {
+  countProfessionalsOccupyingSeat,
+  resolveTrialProfessionalLimit,
+} from '../professional-limit';
 
 export type CreateProfessionalInput = {
   tenantId: string;
@@ -51,18 +55,35 @@ export class CreateProfessionalUseCase {
   }
 
   /**
-   * Tenant em trial (sem `planId`) não tem limite — o trial libera o
-   * produto inteiro. Profissional removido (soft delete) não conta: deletar
-   * libera vaga de verdade, senão a clínica ficaria travada num limite que
-   * já não reflete a equipe atual.
+   * Só profissional **ativo** ocupa vaga. Removido (soft delete) e
+   * desativado não contam: os dois liberam vaga de verdade, senão a clínica
+   * ficaria travada num limite que já não reflete quem de fato atende. É o
+   * que faz a tela de "escolha quem fica" (`ResolveOverLimitUseCase`)
+   * funcionar — desativar o excedente precisa liberar a vaga na hora.
    *
-   * ⚠️ **Ainda bloqueia no teto, mas os planos já têm
-   * `pricePerExtraProfessionalInCents`** (revisão de preço de 14/08/2026).
-   * O modelo vendido é "N incluídos, depois R$ X cada" — e cobrar o
-   * adicional exige acrescentar um item à assinatura no Stripe
-   * (`subscriptions.update` com quantidade), o que ainda não existe. Até lá
-   * o comportamento é o antigo: recusa e sugere upgrade. **O site não pode
-   * anunciar o adicional antes disso.** Ver ROADMAP → Fase 3.
+   * **Bloqueia sempre no teto — sem exceção para "cobra o adicional em vez
+   * de recusar".**
+   *
+   * ⚠️ Isso já foi diferente, e foi um bug real: uma versão anterior (17/08)
+   * deixava passar quando o plano tinha `stripeExtraProfessionalPriceId`
+   * configurado, contando com `SyncExtraProfessionalsUseCase` para cobrar a
+   * diferença depois. O efeito prático: **nenhum plano com adicional
+   * vendável tinha teto de verdade** — a clínica cadastrava profissionais
+   * sem limite algum, e só descobria a cobrança na fatura seguinte. Achado
+   * com uma clínica real que foi de 2 para 3 profissionais no plano
+   * Essencial (limite 2) sem nenhum aviso ou bloqueio.
+   *
+   * `maxProfessionals` do plano é o teto duro. Para crescer além dele, o
+   * caminho é assinar um plano maior — não pagar avulso no mesmo plano.
+   * `pricePerExtraProfessionalInCents` e `stripeExtraProfessionalPriceId`
+   * continuam existindo no `Plan` e no site (mostram "depois R$ X/mês
+   * cada"), mas hoje não são cobrados automaticamente por ninguém — ficam
+   * como base pronta para se decidir, no futuro, um fluxo explícito de
+   * "comprar profissional extra" com confirmação da clínica antes de
+   * qualquer cobrança, não um bypass silencioso do limite.
+   *
+   * **Trial (sem `planId`) tem teto próprio**, o do maior plano ativo
+   * (`resolveTrialProfessionalLimit`), não "ilimitado" — ver o porquê lá.
    */
   private async assertWithinPlanLimit(tenantId: string): Promise<void> {
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
@@ -70,15 +91,22 @@ export class CreateProfessionalUseCase {
       select: { plan: { select: { maxProfessionals: true, name: true } } },
     });
 
-    if (!tenant.plan || tenant.plan.maxProfessionals === null) return;
+    const limite = tenant.plan
+      ? tenant.plan.maxProfessionals
+      : await resolveTrialProfessionalLimit(this.prisma);
 
-    const activeCount = await this.prisma.professional.count({
-      where: { tenantId, deletedAt: null },
-    });
+    if (limite === null) return;
 
-    if (activeCount >= tenant.plan.maxProfessionals) {
+    const activeCount = await countProfessionalsOccupyingSeat(
+      this.prisma,
+      tenantId,
+    );
+
+    if (activeCount >= limite) {
       throw new ForbiddenException(
-        `O plano ${tenant.plan.name} permite até ${tenant.plan.maxProfessionals} profissional(is). Faça upgrade em Configurações → Assinatura para adicionar mais.`,
+        tenant.plan
+          ? `O plano ${tenant.plan.name} permite até ${limite} profissional(is). Faça upgrade em Configurações → Assinatura para adicionar mais.`
+          : `O teste grátis permite até ${limite} profissional(is) — o mesmo do nosso maior plano. Assine um plano em Configurações → Assinatura para continuar.`,
       );
     }
   }

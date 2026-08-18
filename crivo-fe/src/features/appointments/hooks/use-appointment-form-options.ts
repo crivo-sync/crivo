@@ -24,9 +24,19 @@ export function useAppointmentFormOptions() {
   const professionals = useQuery({
     queryKey: ["appointment-form-options", "professionals"],
     queryFn: async () => {
-      const result = await getProfessionalsAction({ page: 1, perPage: 100 });
+      /**
+       * `onlyActive` no servidor, não `.filter()` depois de receber: com
+       * `perPage: 100`, filtrar no cliente descarta itens **já paginados** —
+       * uma clínica com mais de 100 cadastros (ativos + desativados) perderia
+       * profissional ativo da página seguinte, que nunca chegou.
+       */
+      const result = await getProfessionalsAction({
+        page: 1,
+        perPage: 100,
+        onlyActive: true,
+      });
       if (!result.success) throw new Error(result.message);
-      return result.data.data.filter((p) => p.isActive);
+      return result.data.data;
     },
   });
 

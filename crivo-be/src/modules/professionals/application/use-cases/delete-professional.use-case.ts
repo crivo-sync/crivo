@@ -7,6 +7,7 @@ import {
 import { AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { SyncExtraProfessionalsUseCase } from 'src/modules/billing/application/use-cases/sync-extra-professionals.use-case';
 import {
   PROFESSIONAL_REPOSITORY,
   type ProfessionalRepository,
@@ -18,6 +19,7 @@ export class DeleteProfessionalUseCase {
     @Inject(PROFESSIONAL_REPOSITORY)
     private readonly professionalRepository: ProfessionalRepository,
     private readonly prisma: PrismaService,
+    private readonly syncExtraProfessionals: SyncExtraProfessionalsUseCase,
   ) {}
 
   async execute(id: string, tenantId: string) {
@@ -48,5 +50,20 @@ export class DeleteProfessionalUseCase {
     }
 
     await this.professionalRepository.softDelete(id);
+
+    /**
+     * Rede de segurança, não parte do fluxo normal.
+     *
+     * `CreateProfessionalUseCase` voltou a bloquear sempre no teto (17/08,
+     * corrigindo um bug que permitia passar do limite pagando adicional —
+     * ver o comentário lá), então hoje nenhum cadastro novo gera item de
+     * adicional na assinatura. Mas uma clínica que excedeu o limite
+     * **enquanto o bug existia** pode ter um item de adicional pendente no
+     * Stripe; `syncExtraProfessionals` recalcula do zero pela contagem real
+     * e zera esse item quando a remoção volta a clínica para dentro do
+     * teto — sem isso ela continuaria sendo cobrada por um profissional que
+     * não existe mais.
+     */
+    await this.syncExtraProfessionals.execute(tenantId);
   }
 }

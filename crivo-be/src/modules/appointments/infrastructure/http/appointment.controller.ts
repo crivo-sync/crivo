@@ -89,7 +89,9 @@ export class AppointmentController {
    * Também declarada antes de `:id` — mesma armadilha de ordem de rota.
    */
   @Get('new-count')
-  @ApiOperation({ summary: 'Quantos agendamentos foram criados desde um instante' })
+  @ApiOperation({
+    summary: 'Quantos agendamentos foram criados desde um instante',
+  })
   async newCount(
     @Tenant('tenantId') tenantId: string,
     @Query('since') since?: string,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import AddIcon from "@mui/icons-material/Add";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
@@ -11,12 +13,14 @@ import { ErrorServer } from "@/components/ui/error-server";
 import { useIsAdmin } from "@/components/providers/session-provider";
 import { useProfessionalsFiltersState } from "../../hooks/use-professionals-filters-state";
 import { useProfessionals } from "../../hooks/use-professionals";
+import { useOverLimitStatus } from "../../hooks/use-over-limit";
 import type { Professional } from "../../types";
 import { ProfessionalFilters } from "../ProfessionalFilters";
 import { ProfessionalsTable } from "../ProfessionalsTable";
 import { ScheduleDialog } from "../ScheduleDialog";
 import { ProfessionalFormDialog } from "../ProfessionalFormDialog";
 import { DeleteProfessionalDialog } from "../DeleteProfessionalDialog";
+import { OverLimitDialog } from "../OverLimitDialog";
 
 export const ProfessionalManagement = () => {
   // Só ADMIN cria/edita/remove (o crivo-be exige @Roles(ADMIN) nessas rotas).
@@ -31,6 +35,15 @@ export const ProfessionalManagement = () => {
     search: urlSearch || undefined,
   });
 
+  /**
+   * O excedente vem do backend, não de uma conta local com `meta.total`.
+   * A contagem da listagem é paginada e filtrada pela busca — comparar ela
+   * com o teto do plano dava número errado sempre que alguém digitava algo
+   * no filtro. Aqui a resposta é uma só, e é a mesma que o cadastro usa.
+   */
+  const { status: overLimit } = useOverLimitStatus();
+
+  const [overLimitOpen, setOverLimitOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingProfessional, setEditingProfessional] = useState<
     Professional | undefined
@@ -63,6 +76,40 @@ export const ProfessionalManagement = () => {
       elevation={1}
       sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}
     >
+      {/**
+       * Acontece quando a clínica testou o produto com a equipe inteira e
+       * depois assinou um plano menor — caminho legítimo, não erro dela: o
+       * trial libera até o teto do maior plano.
+       *
+       * O alerta **oferece a ação** em vez de só descrever o problema. Antes
+       * ele dizia "desative N profissionais" e deixava a clínica procurar
+       * como; agora abre a tela de escolha, que é onde isso de fato se
+       * resolve. Ninguém é desativado sem ela escolher — ver
+       * `ResolveOverLimitUseCase`.
+       */}
+      {canManage && overLimit?.overLimit && (
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => setOverLimitOpen(true)}
+            >
+              Escolher quem fica
+            </Button>
+          }
+        >
+          Sua clínica tem {overLimit.activeCount} profissionais ativos, e o
+          plano {overLimit.planName ?? "atual"} inclui{" "}
+          {overLimit.maxProfessionals}. Escolha quem continua atendendo ou{" "}
+          <Link href="/painel/configuracoes?tab=subscription">
+            faça upgrade em Configurações → Assinatura
+          </Link>
+          .
+        </Alert>
+      )}
+
       <Box
         sx={{
           display: "flex",
@@ -122,6 +169,16 @@ export const ProfessionalManagement = () => {
                 !open && setSchedulingProfessional(undefined)
               }
               professional={schedulingProfessional}
+            />
+          )}
+
+          {/* Também só quando aberto: busca a equipe inteira (sem paginação),
+              requisição que não faz sentido antes de a clínica abrir. */}
+          {overLimitOpen && overLimit?.overLimit && (
+            <OverLimitDialog
+              open
+              onOpenChange={setOverLimitOpen}
+              status={overLimit}
             />
           )}
         </>

@@ -86,9 +86,19 @@ export class StripeService implements OnModuleInit {
    * - `none` no **downgrade**: o cliente já pagou o mês inteiro do plano
    *   maior, então mantém o acesso até o fim do ciclo. Sem isso ele perderia
    *   recurso que pagou.
+   *
+   * `currentPriceId` identifica **qual item é o plano-base**, entre os
+   * itens da assinatura. Antes do profissional adicional existir, a
+   * assinatura sempre teve exatamente um item e `items.data[0]` bastava; com
+   * o adicional como segundo item, a posição no array deixa de ser
+   * confiável (a ordem do Stripe não é garantida como "ordem de criação").
+   * O preço atual, por outro lado, é uma informação que quem chama sempre
+   * tem (é o `plan.stripePriceId` de onde a clínica está saindo).
    */
   async updateSubscriptionPrice(params: {
     subscriptionId: string;
+    /** Preço do item de plano-base *antes* da troca — para achá-lo entre os itens. */
+    currentPriceId: string;
     priceId: string;
     /** `false` agenda a troca para o fim do ciclo (downgrade). */
     immediate: boolean;
@@ -96,17 +106,68 @@ export class StripeService implements OnModuleInit {
     const subscription = await this.client.subscriptions.retrieve(
       params.subscriptionId,
     );
-    const currentItemId = subscription.items.data[0]?.id;
+    const currentItem = subscription.items.data.find(
+      (item) => item.price.id === params.currentPriceId,
+    );
 
-    if (!currentItemId) {
+    if (!currentItem) {
       throw new Error(
-        `Subscription ${params.subscriptionId} has no items to update.`,
+        `Subscription ${params.subscriptionId} has no item with price ${params.currentPriceId}.`,
       );
     }
 
     return this.client.subscriptions.update(params.subscriptionId, {
-      items: [{ id: currentItemId, price: params.priceId }],
+      items: [{ id: currentItem.id, price: params.priceId }],
       proration_behavior: params.immediate ? 'always_invoice' : 'none',
+    });
+  }
+
+  /**
+   * Sincroniza a quantidade do item de profissional adicional na assinatura.
+   *
+   * Um item por preço, não por profissional: `quantity` é o número de
+   * profissionais além dos incluídos no plano, e o Stripe calcula o valor
+   * (`quantity × unit_amount`) sozinho — é a mesma modelagem que o
+   * `line_items` do checkout usa para o plano-base.
+   *
+   * `quantity <= 0` **remove o item** em vez de deixá-lo com `quantity: 0`.
+   * Zerado ele continuaria na assinatura indefinidamente (o Stripe permite
+   * item com quantidade zero), e um item fantasma no Dashboard confundiria
+   * qualquer investigação futura de cobrança. Sem itens de adicional em
+   * aberto, o item nem existe.
+   *
+   * Sempre `proration_behavior: 'always_invoice'`: ao contrário da troca de
+   * plano (onde o downgrade espera o ciclo por já ter sido pago), aqui não
+   * existe "já pago" — o profissional a mais é cadastrado ou removido no
+   * momento em que a clínica age, e a cobrança/crédito acompanha na hora.
+   */
+  async setExtraProfessionalsQuantity(params: {
+    subscriptionId: string;
+    extraPriceId: string;
+    quantity: number;
+  }) {
+    const subscription = await this.client.subscriptions.retrieve(
+      params.subscriptionId,
+    );
+    const existingItem = subscription.items.data.find(
+      (item) => item.price.id === params.extraPriceId,
+    );
+
+    if (params.quantity <= 0) {
+      if (!existingItem) return subscription; // nada a remover
+      return this.client.subscriptions.update(params.subscriptionId, {
+        items: [{ id: existingItem.id, deleted: true }],
+        proration_behavior: 'always_invoice',
+      });
+    }
+
+    return this.client.subscriptions.update(params.subscriptionId, {
+      items: [
+        existingItem
+          ? { id: existingItem.id, quantity: params.quantity }
+          : { price: params.extraPriceId, quantity: params.quantity },
+      ],
+      proration_behavior: 'always_invoice',
     });
   }
 

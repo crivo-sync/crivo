@@ -18,8 +18,7 @@ export type CreateCheckoutSessionInput = {
  * plano feita direto na assinatura existente.
  */
 export type CheckoutOrChangeResult =
-  | { kind: 'checkout'; url: string }
-  | { kind: 'changed'; message: string };
+  { kind: 'checkout'; url: string } | { kind: 'changed'; message: string };
 
 /**
  * Abre o checkout de assinatura para um plano específico.
@@ -73,16 +72,22 @@ export class CreateCheckoutSessionUseCase {
     if (tenant.stripeSubscriptionId && tenant.planId) {
       const current = await this.prisma.plan.findUnique({
         where: { id: tenant.planId },
-        select: { name: true, priceInCents: true },
+        select: { name: true, priceInCents: true, stripePriceId: true },
       });
 
-      const isDowngrade =
-        !!current && plan.priceInCents < current.priceInCents;
+      const isDowngrade = !!current && plan.priceInCents < current.priceInCents;
 
       if (isDowngrade) {
+        if (!current.stripePriceId) {
+          throw new BadRequestException(
+            'O plano atual não tem preço configurado no Stripe.',
+          );
+        }
+
         return this.scheduleDowngrade(
           tenant.stripeSubscriptionId,
           plan.name,
+          current.stripePriceId,
           plan.stripePriceId,
           current.name,
         );
@@ -142,11 +147,13 @@ export class CreateCheckoutSessionUseCase {
   private async scheduleDowngrade(
     subscriptionId: string,
     targetPlanName: string,
+    currentPriceId: string,
     targetPriceId: string,
     currentPlanName: string,
   ): Promise<CheckoutOrChangeResult> {
     await this.stripe.updateSubscriptionPrice({
       subscriptionId,
+      currentPriceId,
       priceId: targetPriceId,
       immediate: false,
     });

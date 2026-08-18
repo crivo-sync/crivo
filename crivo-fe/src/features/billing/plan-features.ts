@@ -29,26 +29,22 @@ export function professionalsLimitLabel(plan: Plan): string {
     return "Profissionais ilimitados";
   }
 
-  const incluidos =
-    plan.maxProfessionals === 1
-      ? "1 profissional"
-      : `${plan.maxProfessionals} profissionais`;
-
   /**
-   * ⚠️ **O preço do profissional adicional NÃO é anunciado ainda.**
+   * Só "até N profissionais" — sem preço de adicional.
    *
-   * `pricePerExtraProfessionalInCents` já existe no plano e no Stripe, mas
-   * o backend continua **recusando** o cadastro acima do teto — cobrar o
-   * adicional exige acrescentar um item à assinatura, que não foi feito.
-   * Mostrar "depois R$ 35/mês cada" aqui prometeria algo que o produto
-   * recusa na hora, que é exatamente o tipo de divergência entre site e
-   * sistema que a auditoria de 13/08 existiu para remover.
-   *
-   * Quando a cobrança do adicional entrar, este é o lugar: o limite é o
-   * primeiro critério que a clínica olha, e "até 2 profissionais" sozinho
-   * parece uma parede — quem tem 3 conclui que o plano não serve.
+   * Chegou a mostrar "depois R$X/mês cada" entre 17/08/2026 e o mesmo dia,
+   * quando `CreateProfessionalUseCase` cobrava o adicional de verdade em vez
+   * de recusar o cadastro acima do teto. Essa cobrança automática tinha um
+   * bug que removia o limite do plano na prática (uma clínica real foi de 2
+   * para 3 profissionais no Essencial sem nenhum bloqueio) e foi revertida
+   * no mesmo dia: `CreateProfessionalUseCase` volta a recusar sempre acima
+   * do teto. Anunciar o adicional aqui de novo seria a mesma divergência
+   * site×sistema que a auditoria de 13/08 existiu para remover — o único
+   * caminho para crescer além do teto é assinar um plano maior.
    */
-  return incluidos;
+  return plan.maxProfessionals === 1
+    ? "1 profissional"
+    : `${plan.maxProfessionals} profissionais`;
 }
 
 /**

@@ -54,3 +54,20 @@ export type TimeOff = {
   endsAt: string;
   reason: string | null;
 };
+
+/**
+ * A clínica tem mais profissional ativo do que o plano comporta?
+ *
+ * Estado legítimo, não erro: o teste libera até o teto do maior plano, então
+ * quem experimentou com a equipe inteira e assinou um plano menor cai aqui
+ * na confirmação do pagamento. Resolver é escolher quem continua ativo.
+ */
+export type OverLimitStatus = {
+  overLimit: boolean;
+  activeCount: number;
+  /** Teto do plano assinado (ou do trial). `null` = sem limite. */
+  maxProfessionals: number | null;
+  /** Quantos precisam ser desativados para voltar ao teto. */
+  excess: number;
+  planName: string | null;
+};

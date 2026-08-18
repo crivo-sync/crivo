@@ -122,6 +122,46 @@ export function trialEndingMail(input: {
 }
 
 /**
+ * A equipe cadastrada não cabe no plano assinado.
+ *
+ * Acontece por um caminho legítimo, não por erro da clínica: o teste tem
+ * teto maior que o dos planos de baixo, então quem experimentou com a equipe
+ * inteira e assinou um plano menor cai aqui na hora da confirmação.
+ *
+ * O texto diz **o que já aconteceu** (nada) antes de dizer o que ela precisa
+ * fazer. Receber "sua equipe excede o plano" logo depois de pagar assusta, e
+ * a primeira pergunta é sempre "perdi alguém?" — a resposta (não, ninguém
+ * foi desativado nem apagado) vem antes do pedido de ação.
+ */
+export function professionalsOverLimitMail(input: {
+  clinicName: string;
+  planName: string;
+  activeCount: number;
+  maxProfessionals: number;
+  professionalsUrl: string;
+}): RenderedMail {
+  return build('Sua equipe está acima do limite do plano', {
+    heading: 'Falta escolher quem continua ativo',
+    intro: [
+      `A ${input.clinicName} tem ${input.activeCount} profissionais cadastrados, e o plano ${input.planName} inclui ${input.maxProfessionals}.`,
+      'Ninguém foi desativado nem apagado — a escolha de quem continua atendendo é sua, e o painel pede isso no próximo acesso.',
+    ],
+    rows: [
+      { label: 'Profissionais cadastrados', value: String(input.activeCount) },
+      {
+        label: `Incluídos no ${input.planName}`,
+        value: String(input.maxProfessionals),
+      },
+    ],
+    cta: { label: 'Escolher quem fica', url: input.professionalsUrl },
+    outro: [
+      'Quem for desativado continua no sistema com toda a agenda e o histórico salvos: se você subir de plano depois, é só reativar.',
+      'Prefere manter a equipe inteira? Trocar para um plano maior em Configurações → Assinatura resolve sem desativar ninguém.',
+    ],
+  });
+}
+
+/**
  * Falha de cobrança. O Stripe ainda vai tentar de novo — por isso o texto
  * fala em "atualizar o cartão", não em "acesso cortado": cortar na primeira
  * falha seria punir quem só trocou de cartão.

@@ -7,6 +7,7 @@ import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { MailService } from 'src/modules/mail/application/mail.service';
 import {
   paymentFailedMail,
+  professionalsOverLimitMail,
   subscriptionConfirmedMail,
 } from 'src/modules/mail/application/templates';
 import { StripeService } from '../../infrastructure/stripe/stripe.service';
@@ -138,6 +139,22 @@ export class HandleStripeWebhookUseCase {
       }
     }
 
+    /**
+     * Desliga a IA se o plano novo não a inclui.
+     *
+     * `aiMessagesEnabled` é um toggle que a clínica liga em Configurações —
+     * nada aqui o desligava automaticamente quando o plano mudava. Uma
+     * clínica que ligou em trial (que libera tudo) e depois assinou um
+     * plano sem IA continuava com o toggle marcado no banco: o envio já
+     * respeitava `plan.hasAiMessages` (não gastava DeepSeek à toa), mas a
+     * tela mentia mostrando "ligado" — achado em 17/08/2026 com um tenant
+     * real nessa exata situação.
+     */
+    const planNovo = await this.prisma.plan.findUnique({
+      where: { id: planId },
+      select: { hasAiMessages: true },
+    });
+
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
@@ -145,8 +162,27 @@ export class HandleStripeWebhookUseCase {
         stripeCustomerId: stripeCustomerId ?? tenant.stripeCustomerId,
         stripeSubscriptionId,
         subscriptionStatus: mapStripeStatus(stripeSub.status),
+        ...(planNovo && !planNovo.hasAiMessages
+          ? { aiMessagesEnabled: false }
+          : {}),
       },
     });
+
+    /**
+     * **Não cobra adicional pelo excedente** — o teto voltou a ser duro em
+     * 17/08 (ver `CreateProfessionalUseCase`), e cobrar aqui recriaria pela
+     * porta do webhook exatamente o bug que foi revertido: a clínica passa
+     * do limite e descobre na fatura.
+     *
+     * A clínica que assina um plano menor do que a equipe que já cadastrou
+     * (o caso comum: testou o trial com 10 profissionais e assinou o Solo)
+     * fica **acima do teto**, e quem resolve isso é ela, escolhendo quem
+     * continua ativo em `POST /professionals/over-limit/resolve`. O painel
+     * detecta o estado por `GET /professionals/over-limit` e bloqueia até a
+     * escolha ser feita. Aqui só avisamos por e-mail — desativar alguém por
+     * conta própria acertaria o número e erraria a clínica.
+     */
+    await this.notifyOverLimitIfNeeded(tenantId, planId);
 
     await this.notifySubscriptionConfirmed(tenantId, planId, stripeSub);
   }
@@ -255,7 +291,80 @@ export class HandleStripeWebhookUseCase {
         planFromPrice.id,
         subscription,
       );
+
+      /**
+       * O **downgrade agendado** efetiva por aqui, não pelo checkout — e é
+       * justamente ele que cria excedente sem a clínica agir: ela pediu a
+       * troca semanas antes, o ciclo virou hoje, e a equipe que cabia no
+       * plano antigo não cabe mais no novo. Sem este aviso, o agendamento
+       * simplesmente parava de funcionar no dia da virada e ela descobriria
+       * pela recepção, não por nós.
+       */
+      await this.notifyOverLimitIfNeeded(tenant.id, planFromPrice.id);
     }
+  }
+
+  /**
+   * Avisa quando a equipe cadastrada não cabe no plano recém-assinado.
+   *
+   * Só avisa — não desativa ninguém. O painel bloqueia e pede a escolha no
+   * próximo acesso (`GET /professionals/over-limit`); o e-mail existe para
+   * quem fechou a aba depois de pagar e não voltaria tão cedo, que é
+   * justamente quem descobriria o problema tarde demais.
+   *
+   * Não lança: `MailService.send` já engole a falha, e o webhook precisa
+   * devolver 200 para o Stripe parar de reentregar um pagamento que já foi
+   * gravado com sucesso.
+   */
+  private async notifyOverLimitIfNeeded(
+    tenantId: string,
+    planId: string,
+  ): Promise<void> {
+    const [tenant, plan] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          name: true,
+          users: {
+            where: { role: 'ADMIN', isActive: true },
+            select: { email: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      }),
+      this.prisma.plan.findUnique({
+        where: { id: planId },
+        select: { name: true, maxProfessionals: true },
+      }),
+    ]);
+
+    const email = tenant?.users[0]?.email;
+    if (!tenant || !plan || !email || plan.maxProfessionals === null) return;
+
+    const activeCount = await this.prisma.professional.count({
+      where: { tenantId, deletedAt: null, isActive: true },
+    });
+
+    if (activeCount <= plan.maxProfessionals) return;
+
+    const appUrl =
+      this.config.get<string>('PUBLIC_APP_URL') ?? 'http://localhost:3000';
+
+    this.logger.log(
+      `Tenant ${tenantId} assinou ${plan.name} (limite ${plan.maxProfessionals}) com ${activeCount} profissionais ativos — aviso de excedente enviado.`,
+    );
+
+    await this.mail.send(
+      email,
+      professionalsOverLimitMail({
+        clinicName: tenant.name,
+        planName: plan.name,
+        activeCount,
+        maxProfessionals: plan.maxProfessionals,
+        professionalsUrl: `${appUrl.replace(/\/$/, '')}/painel/profissionais`,
+      }),
+    );
   }
 
   private async notifyPaymentFailed(tenantId: string): Promise<void> {

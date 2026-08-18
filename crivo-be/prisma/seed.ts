@@ -263,9 +263,15 @@ const TENANTS: SeedTenant[] = [
 async function clean() {
   // Ordem importa: filhos antes dos pais por causa das foreign keys.
   //
-  // Prontuário vem primeiro de todos: `clinical_notes` e `anamneses` apontam
-  // para paciente/usuário com `RESTRICT`, então apagá-los depois faria o
-  // `patient.deleteMany()` abaixo estourar.
+  // Prontuário vem primeiro de todos: `clinical_notes`, `anamneses` e
+  // `clinical_photos` apontam para paciente/usuário com `RESTRICT`, então
+  // apagá-los depois faria o `patient.deleteMany()` abaixo estourar.
+  //
+  // `clinical_photos` é o mais amarrado dos três — aponta para tenant,
+  // paciente, **agendamento** e usuário — e por isso precisa sair antes de
+  // todos eles. Esquecê-la aqui é o que quebrava o seed com
+  // `clinical_photos_appointment_id_fkey` no `appointment.deleteMany()`.
+  await prisma.clinicalPhoto.deleteMany();
   await prisma.clinicalNote.deleteMany();
   await prisma.anamnesis.deleteMany();
   // Grade e bloqueio têm `onDelete: Cascade` no profissional, mas apagar
@@ -630,6 +636,7 @@ const PLANS = [
     hasMedicalRecords: true,
     stripeProductId: 'prod_V4UHD3wrKcCUM7',
     stripePriceId: 'price_1U4LIh64chrm4OaKdKeutDfE',
+    stripeExtraProfessionalPriceId: null,
   },
   {
     key: 'ESSENCIAL',
@@ -645,6 +652,7 @@ const PLANS = [
     hasMedicalRecords: true,
     stripeProductId: 'prod_V4UH6mhalhGEB7',
     stripePriceId: 'price_1U4LIh64chrm4OaKfpEijb6I',
+    stripeExtraProfessionalPriceId: 'price_1U4LIi64chrm4OaKl0NAZ6B8',
   },
   {
     key: 'PROFISSIONAL',
@@ -661,6 +669,7 @@ const PLANS = [
     hasMedicalRecords: true,
     stripeProductId: 'prod_V4UHlY144qG79S',
     stripePriceId: 'price_1U4LIi64chrm4OaK3LQWKfBC',
+    stripeExtraProfessionalPriceId: 'price_1U4LIj64chrm4OaKRcrL7fFM',
   },
   {
     key: 'CLINICA',
@@ -676,6 +685,7 @@ const PLANS = [
     hasMedicalRecords: true,
     stripeProductId: 'prod_V4UHog8VhNJkFi',
     stripePriceId: 'price_1U4LIj64chrm4OaKmgEnb2l8',
+    stripeExtraProfessionalPriceId: 'price_1U4LIk64chrm4OaKkDHwxLsZ',
   },
 ];
 

@@ -34,10 +34,12 @@ export class PrismaProfessionalRepository implements ProfessionalRepository {
     search,
     page,
     perPage,
+    onlyActive,
   }: FindManyProfessionalsParams): Promise<PaginatedProfessionals> {
     const where: Prisma.ProfessionalWhereInput = {
       tenantId,
       deletedAt: null,
+      ...(onlyActive ? { isActive: true } : {}),
       ...(search
         ? {
             OR: [

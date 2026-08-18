@@ -64,64 +64,51 @@ export const PlanCalculator = ({
     );
 
     /**
-     * Precisa caber nas **duas** dimensões: número de profissionais e
-     * franquia de mensagem. Recomendar por uma só levaria a clínica a um
-     * plano onde ela não consegue cadastrar a equipe, ou onde as mensagens
-     * acabam no meio do mês — os dois casos viram cancelamento.
+     * O primeiro plano (em ordem de preço) cujo teto de profissionais **e**
+     * franquia de mensagens comportam a operação, sem contar com adicional.
+     *
+     * Já foi "o de menor custo total contando profissional adicional", mas
+     * o cadastro (`CreateProfessionalUseCase`) voltou a bloquear sempre no
+     * teto em 17/08/2026 — um plano menor nunca deixa a clínica cadastrar o
+     * profissional a mais, então recomendar por esse caminho anuncia uma
+     * capacidade que o produto recusa na hora de usar.
      */
     const ordenados = [...plans].sort((a, b) => a.priceInCents - b.priceInCents);
 
-    const cabeNos = (plan: Plan) => ({
-      profissionais:
-        plan.maxProfessionals === null || plan.maxProfessionals >= profissionais,
-      mensagens:
-        plan.maxMessagesPerMonth === null ||
-        plan.maxMessagesPerMonth >= mensagens,
+    const melhor = ordenados.find((plan) => {
+      const cabemProfissionais =
+        plan.maxProfessionals === null || plan.maxProfessionals >= profissionais;
+      const cabemMensagens =
+        plan.maxMessagesPerMonth === null || plan.maxMessagesPerMonth >= mensagens;
+      return cabemProfissionais && cabemMensagens;
     });
 
-    const cabe = ordenados.find((plan) => {
-      const teste = cabeNos(plan);
-      return teste.profissionais && teste.mensagens;
-    });
-
-    if (cabe) {
+    if (melhor) {
       return {
-        recomendado: cabe,
+        recomendado: melhor,
         mensagensNecessarias: mensagens,
         resultado: "cabe" as const,
         folga:
-          cabe.maxMessagesPerMonth === null
+          melhor.maxMessagesPerMonth === null
             ? null
-            : cabe.maxMessagesPerMonth - mensagens,
+            : melhor.maxMessagesPerMonth - mensagens,
       };
     }
 
+    // Nenhum plano comporta (nem o maior, no teto de profissionais ou de
+    // mensagens) — melhor falar com a gente do que empurrar um plano que
+    // não aguenta a operação.
     const maior = ordenados[ordenados.length - 1];
-    const noMaior = cabeNos(maior);
 
-    /**
-     * **Faltar só profissional é diferente de ser grande demais.**
-     *
-     * Uma clínica com 9 profissionais estoura o teto de 8 do maior plano por
-     * **um**, e as mensagens dela ainda sobram. Mandá-la para "fale com a
-     * gente" junto com uma rede de 40 profissionais trata os dois casos como
-     * iguais — e perde justamente o cliente maior, que é o mais valioso.
-     * Aqui ela vê o plano-base e quantos profissionais passam dele.
-     */
     return {
       recomendado: maior,
       mensagensNecessarias: mensagens,
-      resultado: noMaior.mensagens
-        ? ("excede-profissionais" as const)
-        : ("excede-tudo" as const),
+      resultado: "excede-tudo" as const,
       folga: null,
     };
   }, [plans, profissionais, atendimentosPorProfissional]);
 
   if (plans.length === 0) return null;
-
-  /** Quantos profissionais passam do teto do maior plano. */
-  const excedentes = profissionais - (recomendado.maxProfessionals ?? 0);
 
   return (
     <section
@@ -149,7 +136,8 @@ export const PlanCalculator = ({
                 </span>
               </h2>
               <p className="mt-4 text-base leading-relaxed text-gray-600">
-                Dois números que você já sabe. Nós indicamos o plano que cabe.
+                Dois números que você já sabe. Nós indicamos o mais barato que
+                cabe.
               </p>
             </div>
           </ScrollReveal>
@@ -232,8 +220,9 @@ export const PlanCalculator = ({
 
             <div className="flex flex-col justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-7 text-center">
               {resultado === "excede-tudo" ? (
-                /* Empurrar para o maior plano sabendo que ele não comporta
-                   nem a equipe nem o volume seria vender um cancelamento. */
+                /* Nem o maior plano comporta (profissionais ou mensagens).
+                   Empurrar para ele mesmo assim seria vender um
+                   cancelamento. */
                 <>
                   <p className="text-sm font-medium text-gray-600">
                     Sua operação é maior que os planos padrão
@@ -252,9 +241,7 @@ export const PlanCalculator = ({
               ) : (
                 <>
                   <p className="text-sm font-medium text-gray-600">
-                    {resultado === "excede-profissionais"
-                      ? "Seu ponto de partida é o"
-                      : "O plano que cabe é o"}
+                    O plano que sai mais barato é o
                   </p>
                   <p className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
                     {recomendado.name}
@@ -266,45 +253,20 @@ export const PlanCalculator = ({
 
                   <div className="mx-auto my-6 h-px w-16 bg-black/10" />
 
-                  {resultado === "excede-profissionais" ? (
-                    /**
-                     * Estourou o teto de equipe, mas as mensagens cabem: é a
-                     * clínica grande, o cliente mais valioso. Dizer o que
-                     * falta é honesto **e** mantém a conversa aberta —
-                     * diferente de mandá-la embora com a mesma mensagem de
-                     * uma rede de 40 profissionais.
-                     *
-                     * Não mostra o total com adicionais porque o backend
-                     * ainda não os cobra (ver ROADMAP → Fase 3).
-                     */
-                    <p className="text-sm leading-relaxed text-gray-700">
-                      O maior plano inclui{" "}
-                      <strong className="text-gray-900">
-                        {recomendado.maxProfessionals} profissionais
-                      </strong>
-                      .{" "}
-                      {excedentes === 1
-                        ? "Para o profissional que passa disso"
-                        : `Para os ${excedentes} profissionais que passam disso`}
-                      , a gente monta a conta com você — suas mensagens já cabem
-                      na franquia.
-                    </p>
-                  ) : (
-                    <p className="text-sm leading-relaxed text-gray-600">
-                      {recomendado.maxMessagesPerMonth === null
-                        ? "Mensagens sem limite"
-                        : `${recomendado.maxMessagesPerMonth.toLocaleString("pt-BR")} mensagens inclusas`}
-                      {folga !== null && (
-                        <>
-                          {" — "}
-                          <strong className="text-gray-900">
-                            sobram {folga.toLocaleString("pt-BR")}
-                          </strong>{" "}
-                          de folga
-                        </>
-                      )}
-                    </p>
-                  )}
+                  <p className="text-sm leading-relaxed text-gray-600">
+                    {recomendado.maxMessagesPerMonth === null
+                      ? "Mensagens sem limite"
+                      : `${recomendado.maxMessagesPerMonth.toLocaleString("pt-BR")} mensagens inclusas`}
+                    {folga !== null && (
+                      <>
+                        {" — "}
+                        <strong className="text-gray-900">
+                          sobram {folga.toLocaleString("pt-BR")}
+                        </strong>{" "}
+                        de folga
+                      </>
+                    )}
+                  </p>
 
                   {/**
                    * Aviso de plano apertado: com menos de 15% de folga, um mês
@@ -323,21 +285,13 @@ export const PlanCalculator = ({
                     )}
 
                   <Link
-                    href={
-                      resultado === "excede-profissionais"
-                        ? "/#contato"
-                        : "/cadastro"
-                    }
+                    href="/cadastro"
                     className="mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-7 py-3.5 text-base font-semibold text-white shadow-[0_0_40px_rgba(79,70,229,0.25)] transition-all duration-300 hover:bg-indigo-500"
                   >
-                    {resultado === "excede-profissionais"
-                      ? "Montar meu plano"
-                      : "Testar 14 dias grátis"}
+                    Testar 14 dias grátis
                   </Link>
                   <p className="mt-3 text-xs text-gray-500">
-                    {resultado === "excede-profissionais"
-                      ? "Resposta em até 1 dia útil."
-                      : "Sem cartão de crédito."}
+                    Sem cartão de crédito.
                   </p>
                 </>
               )}

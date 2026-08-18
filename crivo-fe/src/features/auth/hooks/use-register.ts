@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef, useState } from "react";
@@ -28,6 +28,14 @@ export function useRegister() {
   // disso a escolha dela vale mais que a sugestão automática.
   const subdomainTouched = useRef(false);
 
+  /**
+   * Plano vindo da tabela de preços (`/cadastro?plano=ESSENCIAL`). Não tem
+   * campo na tela: é só o repasse da escolha que a pessoa já fez no site,
+   * para o limite do plano valer desde o primeiro dia do teste.
+   */
+  const searchParams = useSearchParams();
+  const planKey = searchParams.get("plano") ?? undefined;
+
   const form = useForm<RegisterSchema>({
     resolver: zodResolver(registerSchema),
     defaultValues: DEFAULT_VALUES,
@@ -49,7 +57,7 @@ export function useRegister() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     setServerError(null);
-    const result = await registerAction(values);
+    const result = await registerAction({ ...values, planKey });
 
     if (!result.success) {
       setServerError(result.message);

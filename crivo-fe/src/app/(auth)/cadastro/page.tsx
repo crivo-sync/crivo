@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
+import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 
 import { LogoMark } from "@/components/ui/logo";
@@ -45,7 +47,15 @@ const RegisterPage = () => {
           <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
             Leva menos de um minuto. Você já entra direto no painel.
           </Typography>
-          <RegisterForm />
+          {/**
+           * `Suspense` porque `useRegister` lê `?plano=` com
+           * `useSearchParams`, e sem boundary o Next não consegue
+           * pré-renderizar esta página (o build falha em
+           * `missing-suspense-with-csr-bailout`, e o `tsc` não acusa).
+           */}
+          <Suspense fallback={<CircularProgress size={24} />}>
+            <RegisterForm />
+          </Suspense>
         </Card>
 
         <Typography

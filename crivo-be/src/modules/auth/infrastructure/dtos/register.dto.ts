@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Clínica Sorriso', description: 'Nome da clínica' })
@@ -46,4 +52,19 @@ export class RegisterDto {
   @IsString()
   @MinLength(8, { message: 'A senha deve ter ao menos 8 caracteres' })
   password: string;
+
+  /**
+   * Plano pretendido (`Plan.key`), vindo da tabela de preços do site.
+   * **Não cobra nada** — o trial continua 14 dias sem cartão; o plano só
+   * define o teto que vale durante o teste, para a clínica não montar uma
+   * equipe que não cabe no que ela vai assinar.
+   */
+  @ApiPropertyOptional({
+    example: 'ESSENCIAL',
+    description:
+      'Plano pretendido, para o limite já valer no teste. Não gera cobrança.',
+  })
+  @IsOptional()
+  @IsString()
+  planKey?: string;
 }

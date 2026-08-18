@@ -13,6 +13,7 @@ export async function getProfessionals(
         page: params.page,
         perPage: params.perPage,
         ...(params.search ? { search: params.search } : {}),
+        ...(params.onlyActive ? { onlyActive: true } : {}),
       },
     })
     .json<PaginatedResponse<Professional>>();

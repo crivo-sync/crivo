@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -10,6 +11,10 @@ import {
   PROFESSIONAL_REPOSITORY,
   type ProfessionalRepository,
 } from '../../domain/repository/professional.repository';
+import {
+  countProfessionalsOccupyingSeat,
+  resolveTrialProfessionalLimit,
+} from '../professional-limit';
 
 export type UpdateProfessionalInput = {
   id: string;
@@ -45,7 +50,38 @@ export class UpdateProfessionalUseCase {
       await this.assertProceduresBelongToTenant(tenantId, changes.procedureIds);
     }
 
+    // Reativar ocupa vaga, igual a cadastrar. Sem isto, o limite tinha uma
+    // porta dos fundos: desativa dois, reativa os dois, e a clínica volta a
+    // ficar acima do teto sem passar por lugar nenhum que checasse.
+    if (changes.isActive === true && !professional.isActive) {
+      await this.assertSeatAvailable(tenantId);
+    }
+
     return this.professionalRepository.update(id, changes);
+  }
+
+  private async assertSeatAvailable(tenantId: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { plan: { select: { maxProfessionals: true, name: true } } },
+    });
+
+    const limite = tenant.plan
+      ? tenant.plan.maxProfessionals
+      : await resolveTrialProfessionalLimit(this.prisma);
+
+    if (limite === null) return;
+
+    const ocupadas = await countProfessionalsOccupyingSeat(
+      this.prisma,
+      tenantId,
+    );
+
+    if (ocupadas >= limite) {
+      throw new ForbiddenException(
+        `Seu plano permite até ${limite} profissional(is) ativo(s). Desative outro profissional ou faça upgrade em Configurações → Assinatura.`,
+      );
+    }
   }
 
   // Mesma checagem do cadastro: um payload malformado (ou de outro tenant)

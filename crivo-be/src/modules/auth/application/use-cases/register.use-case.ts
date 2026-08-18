@@ -14,6 +14,16 @@ export type RegisterInput = {
   /** WhatsApp da clínica, só dígitos. É por onde o Crivo fala com ela. */
   phone: string;
   password: string;
+  /**
+   * Plano que a clínica pretende assinar. **Não cobra nada** — o trial segue
+   * sendo 14 dias sem cartão. Serve para o teto do plano já valer durante o
+   * teste.
+   *
+   * Opcional: quem chega pelo "Comece grátis" sem passar pela tabela de
+   * preços não é obrigado a decidir agora, e cai no teto do maior plano
+   * (`resolveTrialProfessionalLimit`), como antes.
+   */
+  planKey?: string;
 };
 
 const SALT_ROUNDS = 10;
@@ -51,6 +61,27 @@ export class RegisterUseCase {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
+    /**
+     * O plano escolhido no cadastro já vale **durante o trial** — sem
+     * cobrança, só como teto.
+     *
+     * É o que impede o problema que existia na virada: o trial liberava até
+     * 8 profissionais, a clínica cadastrava a equipe toda, assinava o Solo
+     * (1 incluído) e caía num estado de excedente que alguém tinha que
+     * resolver desativando gente. Com o teto valendo desde o começo, ela vê
+     * "seu plano permite 1" no 2º cadastro — no dia 1 do teste, quando
+     * trocar de plano ainda é uma decisão barata, e não depois de pagar.
+     *
+     * `subscriptionStatus` segue `TRIALING` (o default): plano definido não
+     * é assinatura ativa, e `TrialGuard` continua contando os 14 dias.
+     */
+    const plan = input.planKey
+      ? await this.prisma.plan.findFirst({
+          where: { key: input.planKey, isActive: true },
+          select: { id: true },
+        })
+      : null;
+
     const created = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
@@ -58,6 +89,10 @@ export class RegisterUseCase {
           subdomain: input.subdomain,
           phone: input.phone,
           trialEndsAt,
+          // Plano inexistente/inativo é ignorado em vez de derrubar o
+          // cadastro: perder uma conta nova por causa de uma `planKey`
+          // errada na URL seria o pior desfecho possível aqui.
+          ...(plan ? { planId: plan.id } : {}),
         },
       });
 
