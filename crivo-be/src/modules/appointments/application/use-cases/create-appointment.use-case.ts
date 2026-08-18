@@ -2,6 +2,7 @@ import { AppointmentOrigin } from '@prisma/client';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -9,6 +10,11 @@ import {
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { ScheduleAppointmentReminderUseCase } from 'src/modules/messaging/application/use-cases/schedule-appointment-reminder.use-case';
+import {
+  isOverProfessionalLimit,
+  OVER_LIMIT_BOOKING_MESSAGE,
+  OVER_LIMIT_PUBLIC_BOOKING_MESSAGE,
+} from 'src/modules/professionals/application/professional-limit';
 import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
@@ -42,6 +48,27 @@ export class CreateAppointmentUseCase {
     if (input.startsAt.getTime() < Date.now()) {
       throw new BadRequestException(
         'Não é possível agendar em um horário no passado.',
+      );
+    }
+
+    /**
+     * Vale para o painel **e** para a página pública (as duas passam por
+     * aqui): sem isso, o limite do plano só existia no cadastro e uma
+     * clínica acima do teto seguia marcando normalmente com todo mundo.
+     * Bloqueia só o agendamento **novo** — a agenda já marcada continua de
+     * pé, porque cancelar consulta de paciente por causa de plano seria
+     * punir quem não tem nada com isso.
+     *
+     * A mensagem muda conforme quem está do outro lado: `ONLINE` é o
+     * paciente na página pública, que não tem painel nem assinatura e não
+     * pode resolver nada — contar a ele que a clínica está acima do plano
+     * vaza pendência comercial para um terceiro.
+     */
+    if (await isOverProfessionalLimit(this.prisma, input.tenantId)) {
+      throw new ForbiddenException(
+        input.origin === AppointmentOrigin.ONLINE
+          ? OVER_LIMIT_PUBLIC_BOOKING_MESSAGE
+          : OVER_LIMIT_BOOKING_MESSAGE,
       );
     }
 

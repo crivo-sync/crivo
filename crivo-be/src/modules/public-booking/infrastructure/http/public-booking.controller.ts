@@ -20,6 +20,7 @@ import {
 } from 'class-validator';
 
 import { GetAvailabilityUseCase } from 'src/modules/appointments/application/use-cases/get-availability.use-case';
+import { isOverProfessionalLimit } from 'src/modules/professionals/application/professional-limit';
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { BookOnlineUseCase } from '../../application/book-online.use-case';
 
@@ -81,7 +82,7 @@ export class PublicBookingController {
   async options(@Param('subdomain') subdomain: string) {
     const tenant = await this.findTenant(subdomain);
 
-    const [professionals, procedures] = await Promise.all([
+    const [professionals, procedures, bookingBlocked] = await Promise.all([
       this.prisma.professional.findMany({
         where: { tenantId: tenant.id, isActive: true, deletedAt: null },
         // Só o que serve para escolher. `phone`, `email` e `councilCode`
@@ -111,9 +112,22 @@ export class PublicBookingController {
         },
         orderBy: { name: 'asc' },
       }),
+      /**
+       * A clínica está acima do teto do plano? Então o agendamento vai ser
+       * recusado no fim (`CreateAppointmentUseCase`), e é melhor o paciente
+       * saber **antes** de escolher horário e digitar nome e telefone — o
+       * que acontecia até agora: ele preenchia tudo e só descobria no
+       * "Confirmar agendamento".
+       *
+       * Vai como flag booleana, sem motivo: o front mostra "agenda online
+       * indisponível, ligue para a clínica". O paciente não precisa (nem
+       * deve) saber que é pendência de plano.
+       */
+      isOverProfessionalLimit(this.prisma, tenant.id),
     ]);
 
     return {
+      bookingBlocked,
       clinic: {
         name: tenant.name,
         logoUrl: tenant.logoUrl,

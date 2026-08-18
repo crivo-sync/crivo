@@ -21,6 +21,17 @@ export const registerSchema = z.object({
     .trim()
     .regex(/^\d{10,11}$/, "Informe um WhatsApp válido com DDD"),
   password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres"),
+  /**
+   * Plano escolhido na tabela de preços (`?plano=ESSENCIAL`). **Não cobra
+   * nada**: o teste continua 14 dias sem cartão, e o plano só faz o limite
+   * dele valer já durante o teste — assim a clínica não monta uma equipe
+   * que não caberia no plano que vai assinar.
+   *
+   * Não vem de campo do formulário e não é validado contra o catálogo aqui:
+   * o backend ignora chave desconhecida em vez de recusar o cadastro (perder
+   * conta nova por causa de uma URL torta seria o pior desfecho).
+   */
+  planKey: z.string().trim().optional(),
 });
 
 export type RegisterSchema = z.infer<typeof registerSchema>;

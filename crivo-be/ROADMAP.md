@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-14.
+> Última atualização: 2026-08-17.
 >
 > **O que era construível está construído.** `billing` completo (checkout,
 > webhook, 4 planos com limites e features por faixa — travados no backend
@@ -30,10 +30,16 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 > painel. Mas o recheque de 13/08 encontrou algo maior: a Clinicorp lançou
 > **agentes de IA que executam** no WhatsApp — ver
 > [A IA mudou de patamar](#a-ia-mudou-de-patamar-13082026).
+>
+> Em 17/08 o modelo de preço deixou de estar pela metade: **cadastrar
+> profissional acima do teto cobra o adicional na hora**, em vez de recusar
+> o cadastro. Verificado contra o Stripe real (modo teste) — o item nasce,
+> escala e some da assinatura conforme a equipe muda, com proration cobrado
+> e creditado automaticamente.
 
 ---
 
-## Próximos passos (14/08/2026)
+## Próximos passos (rev. 17/08/2026)
 
 **O produto está construído. O que falta não é feature — é colocar no ar e
 descobrir se alguém paga.** Em ordem:
@@ -50,23 +56,28 @@ documento substitui. Os preços têm uma conta por trás (custo de mensagem +
 margem verificada), mas **ninguém pagou por eles ainda**. Nove clínicas no
 Solo cobrem a infra inteira.
 
-**3. 🟡 Cobrar o profissional adicional** — o modelo de preço de 14/08 está
-pela metade: o valor existe no `Plan` e no Stripe, mas a clínica que tenta
-cadastrar acima do teto **é recusada** em vez de pagar a mais. Enquanto
-isso, o site não pode anunciar o adicional (há teste E2E garantindo). Ver
-[Fase 3](#fase-3--monetização-e-retenção).
-
-**4. 🟡 Credenciais da Meta** — adiado por custo, mas o WhatsApp roda em
+**3. 🟡 Credenciais da Meta** — adiado por custo, mas o WhatsApp roda em
 Evolution com **risco de banimento assumido**. Vira urgente no momento em
 que houver cliente pagando: perder o número de uma clínica real é diferente
 de perder o de desenvolvimento. Traz junto o template aprovado e o webhook
 de `DELIVERED`.
 
-**5. ⚪ Multi-unidade** — o Agendiva vende por R$ 99,90 + R$ 79,90/clínica
+**4. ⚪ Multi-unidade** — o Agendiva vende por R$ 99,90 + R$ 79,90/clínica
 extra. É o item de maior impacto estrutural (`Tenant` é ao mesmo tempo
 escopo de dados e assinante) e **não deve ser feito antes de haver demanda
 real** — a alternativa barata (unidade como campo da agenda) cobre o caso
 comum de duas salas. Ver [Fase 4](#fase-4--escala).
+
+> ✅ **Cobrança do profissional adicional — fechada em 17/08/2026**, backend
+> e frontend. `SyncExtraProfessionalsUseCase` cobra/credita a diferença no
+> Stripe em tempo real (verificado ao vivo, não só em specs com mock); o
+> site agora anuncia o valor do adicional em cada card que vende (Essencial
+> R$ 35, Profissional R$ 30, Clínica R$ 25) — o Solo, sem adicional, segue
+> mostrando só "1 profissional". A calculadora de plano (`/planos` e home)
+> foi corrigida no mesmo dia: recomendava por teto puro e empurrava clínica
+> para um plano mais caro do que precisava — agora recomenda por **custo
+> total**, e um plano menor com adicional pode vencer o próximo plano cheio.
+> Ver [Fase 3](#fase-3--monetização-e-retenção).
 
 > ⚠️ **Prazo externo: 01/10/2026.** A Meta passa a cobrar toda mensagem de
 > utilidade, inclusive dentro da janela de 24h. As franquias já foram
@@ -93,7 +104,7 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 | `prediction` | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção |
 | `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
 | `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
-| `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial (11–12/08/2026). ⚠️ Preços seguem **hipótese não validada** com cliente real |
+| `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial, **cobrança do profissional adicional acima do teto** (17/08/2026, verificado ao vivo contra o Stripe real). ⚠️ Preços seguem **hipótese não validada** com cliente real |
 | `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa. **Custo das faltas em reais** (13/08/2026) no topo do painel, também liberado em todos os planos |
 | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
 | `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
@@ -381,11 +392,12 @@ fixo: do 10º cliente em diante, os ~R$ 26 de sobra viram margem limpa.
 
 **⚠️ O que NÃO está pronto:**
 
-- **Cobrança do profissional adicional.** O preço existe no plano e no
-  Stripe, mas o backend continua **recusando** cadastro acima do teto —
-  cobrar exige acrescentar item à assinatura (`subscriptions.update` com
-  quantidade). **Por isso o site não anuncia o adicional**; anunciá-lo antes
-  seria a mesma divergência site×sistema que a auditoria de 13/08 removeu.
+- ~~**Cobrança do profissional adicional.**~~ ✅ **Resolvido por completo em
+  17/08/2026** — backend (cobrança/crédito em tempo real, verificado ao vivo
+  contra o Stripe) e frontend (o site agora anuncia o valor do adicional em
+  cada card que vende; `planos.spec.ts` foi reescrito — o teste que garantia
+  a ausência do texto virou teste que garante a presença dele, no card
+  certo). Ver [Fase 3](#fase-3--monetização-e-retenção).
 - **Migração das assinaturas existentes.** `SOLO` reusou a chave do plano
   antigo, então o banco diz R$ 49 enquanto o Stripe segue cobrando o valor
   congelado no ato da assinatura (verificado: `g3developer` paga R$ 79).
@@ -682,11 +694,54 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
 ### Fase 3 — Monetização e retenção
 
 8. **`billing`** — 🟢 **checkout, webhook, limites por plano, tela de assinatura e site conectado — tudo entregue em 11/08/2026** (Stripe modo teste)
-   - [ ] 🔴 **Cobrar o profissional adicional** — o item que falta para o modelo de preço de 14/08 funcionar de verdade. Hoje: a clínica no Essencial (2 profissionais) tenta cadastrar o terceiro e **é recusada** com "faça upgrade"; deveria passar a pagar R$ 89 + R$ 35 = R$ 124. O preço já existe no `Plan` (`pricePerExtraProfessionalInCents`) e no Stripe (preço separado com `metadata.tipo: 'profissional_adicional'`), mas nada o consome. O que falta:
-     - acrescentar um **segundo item** à assinatura (`subscriptions.update` com `items: [{ price: <adicional>, quantity: N }]`), atualizando a quantidade a cada cadastro/remoção de profissional
-     - decidir o comportamento na **remoção**: reduzir a quantidade na hora (crédito proporcional) ou só no fim do ciclo — o mesmo dilema já resolvido no downgrade de plano
-     - trocar a recusa de `CreateProfessionalUseCase` por um **aviso de que a fatura vai aumentar**, com confirmação. Cobrar mais sem avisar é pior que recusar
-     - **Enquanto não existir, o site não anuncia o adicional** — está coberto por teste E2E (`planos.spec.ts`), que falha se o texto voltar
+   - [x] **Cobrar o profissional adicional** (17/08/2026) — a clínica no Essencial (2 profissionais) que cadastra o terceiro passa a pagar R$ 89 + R$ 35 = R$ 124, em vez de ser recusada. `Plan.stripeExtraProfessionalPriceId` (campo novo) guarda o preço do adicional de cada faixa; recuperado do Stripe (os preços já existiam, criados em 14/08 com `metadata.tipo: 'profissional_adicional'`, mas o ID nunca tinha sido persistido em lugar nenhum — achado ao investigar a pendência).
+     - **`SyncExtraProfessionalsUseCase`** (novo, em `billing`) — recalcula a quantidade **do zero** a cada chamada, a partir da contagem real de profissionais ativos contra o teto do plano. Não é um contador incremental (+1/−1): um contador divergiria da assinatura de verdade na primeira falha de rede (cadastra, Stripe falha, tenta de novo, contador fica um a mais do que deveria)
+     - **Chamado nos três pontos em que a equipe ou o plano mudam**: `CreateProfessionalUseCase` (depois de cadastrar), `DeleteProfessionalUseCase` (depois de remover) e `HandleStripeWebhookUseCase` (depois de um upgrade). O terceiro ponto foi um achado ao desenhar a solução, não estava cogitado: a assinatura **nova** de um upgrade nasce só com o item do plano-base (`createCheckoutSession` cria um único `line_item`), então uma clínica que pagava adicionais na assinatura anterior parava de ser cobrada por eles na troca — sem erro em lugar nenhum, perda de receita silenciosa
+     - **`updateSubscriptionPrice` corrigido**: identificava o item do plano-base por `items.data[0]`, premissa que só era segura enquanto a assinatura tinha exatamente um item. Com o adicional como segundo item, a posição no array deixa de ser confiável (a ordem do Stripe não é garantida como ordem de criação). Passou a identificar pelo `currentPriceId` — o preço de onde a clínica está saindo, que quem chama sempre tem
+     - **`setExtraProfessionalsQuantity`**: `quantity <= 0` **remove o item** da assinatura em vez de deixá-lo com `quantity: 0`. Um item zerado ficaria na assinatura indefinidamente (o Stripe permite), e um item fantasma no Dashboard confundiria qualquer investigação futura de cobrança
+     - **Sempre `proration_behavior: 'always_invoice'`** — diferente da troca de plano (onde o downgrade espera o fim do ciclo, porque o cliente já pagou o mês do plano maior), aqui não existe "já pago": o profissional a mais é cadastrado no momento em que a clínica age, e a cobrança acompanha na hora. Decisão tomada no lugar do "aviso com confirmação" cogitado antes — o modelo vendido já é "some profissional, a fatura sobe"; pedir confirmação a mais criaria fricção que o Agendiva (referência de preço contínuo) não tem
+     - **Sem transação entre Stripe e banco**: o profissional é criado primeiro (dado real, vale para a agenda), a sincronização de cobrança vem depois e **não lança** se o Stripe falhar — fica logada como erro para reparo manual. Cadastro não pode travar porque o Stripe está fora do ar
+     - Verificado ao vivo contra o Stripe real (modo teste, não só specs com mock): criada assinatura real no plano Essencial, cadastrado 3º profissional → **fatura de R$ 35,00 gerada e paga na hora** (`subscription_update`); cadastrados mais dois (total 2 adicionais) → `quantity: 2` no item; removido um → `quantity: 1`, **fatura de -R$ 35,00** (crédito); removido o último → item **desaparece** da assinatura, volta a ter só o item do plano-base
+     - 17 testes novos (`sync-extra-professionals.spec.ts`, mais os ajustados em `create-professional`, `delete-professional` e `handle-stripe-webhook`)
+   - [x] 🐞 **REVERTIDO no mesmo dia (17/08/2026) — o item acima tinha um bug que removia o limite do plano.** `CreateProfessionalUseCase` deixava passar do teto sempre que `canBillExtra` era verdadeiro (`stripeExtraProfessionalPriceId` configurado + `stripeSubscriptionId` presente) — e essa condição é **verdadeira para qualquer plano que venda adicional** (Essencial, Profissional, Clínica). Na prática, **nenhum desses planos tinha teto real**: a clínica cadastrava profissionais sem limite algum, contando com `SyncExtraProfessionalsUseCase` para cobrar depois. Achado com uma clínica real que foi de 2 para 3 profissionais no Essencial (limite 2) **sem nenhum bloqueio nem aviso** — o 3º cadastro só apareceu no alerta de excedente implementado horas antes, não foi recusado na hora.
+     - **`CreateProfessionalUseCase` voltou a bloquear sempre no teto**, sem a exceção de "cobra o adicional em vez de recusar". `maxProfessionals` é teto duro de novo; para crescer além dele, o caminho é assinar um plano maior.
+     - **`SyncExtraProfessionalsUseCase` não é mais chamado por `CreateProfessionalUseCase`** — sem cadastro acima do teto, não há mais adicional para sincronizar no cadastro. Continua chamado por `DeleteProfessionalUseCase`, como rede de segurança para zerar cobrança de adicional que ficou pendente no Stripe de clínicas que excederam **enquanto o bug existia**.
+     - **`Plan.pricePerExtraProfessionalInCents` e `stripeExtraProfessionalPriceId` continuam no schema e no site** (mostram "depois R$ X/mês cada" nos cards) — mas hoje nada cobra automaticamente por eles. Ficam como base pronta para, no futuro, desenhar um fluxo explícito de "comprar profissional extra" com confirmação da clínica **antes** de qualquer cobrança — não um bypass silencioso do limite, que foi o que quebrou aqui.
+     - Testes do bug removidos (testavam o comportamento errado); 1 teste de regressão novo garante que o teto vale mesmo com o plano tendo preço de adicional configurado
+     - Verificado ao vivo: recriado o cenário exato do bug (plano Essencial, `stripeSubscriptionId` setado) — 3º cadastro agora recusa com 403, onde antes passava
+     - **Dado real não corrigido de propósito** — mesma decisão do item de excedente logo abaixo: não desativar profissional sozinho, o alerta já orienta a clínica a agir pelo painel
+   - [x] ~~Site anuncia o profissional adicional~~ **também revertido (17/08/2026, mesmo dia)** — este item tinha acabado de mudar `professionalsLimitLabel` para mostrar "2 profissionais — depois R$ 35,00/mês cada", e a `PlanCalculator` para recomendar "Essencial + 1 adicional = R$ 124" como se fosse mais barato que o próximo plano cheio. Os dois anunciavam uma capacidade que o cadastro, com o teto de volta, recusa na hora — a mesma divergência site×sistema que a auditoria de 13/08 existiu para remover, só que ao contrário (o site prometendo mais do que o produto entrega, não menos)
+     - `professionalsLimitLabel` voltou a mostrar só "N profissionais" / "profissionais ilimitados", sem preço de adicional. `formatCentsToBRL` ficou sem uso ali e o import saiu
+     - `PlanCalculator` voltou a recomendar **por teto real**: o primeiro plano (em ordem de preço) cujo `maxProfessionals` e `maxMessagesPerMonth` comportam a operação, sem somar adicional. O detalhamento "R$ 89 do plano + 1 profissional adicional × R$ 35" saiu do card — sem adicional para explicar, não há detalhamento
+     - `pricePerExtraProfessionalInCents` e `stripeExtraProfessionalPriceId` continuam no schema e chegam ao frontend via `GET /plans`, mas hoje **nenhum componente do site os lê** — ficam de fato dormentes, prontos para o fluxo explícito de "comprar profissional extra" cogitado no item acima, se algum dia for desenhado
+     - `planos.spec.ts`: os testes que passaram a esperar "Essencial + adicional = R$ 124" e "anuncia o preço do adicional no card certo" foram revertidos de volta para o formato anterior ("estourar o teto pula pro próximo plano cheio", "nenhum card anuncia preço de adicional"). 13/13 em `planos.spec.ts`, suíte rodada ao vivo contra o app real (não só specs)
+     - **Dado real não corrigido de propósito** — mesma decisão dos dois itens acima: nada de automático em cima da clínica que excedeu enquanto o bug existiu, o alerta de excedente já orienta a agir pelo painel
+   - [x] **Trial com teto e a transição trial → plano pago** (17/08/2026) — 🐞 o buraco que sobrou dos três itens acima, levantado pelo dono do produto: *"se ele cadastrar 10 profissionais no plano grátis, quando ele for para o Solo temos regras corretas?"*. Não tínhamos. O limite só era checado **no cadastro**, então quem já estava acima dele nunca era barrado — o trial liberava profissionais ilimitados e, ao assinar o Solo (1 profissional), a clínica seguia operando com 10 ativos. Nada no backend enxergava esse estado, e a cobrança não batia com a equipe que de fato usava o produto
+     - **Trial deixou de ser ilimitado**: teto igual ao do **maior plano ativo** (8, hoje), lido do banco em `resolveTrialProfessionalLimit` — quando o catálogo mudar, o trial acompanha sozinho. Continua mostrando o produto inteiro, mas ninguém mais chega na assinatura com um buraco impossível de fechar bem. Verificado ao vivo: 8 cadastros passam, o 9º recusa com 403
+     - **`GET /professionals/over-limit`** (novo) — reporta `overLimit`/`activeCount`/`maxProfessionals`/`excess`. É o backend enxergando um estado que antes só existia de fato, sem ninguém saber
+     - **`POST /professionals/over-limit/resolve`** (novo) — a clínica escolhe **quem fica**, não quem sai: lista de "quem sai" chega defasada se alguém mexeu na equipe em outra aba, e ela sairia daqui ainda acima do teto achando que resolveu. Recusa manter mais que o teto (400), id de outra clínica (400) e desativar quem tem agenda futura (409, mesma regra da remoção — consulta órfã é pior que o excedente)
+     - **Desativa (`isActive: false`), nunca remove** — agenda, histórico e prontuário continuam salvos; subiu de plano, é só reativar. Verificado ao vivo: 8 no banco, 0 apagados, 7 desativados; depois do upgrade a reativação passa
+     - **O sistema não escolhe sozinho, em nenhuma hipótese** (decisão do dono do produto, mantida dos itens acima): desativar pelos mais recentes acertaria o número e erraria a clínica — quem entrou por último pode ser justamente quem tem a agenda cheia
+     - **Porta dos fundos fechada**: `UpdateProfessionalUseCase` não checava limite nenhum, então bastava desativar dois e reativar os dois pelo PATCH normal para furar o teto. Reativar agora ocupa vaga igual a cadastrar. Achado ao revisar o fluxo, não reportado
+     - **`countProfessionalsOccupyingSeat`**: o cadastro contava `deletedAt: null` e a cobrança contava `isActive: true` — duas contagens diferentes para a mesma pergunta. Unificadas num helper compartilhado, senão desativar não liberaria vaga e a tela de escolha não teria efeito
+     - **Webhook parou de cobrar adicional pelo excedente** e passou a **avisar por e-mail** (`professionalsOverLimitMail`): cobrar ali recriaria pela porta do webhook o mesmo bug revertido horas antes. O texto diz que **ninguém foi desativado nem apagado** antes de pedir a ação — a primeira pergunta de quem recebe isso logo após pagar é "perdi alguém?"
+     - **Painel**: o alerta de excedente deixou de só descrever o problema ("desative N profissionais") e passou a **oferecer a ação** — botão "Escolher quem fica" abrindo o diálogo, que lista a equipe inteira (sem paginação nem filtro de busca, senão a clínica escolheria entre um subconjunto sem perceber) e trava o botão até a seleção bater o teto
+     - 20 testes novos (`resolve-over-limit`, `get-over-limit-status`, `update-professional` e os ajustados em `create-professional`/`handle-stripe-webhook`); 265/265 na suíte. Verificado ao vivo ponta a ponta com tenant descartável: 8 profissionais no trial → Solo → alerta → diálogo → 7 desativados → alerta some, e os dados de teste removidos depois
+   - [x] **O limite passou a valer na hora de agendar** (17/08/2026) — 🐞 reportado pelo dono do produto olhando o tenant real: *"lá no agendamento aparecem todos os profissionais mesmo vindo do plano grátis para o Solo"*. O g3developer estava com **4 profissionais ativos no plano Solo (1 incluído)** e agendando normalmente com os 4. O item acima só tinha entregue **detecção** (alerta + e-mail + tela de escolha); enquanto a clínica não escolhesse, nada mudava na operação — o plano continuava não valendo nada na prática, que é o mesmo buraco de sempre visto de outro ângulo
+     - **`CreateAppointmentUseCase` recusa (403) enquanto houver excedente** (`isOverProfessionalLimit`), e como a página pública **delega a ele**, painel e `/agendar` ficam cobertos pelo mesmo ponto — verificado ao vivo nos dois. Só agendamento **novo**: a agenda já marcada continua de pé, porque cancelar consulta de paciente por causa de plano é punir quem não tem nada com isso
+     - **Bloquear em vez de esconder o excedente do dropdown** foi decisão do dono do produto, coerente com as anteriores: esconder faria o sistema escolher quem atende sem dizer. A mensagem do 403 carrega a saída ("Escolher quem fica" ou upgrade), senão a recepção só vê "bloqueado" e liga para o suporte
+     - **`GET /professionals?onlyActive=true`** (novo filtro) — a listagem só filtrava `deletedAt`, então **desativado vinha junto**. A tela de Profissionais *precisa* mostrá-lo (é onde se reativa depois do upgrade), então o filtro é opt-in de quem monta agenda. O frontend fazia `.filter(p => p.isActive)` **depois** de `perPage: 100`: com mais de 100 cadastros, isso descartaria ativos da página seguinte que nunca chegou. `@Transform` no DTO porque query string é texto — sem ele, `onlyActive=false` (string não-vazia) viraria `true` e o filtro faria o oposto do pedido
+     - Formulário de agendamento avisa e desabilita o "Agendar" quando há excedente — deixar o botão ativo só levaria a recepção a preencher tudo para tomar erro no fim
+     - 4 testes novos (`create-appointment.use-case.spec.ts`, que não existia); 269/269 na suíte
+     - **Tenant real g3developer corrigido** (com autorização explícita do dono do produto — nada em produção): movido de Solo para Profissional (teto 4), o que regulariza os 4 ativos **sem desativar ninguém**
+   - [x] **Mensagem interna vazando para o paciente + causa raiz do excedente** (17/08/2026) — 🐞 dois problemas reportados pelo dono do produto no mesmo print da página `/agendar`
+     - **O vazamento (grave).** O bloqueio do item acima usava **uma mensagem só**, e a página pública a mostrava ao paciente: *"Abra Profissionais → Escolher quem fica, ou faça upgrade em Configurações → Assinatura"*. O paciente não tem painel, não assina nada e não pode resolver — é expor pendência comercial da clínica a um terceiro, e ainda mandá-lo a uma tela onde não consegue entrar. Agora são duas: `OVER_LIMIT_BOOKING_MESSAGE` (painel, diz como resolver) e `OVER_LIMIT_PUBLIC_BOOKING_MESSAGE` (paciente: "agenda online indisponível, entre em contato com a clínica"), escolhidas por `origin === ONLINE`
+     - **E o paciente preenchia tudo para falhar no fim**: escolhia horário, digitava nome e WhatsApp, e só descobria no "Confirmar agendamento". `GET booking-options` passou a devolver `bookingBlocked` (booleano **sem motivo** — o paciente não deve saber que é plano) e a página mostra "Agenda online indisponível" com o telefone da clínica, em vez do formulário. O subtítulo "Escolha o horário que funciona para você" também sai, senão contradiz o card logo abaixo
+     - **Causa raiz atacada: o plano escolhido no site agora vale como teto durante o trial.** `POST /auth/register` aceita `planKey` (`/cadastro?plano=ESSENCIAL`, vindo do card de preço) e grava `Tenant.planId` **sem cobrar nada** — `subscriptionStatus` segue `TRIALING`, sem Stripe, e os 14 dias continuam contando. Assim a clínica bate no limite **no dia 1 do teste** ("o plano Solo permite até 1"), quando trocar de plano ainda é decisão barata, em vez de montar a equipe inteira e descobrir o problema depois de pagar. Verificado ao vivo: cadastro com `planKey: SOLO` → 1º profissional 201, 2º **403 durante o trial**, e nenhuma assinatura criada no Stripe. `planKey` desconhecida é **ignorada**, nunca recusa o cadastro — perder conta nova por causa de URL torta seria o pior desfecho de um fluxo de aquisição
+     - **A alternativa "zerar tudo na virada" foi descartada** (cogitada pelo dono do produto, discutida e recusada por ele): apagar no momento do pagamento entrega um sistema vazio a quem acabou de comprar, faz desaparecer agendamento futuro de paciente real que já recebeu confirmação por WhatsApp, e destrói prontuário/anamnese/foto clínica — dado de saúde que a clínica pode ser obrigada a guardar (LGPD). Travar o teto desde o começo do teste resolve a mesma coisa sem apagar nada
+     - `Suspense` na página de cadastro: `useSearchParams` sem boundary **quebra o build** (`missing-suspense-with-csr-bailout`) e o `tsc` não acusa — só apareceu porque rodei `next build`, não só o typecheck
+     - **Downgrade agendado passou a avisar também** — buraco que eu mesmo tinha apontado e ficou pendente: o e-mail de excedente só saía no `checkout.session.completed`, mas o downgrade **efetiva em `customer.subscription.updated`**, quando o ciclo pago vira. É justamente o caminho que cria excedente **sem a clínica agir naquele momento** (ela pediu a troca semanas antes): o agendamento simplesmente pararia de funcionar no dia da virada e ela descobriria pela recepção, não por nós. `customer.subscription.updated` não tinha **nenhuma** cobertura de teste até agora
+     - 12 testes novos (`register.use-case.spec.ts`, que não existia, + vazamento em `create-appointment` + downgrade agendado no webhook); 277/277 na suíte
    - [x] **Model `Plan`** — 3 planos seedados a partir dos produtos reais do Stripe Dashboard (`Básico`/`Intermediário`/`Avançado`, `stripeProductId`+`stripePriceId`). Preço ainda é placeholder (R$149/289/399) — o dono do produto vai validar os valores finais antes de qualquer lançamento comercial; ver aviso em "Website — o que falta"
    - [x] **`Tenant.planId`/`stripeCustomerId`/`stripeSubscriptionId`** — a assinatura continua como colunas do próprio Tenant, não um model `Subscription` separado (é sempre 1:1, nunca precisou da tabela própria que o Stripe-por-usuário do snap-financial tem)
    - [x] **`POST /billing/checkout`** — cria/reaproveita o Stripe Customer, abre Checkout Session com `metadata: {tenantId, planId}` (não `client_reference_id` — é o que o webhook lê de volta, mesmo padrão do snap-financial)

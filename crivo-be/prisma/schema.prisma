@@ -163,6 +163,12 @@ model Plan {
   stripeProductId String  @unique @map("stripe_product_id")
   stripePriceId   String? @unique @map("stripe_price_id")
 
+  /// Price do profissional adicional no Stripe — item **separado** na
+  /// mesma assinatura, com `quantity` = quantos além dos incluídos. `null`
+  /// junto com `pricePerExtraProfessionalInCents` null (faixa sem
+  /// adicional); os dois preenchidos juntos, nunca um sem o outro.
+  stripeExtraProfessionalPriceId String? @unique @map("stripe_extra_professional_price_id")
+
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

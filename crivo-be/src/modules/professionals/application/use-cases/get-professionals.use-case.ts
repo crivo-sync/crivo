@@ -10,6 +10,8 @@ export type GetProfessionalsInput = {
   search?: string;
   page: number;
   perPage: number;
+  /** `true` esconde os desativados — ver `FindManyProfessionalsParams`. */
+  onlyActive?: boolean;
 };
 
 @Injectable()

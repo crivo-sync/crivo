@@ -58,7 +58,18 @@ export function planToPricingCard(plan: Plan): PricingPlan {
      */
     detail: "14 dias grátis, sem cartão",
     ctaLabel: "Comece grátis",
-    ctaHref: "/cadastro",
+    /**
+     * Leva o plano escolhido para o cadastro (`?plano=ESSENCIAL`). **Não
+     * cobra nada** — o teste segue 14 dias sem cartão; o plano só faz o
+     * limite dele valer já durante o teste.
+     *
+     * Sem isso, a clínica montava a equipe inteira no teste (que liberava
+     * até 8 profissionais), assinava o Solo e caía num estado de excedente
+     * que só se resolvia desativando gente **depois de pagar**. Escolhendo
+     * aqui, ela bate no limite no dia 1, quando trocar de plano ainda é
+     * decisão barata.
+     */
+    ctaHref: `/cadastro?plano=${encodeURIComponent(plan.key)}`,
     features: planFeatureLines(plan),
   };
 }

@@ -40,6 +40,17 @@ export type BookingOptions = {
   clinic: BookingClinic;
   professionals: BookingProfessional[];
   procedures: BookingProcedure[];
+  /**
+   * A clínica está com uma pendência que faz o backend recusar agendamento
+   * novo (hoje: mais profissionais ativos do que o plano permite).
+   *
+   * Booleano **sem motivo** de propósito: o paciente não deve saber que é
+   * pendência de plano da clínica — é informação comercial interna, e ele
+   * não pode fazer nada a respeito. Serve só para a página avisar
+   * "indisponível, ligue para a clínica" antes de ele escolher horário e
+   * digitar os dados.
+   */
+  bookingBlocked?: boolean;
 };
 
 export type Slot = {

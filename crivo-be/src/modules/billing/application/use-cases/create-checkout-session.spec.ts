@@ -48,11 +48,13 @@ function makeUseCase({
     plan: {
       // Distingue o plano ALVO do plano ATUAL: o use case busca os dois, e um
       // mock que devolvesse sempre o mesmo esconderia o downgrade.
-      findUnique: jest.fn().mockImplementation((args) =>
-        Promise.resolve(
-          args?.where?.id === currentPlan?.id ? currentPlan : target,
+      findUnique: jest
+        .fn()
+        .mockImplementation((args) =>
+          Promise.resolve(
+            args?.where?.id === currentPlan?.id ? currentPlan : target,
+          ),
         ),
-      ),
     },
   } as unknown as PrismaService;
 

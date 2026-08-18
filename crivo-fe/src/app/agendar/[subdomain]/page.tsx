@@ -82,7 +82,19 @@ const AgendarPage = async ({ params }: PageProps) => {
   // página não encontrada, em vez de um formulário que nunca funcionaria.
   if (!result.success) notFound();
 
-  const { clinic } = result.data;
+  const { clinic, bookingBlocked } = result.data;
+
+  /**
+   * Bloqueado = o backend vai recusar o agendamento de qualquer forma (hoje:
+   * a clínica tem mais profissionais ativos do que o plano permite). Mostrar
+   * o formulário levaria o paciente a escolher horário, digitar nome e
+   * telefone e só descobrir no "Confirmar agendamento" — foi o que acontecia
+   * até 17/08/2026.
+   *
+   * O motivo **não** aparece: pendência de plano é assunto entre a clínica e
+   * nós, e o paciente não pode resolver nada. O que ele precisa é do
+   * telefone, que já está logo abaixo.
+   */
 
   return (
     <Box
@@ -121,9 +133,13 @@ const AgendarPage = async ({ params }: PageProps) => {
             </Typography>
           )}
 
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Escolha o horário que funciona para você.
-          </Typography>
+          {/* Bloqueado, o convite a escolher horário contradiz o card logo
+              abaixo ("agenda indisponível") — some em vez de confundir. */}
+          {!bookingBlocked && (
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Escolha o horário que funciona para você.
+            </Typography>
+          )}
 
           {clinic.address && (
             <Typography
@@ -147,7 +163,21 @@ const AgendarPage = async ({ params }: PageProps) => {
         </Box>
 
         <Card variant="outlined" sx={{ p: 3, borderRadius: 4 }}>
-          <BookingForm subdomain={subdomain} />
+          {bookingBlocked ? (
+            <Box sx={{ textAlign: "center", py: 2 }}>
+              <Typography variant="h6" component="p" sx={{ mb: 1.5 }}>
+                Agenda online indisponível
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Não é possível marcar por aqui neste momento.
+                {clinic.phone
+                  ? ` Fale com a clínica no ${formatPhone(clinic.phone)} para marcar sua consulta.`
+                  : " Entre em contato com a clínica para marcar sua consulta."}
+              </Typography>
+            </Box>
+          ) : (
+            <BookingForm subdomain={subdomain} />
+          )}
         </Card>
 
         {(clinic.phone || clinic.email) && (

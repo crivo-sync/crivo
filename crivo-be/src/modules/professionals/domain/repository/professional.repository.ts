@@ -38,6 +38,16 @@ export type FindManyProfessionalsParams = {
   search?: string;
   page: number;
   perPage: number;
+  /**
+   * `true` = só quem está ativo. Padrão (omitido) inclui inativos, porque a
+   * **tela de Profissionais precisa mostrá-los** — é lá que a clínica vê
+   * quem foi desativado e reativa depois de um upgrade.
+   *
+   * Quem monta agenda (dropdown de agendamento) tem que passar `true`: um
+   * profissional desativado não atende, e oferecê-lo como opção marca
+   * paciente com quem não vai estar lá.
+   */
+  onlyActive?: boolean;
 };
 
 export type PaginatedProfessionals = {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -13,6 +14,12 @@ import { WhatsAppConnection } from "../WhatsAppConnection";
 
 type TabValue = "clinic" | "whatsapp" | "messages" | "subscription";
 
+const TAB_VALUES: TabValue[] = ["clinic", "whatsapp", "messages", "subscription"];
+
+function isTabValue(value: string | null): value is TabValue {
+  return TAB_VALUES.includes(value as TabValue);
+}
+
 /**
  * Separa "dados da clínica" de "textos das mensagens".
  *
@@ -21,7 +28,19 @@ type TabValue = "clinic" | "whatsapp" | "messages" | "subscription";
  * salvar dos dados da clínica.
  */
 export const SettingsTabs = () => {
-  const [tab, setTab] = useState<TabValue>("clinic");
+  const searchParams = useSearchParams();
+  /**
+   * `?tab=subscription` na URL abre direto na aba certa — sem isso, um link
+   * de "faça upgrade em Configurações → Assinatura" (achado no alerta de
+   * excedente de profissionais) sempre caía em "Dados da clínica", porque a
+   * aba vivia só em estado local. Lido uma vez, na primeira renderização:
+   * depois disso o clique do usuário manda, a URL não fica "puxando" a aba
+   * de volta a cada novo parâmetro.
+   */
+  const [tab, setTab] = useState<TabValue>(() => {
+    const fromUrl = searchParams.get("tab");
+    return isTabValue(fromUrl) ? fromUrl : "clinic";
+  });
   const canManage = useIsAdmin();
 
   return (

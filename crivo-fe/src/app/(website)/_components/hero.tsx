@@ -13,6 +13,12 @@ import { RegisterCta } from "./register-cta";
  *
  * Continuam sendo afirmações verificáveis no código, não promessa de
  * resultado: nenhum diz "reduz faltas em X%", porque isso nós não medimos.
+ *
+ * **4 cards, não 5** — a versão anterior tinha três variações da mesma ideia
+ * de lista de espera ("vaga aberta/fechada/cancelada", os dois últimos com o
+ * label idêntico) e descrevia um comportamento que o produto não tem
+ * ("bloqueado na agenda" — `WaitlistStatus` não bloqueia nada, só sai da
+ * fila). Ficou um fato por card, cada um distinto do parágrafo acima.
  */
 const STATS = [
   {
@@ -26,19 +32,17 @@ const STATS = [
     label: "mensagem que falha vira lista pra ligar",
   },
   {
-    icon: "👐",
-    value: "Vaga aberta",
-    label: "quem está na espera é chamado na hora",
+    icon: "🙋",
+    value: "Vaga chamada",
+    label: "quem está na fila de espera é avisado na hora",
   },
   {
-    icon: "😓",
-    value: "Vaga fechada",
-    label: "quem não confirma é bloqueado na agenda",
-  },
-  {
-    icon: "😩",
-    value: "Vaga cancelada",
-    label: "quem não confirma é bloqueado na agenda",
+    // Risco alto ganha um segundo lembrete automaticamente
+    // (`REMINDER_HOURS_BY_RISK`: 72h e 24h antes) — quem sempre comparece
+    // recebe só um, para não virar spam.
+    icon: "🔔",
+    value: "2 avisos",
+    label: "quem tende a faltar recebe lembrete em dobro",
   },
 ];
 
@@ -102,11 +106,11 @@ export const Hero = () => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between max-w-7xl mx-auto gap-6 pt-12 text-gray-700">
+      <div className="flex flex-wrap items-start justify-between max-w-7xl mx-auto gap-x-6 gap-y-8 pt-12 text-gray-700">
         {STATS.map((stat) => (
-          <div key={stat.label}>
+          <div key={stat.label} className="min-w-35 flex-1">
             <div className="flex flex-col items-center justify-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/5 text-lg">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600/5 text-3xl">
                 {stat.icon}
               </span>
               <div className="text-2xl font-bold tracking-tight text-gray-900">
