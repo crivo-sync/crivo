@@ -1,4 +1,4 @@
-import { AppointmentOrigin } from '@prisma/client';
+import { AppointmentOrigin, WaitlistStatus } from '@prisma/client';
 import {
   BadRequestException,
   ConflictException,
@@ -31,6 +31,17 @@ export type CreateAppointmentInput = {
   notes?: string;
   /** `ONLINE` quando veio da página pública. Default `STAFF`. */
   origin?: AppointmentOrigin;
+  /**
+   * Fecha o ciclo da lista de espera: este agendamento nasce da vaga que a
+   * `WaitlistEntry` esperava. Opcional — a maioria dos agendamentos não vem
+   * de fila nenhuma.
+   *
+   * Sem isto, `markOffered` (avisar o paciente da vaga) e o novo agendamento
+   * criado depois eram dois atos desconectados: a `WaitlistEntry` ficava
+   * presa em `OFFERED` para sempre, mesmo quando a pessoa de fato remarcou
+   * — o próprio ROADMAP já registrava essa lacuna.
+   */
+  waitlistEntryId?: string;
 };
 
 @Injectable()
@@ -74,34 +85,42 @@ export class CreateAppointmentUseCase {
 
     // Buscar os três com filtro de tenant garante que a recepção não consiga
     // agendar usando o paciente ou o profissional de outra clínica.
-    const [patient, professional, procedure] = await Promise.all([
-      this.prisma.patient.findFirst({
-        where: {
-          id: input.patientId,
-          tenantId: input.tenantId,
-          deletedAt: null,
-        },
-        select: { id: true },
-      }),
-      this.prisma.professional.findFirst({
-        where: {
-          id: input.professionalId,
-          tenantId: input.tenantId,
-          deletedAt: null,
-          isActive: true,
-        },
-        select: { id: true, procedures: { select: { id: true } } },
-      }),
-      this.prisma.procedure.findFirst({
-        where: {
-          id: input.procedureId,
-          tenantId: input.tenantId,
-          deletedAt: null,
-          isActive: true,
-        },
-        select: { id: true, durationMinutes: true, priceInCents: true },
-      }),
-    ]);
+    const [patient, professional, procedure, waitlistEntry] = await Promise.all(
+      [
+        this.prisma.patient.findFirst({
+          where: {
+            id: input.patientId,
+            tenantId: input.tenantId,
+            deletedAt: null,
+          },
+          select: { id: true },
+        }),
+        this.prisma.professional.findFirst({
+          where: {
+            id: input.professionalId,
+            tenantId: input.tenantId,
+            deletedAt: null,
+            isActive: true,
+          },
+          select: { id: true, procedures: { select: { id: true } } },
+        }),
+        this.prisma.procedure.findFirst({
+          where: {
+            id: input.procedureId,
+            tenantId: input.tenantId,
+            deletedAt: null,
+            isActive: true,
+          },
+          select: { id: true, durationMinutes: true, priceInCents: true },
+        }),
+        input.waitlistEntryId
+          ? this.prisma.waitlistEntry.findFirst({
+              where: { id: input.waitlistEntryId, tenantId: input.tenantId },
+              select: { id: true, patientId: true, status: true },
+            })
+          : Promise.resolve(null),
+      ],
+    );
 
     if (!patient) {
       throw new NotFoundException('Paciente não encontrado.');
@@ -113,6 +132,35 @@ export class CreateAppointmentUseCase {
 
     if (!procedure) {
       throw new NotFoundException('Procedimento não encontrado ou inativo.');
+    }
+
+    if (input.waitlistEntryId) {
+      if (!waitlistEntry) {
+        throw new NotFoundException('Item da lista de espera não encontrado.');
+      }
+
+      // Mesmo paciente da entrada: sem isto, fechar a fila de uma pessoa
+      // agendando outra seria um clique errado silencioso — a fila mostraria
+      // "Agendado" para quem continua sem consulta marcada.
+      if (waitlistEntry.patientId !== input.patientId) {
+        throw new BadRequestException(
+          'Este item da lista de espera é de outro paciente.',
+        );
+      }
+
+      // `WAITING` cobre a recepção que agenda direto, sem passar por
+      // "Avisar" antes (o botão "Agendar" abre o mesmo formulário nos dois
+      // estados). Só `SCHEDULED`/`CANCELLED` recusam — a fila já foi
+      // resolvida ou desistiu, reabri-la aqui seria o sistema inventando um
+      // estado que a recepção não pediu.
+      if (
+        waitlistEntry.status !== WaitlistStatus.WAITING &&
+        waitlistEntry.status !== WaitlistStatus.OFFERED
+      ) {
+        throw new BadRequestException(
+          'Este item da lista de espera já foi resolvido.',
+        );
+      }
     }
 
     // Lista vazia = profissional sem restrição, faz qualquer procedimento.
@@ -174,6 +222,23 @@ export class CreateAppointmentUseCase {
     });
 
     await this.scheduleReminder.execute(appointment.id);
+
+    if (waitlistEntry) {
+      // Depois do agendamento criado com sucesso, nunca antes: se isto
+      // falhasse primeiro, a fila ficaria fechada com a vaga ainda vazia —
+      // o oposto do problema que existia (fila aberta com a vaga já
+      // ocupada). Não bloqueia o retorno se der erro: o agendamento é o
+      // dado que importa para o paciente, a fila é second-order.
+      await this.prisma.waitlistEntry
+        .update({
+          where: { id: waitlistEntry.id },
+          data: {
+            status: WaitlistStatus.SCHEDULED,
+            appointmentId: appointment.id,
+          },
+        })
+        .catch(() => undefined);
+    }
 
     return appointment;
   }

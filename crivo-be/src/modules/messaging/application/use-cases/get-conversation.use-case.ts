@@ -11,8 +11,18 @@ import {
 } from '../../domain/repository/inbound-message.repository';
 
 export type ConversationEntry =
-  | { direction: 'OUT'; at: Date; message: Awaited<ReturnType<MessageRepository['findByPatient']>>[number] }
-  | { direction: 'IN'; at: Date; message: Awaited<ReturnType<InboundMessageRepository['findByPatient']>>[number] };
+  | {
+      direction: 'OUT';
+      at: Date;
+      message: Awaited<ReturnType<MessageRepository['findByPatient']>>[number];
+    }
+  | {
+      direction: 'IN';
+      at: Date;
+      message: Awaited<
+        ReturnType<InboundMessageRepository['findByPatient']>
+      >[number];
+    };
 
 /**
  * Junta envio (`Message`) e recebimento (`InboundMessage`) do mesmo paciente
@@ -55,20 +65,16 @@ export class GetConversationUseCase {
     ]);
 
     const entries: ConversationEntry[] = [
-      ...sent.map(
-        (message): ConversationEntry => ({
-          direction: 'OUT',
-          at: message.createdAt,
-          message,
-        }),
-      ),
-      ...received.map(
-        (message): ConversationEntry => ({
-          direction: 'IN',
-          at: message.sentAt,
-          message,
-        }),
-      ),
+      ...sent.map((message): ConversationEntry => ({
+        direction: 'OUT',
+        at: message.createdAt,
+        message,
+      })),
+      ...received.map((message): ConversationEntry => ({
+        direction: 'IN',
+        at: message.sentAt,
+        message,
+      })),
     ];
 
     entries.sort((a, b) => a.at.getTime() - b.at.getTime());

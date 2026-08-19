@@ -4,6 +4,7 @@ import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
+import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -18,6 +19,7 @@ import dayjs from "dayjs";
 import { AppDataGrid } from "@/components/data-grid";
 import { ErrorServer } from "@/components/ui/error-server";
 import { formatPhone } from "@/lib/br-masks";
+import { AppointmentFormDialog } from "@/features/appointments/components/AppointmentFormDialog";
 import {
   useMarkWaitlistOffered,
   useRemoveFromWaitlist,
@@ -57,6 +59,13 @@ export const WaitlistManagement = () => {
   const { entries, isLoading, error, refetch } = useWaitlist();
   const markOffered = useMarkWaitlistOffered();
   const removeEntry = useRemoveFromWaitlist();
+
+  /**
+   * "Agendar" na própria fila — para quando a recepção já avisou (ou vai
+   * agendar direto, sem passar por "Marcar como oferecida"). Ao salvar, a
+   * `WaitlistEntry` sai da lista sozinha (vira `SCHEDULED`).
+   */
+  const [scheduling, setScheduling] = useState<WaitlistEntry | undefined>();
 
   const columns: GridColDef<WaitlistEntry>[] = [
     {
@@ -143,6 +152,21 @@ export const WaitlistManagement = () => {
               />,
             ]
           : []),
+        // Agendar direto daqui, sem cancelamento nenhum envolvido — o caso
+        // comum é a recepção ligar para quem está esperando e marcar na
+        // hora. `WAITING`/`OFFERED` cobrem os dois momentos em que a fila
+        // ainda está aberta; `SCHEDULED`/`CANCELLED` já saíram do fluxo.
+        ...(row.status === "WAITING" || row.status === "OFFERED"
+          ? [
+              <GridActionsCellItem
+                key="schedule"
+                icon={<EventAvailableOutlinedIcon />}
+                label="Agendar"
+                onClick={() => setScheduling(row)}
+                showInMenu
+              />,
+            ]
+          : []),
         <GridActionsCellItem
           key="remove"
           icon={<DeleteOutlinedIcon />}
@@ -199,6 +223,19 @@ export const WaitlistManagement = () => {
           zerar por efeito causaria render em cascata. */}
       {dialogOpen && (
         <AddToWaitlistDialog open onOpenChange={setDialogOpen} />
+      )}
+
+      {scheduling && (
+        <AppointmentFormDialog
+          open
+          onOpenChange={(open) => !open && setScheduling(undefined)}
+          prefill={{
+            patientId: scheduling.patient.id,
+            professionalId: scheduling.professional?.id,
+            procedureId: scheduling.procedure.id,
+            waitlistEntryId: scheduling.id,
+          }}
+        />
       )}
     </Paper>
   );

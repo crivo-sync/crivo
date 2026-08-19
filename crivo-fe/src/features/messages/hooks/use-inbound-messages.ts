@@ -31,11 +31,22 @@ export function useInboundMessages(params: GetInboundMessagesParams) {
     messages: data?.data ?? [],
     meta: data?.meta,
     unreadTotal: data?.unreadTotal ?? 0,
+    unreadCancelTotal: data?.unreadCancelTotal ?? 0,
     isLoading,
     isFetching,
     error: error as Error | null,
     refetch,
   };
+}
+
+/**
+ * Só a contagem de pedidos de cancelamento pendentes, para o badge da
+ * sidebar. `perPage: 1` porque os dados em si não são usados aqui — o hook
+ * já refaz sozinho (`LIVE_REFETCH_INTERVAL_MS`).
+ */
+export function useUnreadCancelCount() {
+  const { unreadCancelTotal } = useInboundMessages({ page: 1, perPage: 1 });
+  return unreadCancelTotal;
 }
 
 export function useMarkInboundRead() {

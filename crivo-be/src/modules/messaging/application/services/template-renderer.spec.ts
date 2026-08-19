@@ -103,9 +103,9 @@ describe('missingRequiredPlaceholders', () => {
   });
 
   it('não reclama quando estão todos presentes', () => {
-    expect(
-      missingRequiredPlaceholders('{{data}} {{hora}} {{link}}'),
-    ).toEqual([]);
+    expect(missingRequiredPlaceholders('{{data}} {{hora}} {{link}}')).toEqual(
+      [],
+    );
   });
 
   it('aponta só o que falta', () => {

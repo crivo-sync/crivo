@@ -1,9 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  MessageStatus,
-  MessageType,
-  ReplyIntent,
-} from '@prisma/client';
+import { MessageStatus, MessageType, ReplyIntent } from '@prisma/client';
 
 import type { ConversationEntry } from '../../application/use-cases/get-conversation.use-case';
 

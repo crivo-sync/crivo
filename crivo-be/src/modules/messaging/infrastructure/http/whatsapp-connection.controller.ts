@@ -29,7 +29,8 @@ export class WhatsAppConnectionController {
 
   @Get()
   @ApiOperation({
-    summary: 'Estado atual da conexão (a tela consulta em laço com o QR na tela)',
+    summary:
+      'Estado atual da conexão (a tela consulta em laço com o QR na tela)',
   })
   async status(@Tenant('tenantId') tenantId: string) {
     return this.connection.getStatus(tenantId);

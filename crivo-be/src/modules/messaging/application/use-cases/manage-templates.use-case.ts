@@ -100,7 +100,9 @@ export class ManageTemplatesUseCase {
     const trimmed = body.trim();
 
     if (!trimmed) {
-      throw new BadRequestException('O texto da mensagem não pode ficar vazio.');
+      throw new BadRequestException(
+        'O texto da mensagem não pode ficar vazio.',
+      );
     }
 
     if (trimmed.length > MAX_BODY_LENGTH) {

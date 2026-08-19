@@ -39,7 +39,23 @@ export const api: KyInstance = ky.extend({
     beforeError: [
       ({ error }) => {
         const httpError = error as HTTPError;
-        if (!httpError.response) return error;
+
+        /**
+         * Sem `response` = falha de rede (backend fora do ar, DNS, timeout).
+         * A mensagem crua do ky carrega a URL interna da API — e ela chegava
+         * inteira na tela do usuário: *"Request failed due to a network
+         * error: GET http://localhost:3333/tenants/me"*. Além de não dizer
+         * nada a quem lê, expõe endereço de infraestrutura numa tela de
+         * clínica.
+         *
+         * A URL continua no log do servidor (`console.error` das actions),
+         * que é onde ela serve para depurar.
+         */
+        if (!httpError.response) {
+          httpError.message =
+            "Não foi possível falar com o servidor. Verifique sua conexão e tente de novo.";
+          return httpError;
+        }
 
         // No ky v2 o corpo já chega pré-parsed em `error.data` — e o
         // `response` é consumido ao populá-lo, então `response.json()` não

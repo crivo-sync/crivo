@@ -19,6 +19,13 @@ export type PaginatedInboundMessages = {
   total: number;
   /** Não lidas no tenant inteiro, não só na página — alimenta o badge. */
   unreadTotal: number;
+  /**
+   * Pedidos de cancelamento (`intent: CANCEL`) ainda não lidos, no tenant
+   * inteiro. Separado de `unreadTotal` porque é o número que acende o
+   * alerta na sidebar — "alguém quer cancelar" pesa mais que "alguém
+   * perguntou um horário", e o badge genérico não distinguia os dois.
+   */
+  unreadCancelTotal: number;
 };
 
 export const INBOUND_MESSAGE_REPOSITORY = 'InboundMessageRepository';

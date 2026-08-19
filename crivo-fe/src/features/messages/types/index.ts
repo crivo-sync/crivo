@@ -52,11 +52,15 @@ export type InboundMessage = {
 };
 
 /**
- * A listagem de recebidas traz `unreadTotal` além da paginação: é a contagem
- * do tenant inteiro (não da página nem do filtro), usada no badge do menu.
+ * A listagem de recebidas traz `unreadTotal`/`unreadCancelTotal` além da
+ * paginação: são contagens do tenant inteiro (não da página nem do filtro),
+ * usadas nos badges do menu. `unreadCancelTotal` é o subconjunto que pesa
+ * mais — um pedido de cancelamento parado sem resposta é agenda que a
+ * clínica acha que está cheia e não está.
  */
 export type InboundMessagesResponse = PaginatedResponse<InboundMessage> & {
   unreadTotal: number;
+  unreadCancelTotal: number;
 };
 
 /**

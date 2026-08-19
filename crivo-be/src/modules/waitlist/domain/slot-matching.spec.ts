@@ -28,9 +28,9 @@ describe('acceptsSlot', () => {
 
   it('recusa procedimento diferente', () => {
     // A duração da vaga veio do procedimento cancelado; outro pode não caber.
-    expect(
-      acceptsSlot({ ...CANDIDATE, procedureId: 'proc-2' }, SLOT),
-    ).toBe(false);
+    expect(acceptsSlot({ ...CANDIDATE, procedureId: 'proc-2' }, SLOT)).toBe(
+      false,
+    );
   });
 
   describe('profissional', () => {
@@ -41,12 +41,12 @@ describe('acceptsSlot', () => {
     });
 
     it('quem escolheu só aceita o escolhido', () => {
-      expect(
-        acceptsSlot({ ...CANDIDATE, professionalId: 'pro-1' }, SLOT),
-      ).toBe(true);
-      expect(
-        acceptsSlot({ ...CANDIDATE, professionalId: 'pro-2' }, SLOT),
-      ).toBe(false);
+      expect(acceptsSlot({ ...CANDIDATE, professionalId: 'pro-1' }, SLOT)).toBe(
+        true,
+      );
+      expect(acceptsSlot({ ...CANDIDATE, professionalId: 'pro-2' }, SLOT)).toBe(
+        false,
+      );
     });
   });
 

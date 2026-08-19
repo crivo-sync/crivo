@@ -85,10 +85,28 @@ export function buildAppointmentColumns({
       headerName: "",
       width: 60,
       getActions: ({ row }) => {
+        /**
+         * Estado terminal: o atendimento já aconteceu (`COMPLETED`), foi
+         * desmarcado (`CANCELLED`) ou o paciente não veio (`NO_SHOW`). O
+         * backend recusa qualquer transição a partir daí
+         * (`ALLOWED_TRANSITIONS` em `ChangeAppointmentStatusUseCase`), e
+         * `RescheduleAppointmentUseCase` só aceita `SCHEDULED`/`CONFIRMED`.
+         */
         const isFinished =
           row.status === "COMPLETED" ||
           row.status === "CANCELLED" ||
           row.status === "NO_SHOW";
+
+        /**
+         * Menu vazio em vez de um "Reagendar" cinza que não faz nada.
+         *
+         * Antes o item aparecia sempre, só que `disabled` nos estados
+         * terminais — e um menu com um único item inerte lê como sistema
+         * quebrado, não como "não dá para fazer isso aqui". Mesma regra que
+         * a caixa de entrada já aplica ("marcar de novo não faz nada, e um
+         * item inerte no menu confunde").
+         */
+        if (isFinished) return [];
 
         const actions = [
           <GridActionsCellItem
@@ -97,7 +115,6 @@ export function buildAppointmentColumns({
             label="Reagendar"
             onClick={() => onReschedule(row)}
             showInMenu
-            disabled={isFinished}
           />,
         ];
 

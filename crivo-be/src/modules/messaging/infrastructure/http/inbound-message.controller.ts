@@ -42,13 +42,14 @@ export class InboundMessageController {
     @Tenant('tenantId') tenantId: string,
     @Query() query: QueryInboundMessagesDto,
   ) {
-    const { data, total, unreadTotal } = await this.getInbound.execute({
-      tenantId,
-      unreadOnly: query.unreadOnly,
-      intent: query.intent,
-      page: query.page,
-      perPage: query.perPage,
-    });
+    const { data, total, unreadTotal, unreadCancelTotal } =
+      await this.getInbound.execute({
+        tenantId,
+        unreadOnly: query.unreadOnly,
+        intent: query.intent,
+        page: query.page,
+        perPage: query.perPage,
+      });
 
     return {
       ...paginated(data.map(InboundMessageResponseDto.fromEntity), {
@@ -57,8 +58,9 @@ export class InboundMessageController {
         total,
       }),
       // Fora do `meta` da paginação de propósito: conta o tenant inteiro, não
-      // a página nem o filtro — é o número do badge no menu.
+      // a página nem o filtro — são os números dos badges no menu.
       unreadTotal,
+      unreadCancelTotal,
     };
   }
 

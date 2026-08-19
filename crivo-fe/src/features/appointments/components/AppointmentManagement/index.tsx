@@ -60,6 +60,20 @@ export const AppointmentManagement = () => {
   >();
   /** Agendamento recém-cancelado — abre a sugestão da lista de espera. */
   const [freedSlotId, setFreedSlotId] = useState<string | undefined>();
+  /**
+   * Candidato escolhido em "Agendar" no diálogo de sugestão — pré-preenche
+   * `AppointmentFormDialog`. `null` no professionalId vira `undefined`
+   * porque o form trata "sem escolha" como campo vazio, não `null`.
+   */
+  const [waitlistPrefill, setWaitlistPrefill] = useState<
+    | {
+        patientId: string;
+        professionalId?: string;
+        procedureId: string;
+        waitlistEntryId: string;
+      }
+    | undefined
+  >();
 
   const handleChangeStatus = (
     appointment: Appointment,
@@ -153,7 +167,16 @@ export const AppointmentManagement = () => {
       {/* Montados só quando abertos: os dois buscam pacientes, profissionais,
           procedimentos e a clínica ao montar — com eles sempre no ar, toda
           visita à agenda pagava essas requisições sem nem abrir o formulário. */}
-      {formOpen && <AppointmentFormDialog open onOpenChange={setFormOpen} />}
+      {formOpen && (
+        <AppointmentFormDialog
+          open
+          onOpenChange={(open) => {
+            setFormOpen(open);
+            if (!open) setWaitlistPrefill(undefined);
+          }}
+          prefill={waitlistPrefill}
+        />
+      )}
 
       {reschedulingAppointment && (
         <RescheduleAppointmentDialog
@@ -178,6 +201,16 @@ export const AppointmentManagement = () => {
           open
           appointmentId={freedSlotId}
           onOpenChange={(open) => !open && setFreedSlotId(undefined)}
+          onSchedule={(candidate) => {
+            setFreedSlotId(undefined);
+            setWaitlistPrefill({
+              patientId: candidate.patientId,
+              professionalId: candidate.professionalId ?? undefined,
+              procedureId: candidate.procedureId,
+              waitlistEntryId: candidate.id,
+            });
+            setFormOpen(true);
+          }}
         />
       )}
     </Paper>

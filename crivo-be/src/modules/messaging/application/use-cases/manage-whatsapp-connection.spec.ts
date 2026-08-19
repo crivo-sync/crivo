@@ -7,9 +7,7 @@ import { ManageWhatsAppConnectionUseCase } from './manage-whatsapp-connection.us
 
 const TENANT_ID = 'tenant-abc';
 
-type EvolutionStub = Partial<
-  Record<keyof EvolutionInstanceClient, jest.Mock>
->;
+type EvolutionStub = Partial<Record<keyof EvolutionInstanceClient, jest.Mock>>;
 
 function makeUseCase(
   tenant: { id: string; evolutionInstance: string | null } | null,
@@ -31,8 +29,12 @@ function makeUseCase(
       phone: null,
       profileName: null,
     }),
-    create: jest.fn().mockResolvedValue({ qrCode: 'data:image/png;base64,AAA' }),
-    connect: jest.fn().mockResolvedValue({ qrCode: 'data:image/png;base64,BBB' }),
+    create: jest
+      .fn()
+      .mockResolvedValue({ qrCode: 'data:image/png;base64,AAA' }),
+    connect: jest
+      .fn()
+      .mockResolvedValue({ qrCode: 'data:image/png;base64,BBB' }),
     logout: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
     ...evolution,
@@ -185,9 +187,10 @@ describe('ManageWhatsAppConnectionUseCase', () => {
 
   describe('disconnect', () => {
     it('faz logout e limpa o vínculo', async () => {
-      const { useCase, client, update } = makeUseCase(
-        { id: TENANT_ID, evolutionInstance: `crivo-${TENANT_ID}` },
-      );
+      const { useCase, client, update } = makeUseCase({
+        id: TENANT_ID,
+        evolutionInstance: `crivo-${TENANT_ID}`,
+      });
 
       const result = await useCase.disconnect(TENANT_ID);
 

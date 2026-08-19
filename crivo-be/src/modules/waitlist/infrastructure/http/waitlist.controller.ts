@@ -45,7 +45,9 @@ export class AddToWaitlistDto {
   @IsUUID()
   procedureId!: string;
 
-  @ApiPropertyOptional({ description: 'Ausente = aceita qualquer profissional' })
+  @ApiPropertyOptional({
+    description: 'Ausente = aceita qualquer profissional',
+  })
   @IsOptional()
   @IsUUID()
   professionalId?: string;
@@ -157,10 +159,7 @@ export class WaitlistController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Tira o paciente da fila' })
-  async remove(
-    @Tenant('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
+  async remove(@Tenant('tenantId') tenantId: string, @Param('id') id: string) {
     return this.manageWaitlist.remove(id, tenantId);
   }
 }

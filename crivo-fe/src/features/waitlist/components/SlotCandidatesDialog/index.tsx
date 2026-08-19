@@ -25,6 +25,18 @@ type SlotCandidatesDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** Agendamento que acabou de ser cancelado — a vaga que abriu. */
   appointmentId?: string;
+  /**
+   * "Agendar" ao lado de "Avisar": pula o WhatsApp para quando a recepção já
+   * falou com o paciente por fora (telefone, por exemplo) e quer marcar
+   * direto. Abre `AppointmentFormDialog` pré-preenchido; ao salvar, a
+   * `WaitlistEntry` some da fila sozinha.
+   */
+  onSchedule: (candidate: {
+    id: string;
+    patientId: string;
+    professionalId: string | null;
+    procedureId: string;
+  }) => void;
 };
 
 /**
@@ -38,6 +50,7 @@ export const SlotCandidatesDialog = ({
   open,
   onOpenChange,
   appointmentId,
+  onSchedule,
 }: SlotCandidatesDialogProps) => {
   const { candidates, slot, isLoading } = useSlotCandidates(appointmentId);
   const markOffered = useMarkWaitlistOffered();
@@ -111,20 +124,36 @@ export const SlotCandidatesDialog = ({
                     )}
                   </Box>
 
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<CampaignOutlinedIcon />}
-                    disabled={markOffered.isPending}
-                    onClick={() =>
-                      markOffered.mutate({
-                        id: candidate.id,
-                        appointmentId,
-                      })
-                    }
-                  >
-                    Avisar
-                  </Button>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<CampaignOutlinedIcon />}
+                      disabled={markOffered.isPending}
+                      onClick={() =>
+                        markOffered.mutate({
+                          id: candidate.id,
+                          appointmentId,
+                        })
+                      }
+                    >
+                      Avisar
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() =>
+                        onSchedule({
+                          id: candidate.id,
+                          patientId: candidate.patient.id,
+                          professionalId: candidate.professional?.id ?? null,
+                          procedureId: candidate.procedure.id,
+                        })
+                      }
+                    >
+                      Agendar
+                    </Button>
+                  </Stack>
                 </Box>
               </Card>
             ))}

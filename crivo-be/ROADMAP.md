@@ -68,16 +68,18 @@ escopo de dados e assinante) e **não deve ser feito antes de haver demanda
 real** — a alternativa barata (unidade como campo da agenda) cobre o caso
 comum de duas salas. Ver [Fase 4](#fase-4--escala).
 
-> ✅ **Cobrança do profissional adicional — fechada em 17/08/2026**, backend
-> e frontend. `SyncExtraProfessionalsUseCase` cobra/credita a diferença no
-> Stripe em tempo real (verificado ao vivo, não só em specs com mock); o
-> site agora anuncia o valor do adicional em cada card que vende (Essencial
-> R$ 35, Profissional R$ 30, Clínica R$ 25) — o Solo, sem adicional, segue
-> mostrando só "1 profissional". A calculadora de plano (`/planos` e home)
-> foi corrigida no mesmo dia: recomendava por teto puro e empurrava clínica
-> para um plano mais caro do que precisava — agora recomenda por **custo
-> total**, e um plano menor com adicional pode vencer o próximo plano cheio.
-> Ver [Fase 3](#fase-3--monetização-e-retenção).
+> ✅ **Limite de profissionais é teto duro em todo lugar — fechado em
+> 17/08/2026.** A tentativa de "cobrar o adicional em vez de recusar"
+> (`SyncExtraProfessionalsUseCase`) tinha um bug que removia o teto de
+> qualquer plano vendável com adicional — revertida no mesmo dia. Também
+> corrigido: trial passou a ter teto (o do maior plano, não mais
+> ilimitado); o site (`plano-calculator`, cards de preço) parou de anunciar
+> "profissional adicional"; agendamento novo é **bloqueado** enquanto a
+> equipe exceder o plano (painel e `/agendar` público); e a página pública
+> não vaza mais motivo de plano para o paciente. O plano escolhido no
+> `/cadastro?plano=X` já vale como teto durante o trial, para a clínica não
+> montar equipe demais e descobrir só depois de pagar. Ver [Fase
+> 3](#fase-3--monetização-e-retenção).
 
 > ⚠️ **Prazo externo: 01/10/2026.** A Meta passa a cobrar toda mensagem de
 > utilidade, inclusive dentro da janela de 24h. As franquias já foram
@@ -95,16 +97,112 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 
 | Módulo | Status |
 | --- | --- |
-| `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF) |
+| `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF). **Sessão morta agora sempre termina no login** (18/08/2026) — ver nota abaixo da tabela |
 | `tenants` | 🟢 CRUD + branding público por subdomínio |
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
 | `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
-| `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada, reenvio manual, templates editáveis por clínica e provider selecionável. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
+| `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada **priorizando pedido de cancelamento** (18/08/2026), reenvio manual, templates editáveis por clínica e provider selecionável. Cancelar/remarcar pelo **paciente** ainda não é self-service — ver nota abaixo da tabela. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
 | `prediction` | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção |
 | `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
-| `waitlist` | 🟢 **Ciclo completo** (10/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento e oferta por WhatsApp |
-| `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial, **cobrança do profissional adicional acima do teto** (17/08/2026, verificado ao vivo contra o Stripe real). ⚠️ Preços seguem **hipótese não validada** com cliente real |
+| `waitlist` | 🟢 **Ciclo fechado ponta a ponta** (18/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento, oferta por WhatsApp, **e agora "Agendar" fecha a `WaitlistEntry` sozinha quando o novo agendamento é criado** |
+
+> 🐞 **Sessão perdida travava a tela em vez de mandar para o login
+> (18/08/2026)** — reportado pelo dono do produto: *"quando perde a sessão e
+> os cookies, não redireciona e não faz nada"*, com um Runtime Error
+> apontando para o `layout.tsx` do painel.
+> - **Causa**: `withAuth` limpava os cookies com `cookies().delete()` ao ver
+>   o refresh falhar, mas o `layout.tsx` chama `getTenantAction()` durante o
+>   **render de um Server Component**, onde o Next proíbe mutar cookie
+>   (`Cookies can only be modified in a Server Action or Route Handler`).
+>   A exceção não é um erro comum: sobe até a borda e vira *"An unexpected
+>   response was received from the server"*, derrubando a página inteira em
+>   vez de apenas não gravar o cookie. `tryRefresh` tinha o mesmo problema
+>   com `cookies().set()`
+> - **Correção**: as duas mutações passaram por `mutateCookiesIfAllowed`,
+>   que engole só a recusa do contexto de render. É seguro porque o cookie
+>   não é a fonte da verdade — o crivo-be revalida o token a cada chamada, e
+>   o `middleware.ts` (que roda **antes** do render, onde gravar é
+>   permitido) refaz limpeza/renovação na navegação seguinte
+> - **A janela só abre com o backend fora do ar**: o `middleware.ts` confirma
+>   o token em `/users/me` e barra sessão inválida antes do render, mas
+>   deixa passar de propósito quando não consegue falar com o backend — e é
+>   exatamente aí que a sessão morta chegava ao `layout.tsx`
+> - **Dois achados no caminho**, ao reproduzir com o backend parado: (1) a
+>   pessoa com sessão inválida via a casca do painel montada com "Minha
+>   conta" no lugar do nome da clínica — agora o layout redireciona ao ver
+>   `SESSION_EXPIRED_MESSAGE`; (2) a tela exibia *"Request failed due to a
+>   network error: GET http://localhost:3333/tenants/me"*, vazando o
+>   endereço interno da API — `beforeError` em `config/api.ts` passou a
+>   trocar erro de rede por texto em português (a URL segue no log do
+>   servidor, onde serve para depurar)
+> - 2 testes E2E novos em `acesso-painel.spec.ts` (65/65 na suíte). **Eles
+>   não reproduzem o bug original** — verifiquei revertendo a correção e
+>   continuaram passando, porque com o backend no ar o middleware barra
+>   antes. Reproduzir exigiria derrubar o backend no meio da suíte, o que a
+>   deixaria frágil; aquele cenário foi validado à mão, com o backend
+>   parado. Os testes cobrem o contrato visível (cookie morto termina no
+>   login, sem erro e sem expor a API) e o comentário deles diz isso
+>
+> 📋 **Recepção enxerga e resolve mais rápido (18/08/2026)** — dois pontos
+> levantados pelo dono do produto: *"se ele mandar mensagem para cancelar, a
+> recepção recebe essa informação?"* e *"quando a recepção cancela, as vagas
+> se encaixam automaticamente?"*. As duas respostas eram "sim, mas de forma
+> passiva/manual demais" — corrigido nos dois:
+> - **Alerta de cancelamento deixou de ser passivo.** Antes, um "quer
+>   cancelar" só aparecia se alguém abrisse `/painel/mensagens` → aba
+>   Recebidas por conta própria — sem badge, e-mail ou som, e a lista
+>   ordenada só por data misturava com todo o resto. Agora: `GET
+>   /inbound-messages` devolve `unreadCancelTotal` (contagem separada de
+>   `unreadTotal`), somado ao badge de "Mensagens" na sidebar (mesmo badge
+>   das falhas de envio — os dois são "aja em Mensagens agora", dois
+>   números concorrendo no mesmo ícone confundiria mais que ajudaria); e a
+>   listagem passou a trazer **cancelamento não lido primeiro**, mais
+>   recente dentro do grupo. O Prisma não ordena por enum arbitrário
+>   (`orderBy: { intent: {...} }` só existe para relação/JSON — testado e
+>   confirmado), e o projeto não usa `$queryRaw` em lugar nenhum, então a
+>   prioridade é resolvida com duas queries concatenadas **só na primeira
+>   página** — a tela sempre pede `page: 1, perPage: 50` e nunca pagina de
+>   verdade, então paginação real entre os dois grupos seria complexidade
+>   sem uso
+> - **O ciclo da lista de espera fecha sozinho.** `CreateAppointmentUseCase`
+>   ganhou `waitlistEntryId` opcional: quando o agendamento nasce de uma
+>   vaga (botão "Agendar" no diálogo de candidatos que abre ao cancelar, ou
+>   na própria tela de Lista de Espera para quem já está `OFFERED`/`WAITING`),
+>   a `WaitlistEntry` vira `SCHEDULED` e grava `appointmentId` — campos que
+>   já existiam no schema desde o início mas nunca eram escritos. Antes,
+>   `markOffered` (avisar) e o agendamento criado depois eram dois atos
+>   desconectados; a fila ficava presa em `OFFERED` para sempre mesmo com a
+>   vaga de fato ocupada, lacuna que o próprio ROADMAP já registrava.
+>   Validado: mesmo paciente da entrada (senão fechar a fila de um clique
+>   errado silencioso), `WAITING`/`OFFERED` aceitos, `SCHEDULED`/`CANCELLED`
+>   recusados
+> - **Dois bugs achados só ao testar no navegador, não no `tsc`/specs**: (1)
+>   o campo Procedimento nascia vazio quando o prefill vinha com
+>   `professionalId` ausente ("qualquer profissional" da fila) — o efeito
+>   de limpeza de procedimento rodava **antes** de `procedures` carregar do
+>   servidor, via `availableProcedures` ainda `[]`, e zerava um valor válido
+>   sem que nada depois o repusesse; corrigido guardando o efeito com
+>   `isLoading`. (2) criar o agendamento fechava a `WaitlistEntry` no
+>   backend (confirmado direto no banco) mas a tela da fila continuava
+>   mostrando "Esperando" — `useCreateAppointment` invalidava só
+>   `APPOINTMENTS_QUERY_KEY`, nunca `WAITLIST_QUERY_KEY`
+> - **"Reagendar" sumiu do menu em atendimento terminal** (18/08/2026) — o
+>   dono do produto perguntou *"por que aparece esse REAGENDAR em
+>   concluído?"*. Funcionalmente estava certo (o item vinha `disabled`, e o
+>   backend recusaria: `RescheduleAppointmentUseCase` só aceita
+>   `SCHEDULED`/`CONFIRMED`), mas um menu com um único item cinza lê como
+>   sistema quebrado. Agora `COMPLETED`/`CANCELLED`/`NO_SHOW` não abrem menu
+>   nenhum — mesma regra que a caixa de entrada já aplicava ("um item inerte
+>   no menu confunde")
+> - **Sem trava de janela de tempo** em cancelar/remarcar pelo painel —
+>   irrelevante para o paciente, que ainda não tem esse caminho (ver abaixo)
+> - Cogitado para o futuro, ainda não decidido: abrir self-service de
+>   verdade (paciente cancela/remarca sozinho pelo link `/c/[token]`, sem
+>   precisar ligar). Decisões em aberto antes de implementar: janela mínima
+>   de antecedência, se remarcar fica liberado ou só cancelar, e se um
+>   cancelamento tardio conta como sinal de risco para a predição de falta
+| `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial. Limite de profissionais é **teto duro em todo lugar** (17/08/2026) — ver a entrada de `professionals` na Fase 3. ⚠️ Preços seguem **hipótese não validada** com cliente real |
 | `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa. **Custo das faltas em reais** (13/08/2026) no topo do painel, também liberado em todos os planos |
 | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
 | `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |

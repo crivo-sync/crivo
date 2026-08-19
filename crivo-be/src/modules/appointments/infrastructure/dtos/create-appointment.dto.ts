@@ -29,4 +29,14 @@ export class CreateAppointmentDto {
   @IsString()
   @SanitizeText()
   notes?: string;
+
+  /**
+   * Fecha o item da fila de espera junto com este agendamento — sem isto,
+   * `WaitlistEntry` fica em `OFFERED` para sempre mesmo quando a vaga foi
+   * de fato ocupada.
+   */
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  waitlistEntryId?: string;
 }

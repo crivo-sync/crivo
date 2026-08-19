@@ -7,10 +7,12 @@ import { FakeMessageProvider } from '../../infrastructure/providers/fake-message
 import { MetaMessageProvider } from '../../infrastructure/providers/meta-message.provider';
 import { MessageProviderResolver } from './message-provider-resolver.service';
 
-function makeResolver(tenant: {
-  messagingProvider: MessagingProvider | null;
-  evolutionInstance: string | null;
-} | null) {
+function makeResolver(
+  tenant: {
+    messagingProvider: MessagingProvider | null;
+    evolutionInstance: string | null;
+  } | null,
+) {
   const prisma = {
     tenant: { findUnique: jest.fn().mockResolvedValue(tenant) },
   } as unknown as PrismaService;
@@ -20,7 +22,9 @@ function makeResolver(tenant: {
   } as unknown as ConfigService;
 
   const fake = { name: 'fake' } as unknown as FakeMessageProvider;
-  const evolution = { name: 'evolution' } as unknown as EvolutionMessageProvider;
+  const evolution = {
+    name: 'evolution',
+  } as unknown as EvolutionMessageProvider;
   const meta = { name: 'meta' } as unknown as MetaMessageProvider;
 
   return new MessageProviderResolver(prisma, config, fake, evolution, meta);

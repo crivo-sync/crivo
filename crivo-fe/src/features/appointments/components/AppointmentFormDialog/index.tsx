@@ -33,6 +33,19 @@ import {
 type AppointmentFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Abre o formulário já preenchido a partir de um item da lista de espera.
+   * `waitlistEntryId` vai junto na criação — é o que fecha o ciclo (a
+   * `WaitlistEntry` vira `SCHEDULED` sozinha). Sem isso o botão "Agendar" da
+   * fila seria idêntico a abrir "Novo agendamento" do zero, obrigando a
+   * recepção a preencher tudo de novo e sem nunca fechar a fila.
+   */
+  prefill?: {
+    patientId: string;
+    professionalId?: string;
+    procedureId: string;
+    waitlistEntryId: string;
+  };
 };
 
 const EMPTY_VALUES: CreateAppointmentSchema = {
@@ -41,11 +54,13 @@ const EMPTY_VALUES: CreateAppointmentSchema = {
   procedureId: "",
   startsAt: "",
   notes: "",
+  waitlistEntryId: undefined,
 };
 
 export const AppointmentFormDialog = ({
   open,
   onOpenChange,
+  prefill,
 }: AppointmentFormDialogProps) => {
   const createAppointment = useCreateAppointment();
   const { patients, professionals, procedures, isLoading } =
@@ -66,8 +81,30 @@ export const AppointmentFormDialog = ({
     });
 
   useEffect(() => {
-    if (open) reset(EMPTY_VALUES);
-  }, [open, reset]);
+    if (!open) return;
+    reset(
+      prefill
+        ? {
+            ...EMPTY_VALUES,
+            patientId: prefill.patientId,
+            professionalId: prefill.professionalId ?? "",
+            procedureId: prefill.procedureId,
+            waitlistEntryId: prefill.waitlistEntryId,
+          }
+        : EMPTY_VALUES,
+    );
+    // `prefill` é um objeto novo a cada render do componente pai — usar só
+    // os campos primitivos na dependência evita reabrir o form (e perder o
+    // que a recepção já digitou) sem o usuário ter feito nada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    open,
+    reset,
+    prefill?.patientId,
+    prefill?.professionalId,
+    prefill?.procedureId,
+    prefill?.waitlistEntryId,
+  ]);
 
   const selectedPatientId = watch("patientId");
   const selectedProfessionalId = watch("professionalId");
@@ -95,15 +132,22 @@ export const AppointmentFormDialog = ({
   // Trocar de profissional pode tirar o procedimento já escolhido da lista
   // permitida — sem isso ficaria um valor "fantasma" que não aparece mais
   // nas opções, mas continua marcado no form.
+  //
+  // `isLoading` na guarda: sem ela, um `procedureId` pré-preenchido
+  // (`prefill`, vindo da lista de espera) nascia zerado sempre que o efeito
+  // rodava antes de `procedures` terminar de carregar — `availableProcedures`
+  // ainda vinha `[]`, `stillAllowed` dava falso, e o valor sumia antes dos
+  // dados chegarem. Nada depois re-populava o campo, porque o `reset` já
+  // tinha rodado.
   useEffect(() => {
-    if (!selectedProcedureId) return;
+    if (isLoading || !selectedProcedureId) return;
     const stillAllowed = availableProcedures.some(
       (procedure) => procedure.id === selectedProcedureId,
     );
     if (stillAllowed) return;
     setValue("procedureId", "", { shouldDirty: true });
     setValue("startsAt", "");
-  }, [availableProcedures, selectedProcedureId, setValue]);
+  }, [availableProcedures, selectedProcedureId, setValue, isLoading]);
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -113,6 +157,7 @@ export const AppointmentFormDialog = ({
         procedureId: values.procedureId,
         startsAt: new Date(values.startsAt).toISOString(),
         notes: values.notes || undefined,
+        waitlistEntryId: values.waitlistEntryId,
       });
       onOpenChange(false);
     } catch {
@@ -125,12 +170,21 @@ export const AppointmentFormDialog = ({
     <>
       <Dialog open={open} onClose={requestClose} fullWidth maxWidth="sm">
         <form onSubmit={onSubmit}>
-          <DialogTitle>Novo agendamento</DialogTitle>
+          <DialogTitle>
+            {prefill ? "Agendar vaga da lista de espera" : "Novo agendamento"}
+          </DialogTitle>
 
           <DialogContent>
             <DialogContentText sx={{ mb: 3 }}>
               Duração e preço são definidos pelo procedimento escolhido.
             </DialogContentText>
+
+            {prefill && (
+              <Alert severity="info" sx={{ mb: 2.5 }}>
+                Agendando a partir da lista de espera — ao salvar, o item sai
+                da fila sozinho.
+              </Alert>
+            )}
 
             {/**
              * Acima do teto, o backend recusa o agendamento

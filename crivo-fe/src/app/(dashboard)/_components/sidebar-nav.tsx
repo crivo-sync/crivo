@@ -20,6 +20,7 @@ import Tooltip from "@mui/material/Tooltip";
 import type { SvgIconComponent } from "@mui/icons-material";
 
 import { useFailedMessages } from "@/features/messages/hooks/use-failed-messages";
+import { useUnreadCancelCount } from "@/features/messages/hooks/use-inbound-messages";
 import type { NavIconName, NavItem } from "../_data/nav-items";
 
 const ICONS: Record<NavIconName, SvgIconComponent> = {
@@ -57,6 +58,17 @@ export const SidebarNav = ({ items, open }: SidebarNavProps) => {
   const { meta } = useFailedMessages({ page: 1, perPage: 1 });
   const failedCount = meta?.total ?? 0;
 
+  /**
+   * Pedido de cancelamento não lido, no mesmo badge de "Mensagens".
+   *
+   * Antes só existia a contagem de falha de envio; um "quer cancelar" só
+   * aparecia para quem abrisse a aba Recebidas por conta própria. Somado ao
+   * mesmo badge (não um segundo, separado) — os dois são "a recepção
+   * precisa agir em Mensagens agora", e dois números concorrendo no mesmo
+   * ícone confundiria mais do que ajudaria.
+   */
+  const unreadCancelCount = useUnreadCancelCount();
+
   return (
     <List>
       {items.map((item) => {
@@ -70,7 +82,10 @@ export const SidebarNav = ({ items, open }: SidebarNavProps) => {
         // O badge fica no ÍCONE, não no texto: com a sidebar recolhida o
         // rótulo tem `opacity: 0`, e um badge ali sumiria junto — justamente
         // quando o menu estreito é a única pista na tela.
-        const badgeCount = item.href === "/painel/mensagens" ? failedCount : 0;
+        const badgeCount =
+          item.href === "/painel/mensagens"
+            ? failedCount + unreadCancelCount
+            : 0;
 
         return (
           <ListItem key={item.href} disablePadding sx={{ display: "block" }}>

@@ -63,7 +63,8 @@ export class MessageController {
   @Post('conversation/:patientId')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Resposta manual da recepção — entra na mesma fila dos envios automáticos',
+    summary:
+      'Resposta manual da recepção — entra na mesma fila dos envios automáticos',
   })
   @ApiNoContentResponse()
   async sendManual(

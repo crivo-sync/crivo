@@ -176,3 +176,158 @@ describe('CreateAppointmentUseCase — limite de profissionais do plano', () => 
     ).rejects.toThrow(/contato com a clínica/i);
   });
 });
+
+/**
+ * Fecha o ciclo da lista de espera: o agendamento criado a partir de uma
+ * vaga oferecida precisa marcar a `WaitlistEntry` como resolvida sozinho.
+ *
+ * Sem isto, `markOffered` (avisar o paciente) e o agendamento criado depois
+ * eram dois atos desconectados — a `WaitlistEntry` ficava presa em
+ * `OFFERED` para sempre, mesmo com a vaga de fato ocupada. Achado como
+ * lacuna já registrada no ROADMAP antes de ser fechada em 18/08/2026.
+ */
+describe('CreateAppointmentUseCase — fecha a lista de espera', () => {
+  function makeUseCase({
+    waitlistEntry,
+  }: {
+    waitlistEntry: { id: string; patientId: string; status: string } | null;
+  }) {
+    const appointmentRepository = {
+      findOverlapping: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ id: 'apt-1' }),
+    } as unknown as AppointmentRepository;
+
+    const waitlistEntryUpdate = jest.fn().mockResolvedValue({});
+
+    const prisma = {
+      tenant: {
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValue({ plan: { maxProfessionals: null } }),
+      },
+      professional: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'prof-1', procedures: [] }),
+      },
+      patient: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'pat-1' }),
+      },
+      procedure: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'proc-1',
+          durationMinutes: 30,
+          priceInCents: 10_000,
+        }),
+      },
+      waitlistEntry: {
+        findFirst: jest.fn().mockResolvedValue(waitlistEntry),
+        update: waitlistEntryUpdate,
+      },
+      plan: { findMany: jest.fn() },
+    } as unknown as PrismaService;
+
+    const scheduleReminder = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as ScheduleAppointmentReminderUseCase;
+
+    const businessHours = {
+      assertWithinBusinessHours: jest.fn().mockResolvedValue(undefined),
+    } as unknown as BusinessHoursService;
+
+    const professionalAvailability = {
+      assertAvailable: jest.fn().mockResolvedValue(undefined),
+    } as unknown as ProfessionalAvailabilityService;
+
+    return {
+      useCase: new CreateAppointmentUseCase(
+        appointmentRepository,
+        prisma,
+        scheduleReminder,
+        businessHours,
+        professionalAvailability,
+      ),
+      appointmentRepository,
+      waitlistEntryUpdate,
+    };
+  }
+
+  const input = (waitlistEntryId?: string) => ({
+    tenantId: TENANT_ID,
+    patientId: 'pat-1',
+    professionalId: 'prof-1',
+    procedureId: 'proc-1',
+    startsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    waitlistEntryId,
+  });
+
+  it('marca a WaitlistEntry como SCHEDULED e linka o agendamento criado', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: { id: 'wl-1', patientId: 'pat-1', status: 'OFFERED' },
+    });
+
+    await useCase.execute(input('wl-1'));
+
+    expect(waitlistEntryUpdate).toHaveBeenCalledWith({
+      where: { id: 'wl-1' },
+      data: { status: 'SCHEDULED', appointmentId: 'apt-1' },
+    });
+  });
+
+  it('aceita fechar uma entrada que ainda está WAITING (recepção agendou direto, sem avisar antes)', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: { id: 'wl-1', patientId: 'pat-1', status: 'WAITING' },
+    });
+
+    await useCase.execute(input('wl-1'));
+
+    expect(waitlistEntryUpdate).toHaveBeenCalled();
+  });
+
+  it('não mexe em nada quando o agendamento não veio de lista de espera', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: null,
+    });
+
+    await useCase.execute(input());
+
+    expect(waitlistEntryUpdate).not.toHaveBeenCalled();
+  });
+
+  it('recusa quando a entrada é de outro paciente', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: {
+        id: 'wl-1',
+        patientId: 'outro-paciente',
+        status: 'OFFERED',
+      },
+    });
+
+    await expect(useCase.execute(input('wl-1'))).rejects.toThrow(
+      /outro paciente/i,
+    );
+    expect(waitlistEntryUpdate).not.toHaveBeenCalled();
+  });
+
+  it('recusa reusar uma entrada já SCHEDULED', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: { id: 'wl-1', patientId: 'pat-1', status: 'SCHEDULED' },
+    });
+
+    await expect(useCase.execute(input('wl-1'))).rejects.toThrow(
+      /já foi resolvido/i,
+    );
+    expect(waitlistEntryUpdate).not.toHaveBeenCalled();
+  });
+
+  it('recusa waitlistEntryId inexistente', async () => {
+    const { useCase, waitlistEntryUpdate } = makeUseCase({
+      waitlistEntry: null,
+    });
+
+    await expect(useCase.execute(input('wl-inexistente'))).rejects.toThrow(
+      /não encontrado/i,
+    );
+    expect(waitlistEntryUpdate).not.toHaveBeenCalled();
+  });
+});

@@ -14,6 +14,12 @@ export const createAppointmentSchema = z.object({
   procedureId: z.string().uuid("Selecione um procedimento"),
   startsAt: startsAtField,
   notes: z.string().trim().optional().or(z.literal("")),
+  /**
+   * Fecha o item da lista de espera junto com este agendamento. Nenhum
+   * campo do formulário edita isto — só é setado programaticamente quando
+   * o dialog abre a partir do botão "Agendar" na fila de espera.
+   */
+  waitlistEntryId: z.string().uuid().optional(),
 });
 
 export type CreateAppointmentSchema = z.infer<typeof createAppointmentSchema>;
