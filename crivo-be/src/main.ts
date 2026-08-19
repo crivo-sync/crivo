@@ -31,6 +31,27 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT ?? 3333;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  /**
+   * CORS: o front (Vercel) e a API (Railway) ficam em domínios diferentes,
+   * então sem isto **toda** chamada do navegador é bloqueada. Em
+   * desenvolvimento é tudo `localhost` e o problema não aparece.
+   *
+   * A lista vem de `CORS_ORIGINS` (separada por vírgula) em vez de `*`
+   * porque a API usa `Authorization: Bearer` com dados de saúde — liberar
+   * qualquer origem deixaria qualquer site chamar a API com o token da
+   * clínica. Em dev, sem a variável, libera geral para não atrapalhar.
+   */
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: corsOrigins.length > 0 ? corsOrigins : !isProduction,
+    credentials: true,
+  });
 
   const swaggerBuilder = new DocumentBuilder()
     .setTitle('Crivo API')
@@ -57,15 +78,32 @@ async function bootstrap() {
 
   const config = swaggerBuilder.build();
 
-  const doc = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, doc);
+  /**
+   * `/docs` fica **fora do ar em produção**: a página lista todas as rotas,
+   * schemas e exemplos da API — um mapa pronto para quem quiser sondar o
+   * sistema. Em dev é a principal ferramenta de trabalho, então continua
+   * ligada lá. Para reativar num ambiente publicado (staging), defina
+   * `SWAGGER_ENABLED=true`.
+   */
+  const swaggerEnabled = process.env.SWAGGER_ENABLED
+    ? process.env.SWAGGER_ENABLED === 'true'
+    : !isProduction;
 
-  await app.listen(port);
+  if (swaggerEnabled) {
+    const doc = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, doc);
+  }
 
-  logger.log(`🚀 Application is running on: http://localhost:${port}`);
-  logger.log(
-    `📚 API Documentation available at: http://localhost:${port}/docs`,
-  );
+  /**
+   * `0.0.0.0` e não o default (`localhost`): plataformas de container
+   * (Railway, Render, Fly) roteiam o tráfego de fora para dentro do
+   * container — ligado só em `localhost`, a app sobe, o healthcheck falha e
+   * o deploy fica reiniciando sem explicação óbvia.
+   */
+  await app.listen(port, '0.0.0.0');
+
+  logger.log(`🚀 Application is running on port ${port}`);
+  if (swaggerEnabled) logger.log(`📚 API Documentation available at /docs`);
 }
 bootstrap().catch((err) => {
   console.error(err);

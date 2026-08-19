@@ -44,12 +44,35 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 **O produto está construído. O que falta não é feature — é colocar no ar e
 descobrir se alguém paga.** Em ordem:
 
-**1. 🔴 Deploy (DigitalOcean)** — é o que destrava todo o resto. Sem ele não
-há como validar preço, testar o túnel, receber webhook da Meta ou ter
-cliente. Decidido em 14/08: Droplet + Managed Postgres + Spaces, ~US$ 44/mês
-(~R$ 238). Implica assumir Redis e Postgres (backup, atualização,
-monitoramento) e montar o deploy do front, que hoje seria "git push" no
-Vercel.
+**1. 🟡 Deploy — código pronto, falta publicar** (19/08/2026). A stack mudou
+de DigitalOcean para **Railway (API) + Supabase (banco) + Vercel (front)**:
+menos infra para administrar e custo inicial menor, ao preço de menos
+controle. Passo a passo com as variáveis prontas para colar em
+[`DEPLOY.md`](../DEPLOY.md).
+
+O que precisou existir antes (tudo verificado rodando `NODE_ENV=production`
+localmente, não só compilando):
+- **`start:prod` estava quebrado** — apontava para `dist/main`, mas o build
+  gera `dist/src/main`. Nunca falhou porque o projeto só rodou em dev; teria
+  falhado no primeiro deploy
+- **`app.listen(port, '0.0.0.0')`** — ligado só em `localhost`, o container
+  sobe mas o healthcheck nunca passa, e o deploy fica reiniciando sem
+  explicação óbvia
+- **CORS via `CORS_ORIGINS`** — front e API em domínios diferentes; sem
+  isso o navegador bloqueia toda chamada. Lista explícita em vez de `*`:
+  a API carrega dado de saúde com Bearer token
+- **`/health` que consulta o banco** — não existia rota alguma para o
+  orquestrador; `SELECT 1` prova que o pool está vivo, não só o processo
+- **`/docs` fechado em produção** (`SWAGGER_ENABLED`) — a página é o mapa
+  completo da API
+- **`REDIS_URL` aceita além de host/porta** — plataformas entregam uma URL
+  única, inclusive `rediss://` (TLS). 8 testes cobrindo os dois formatos
+- **`postinstall: prisma generate`** e **`start:migrate:prod`** — o client
+  não vai no git, e a migration precisa rodar antes da API subir
+
+⚠️ O Supabase exige **duas** URLs: `DATABASE_URL` no pooler (6543) para a
+aplicação e `DIRECT_URL` direta (5432) para a migration — o PgBouncer não
+suporta os comandos DDL. O `prisma.config.ts` já lia `DIRECT_URL`.
 
 **2. 🔴 Primeira clínica real** — a resposta que nenhuma análise deste
 documento substitui. Os preços têm uma conta por trás (custo de mensagem +

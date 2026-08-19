@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaModule } from '../../shared/infrastructure/prisma/prisma.module';
+import { redisConnection } from '../../shared/infrastructure/redis/redis-connection';
 import { PredictionModule } from '../prediction/prediction.module';
 import { createBullBoardAuthMiddleware } from '../../shared/bull-board/bull-board-auth.middleware';
 import { AI_TEXT_GENERATOR } from './domain/ai/ai-text-generator';
@@ -54,11 +55,7 @@ import { GuardsModule } from '../../shared/guards/guards.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST') ?? 'localhost',
-          port: Number(config.get('REDIS_PORT') ?? 6379),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
-        },
+        connection: redisConnection(config),
       }),
     }),
     BullModule.registerQueue({ name: MESSAGING_QUEUE }),
