@@ -100,7 +100,9 @@ describe('BookOnlineUseCase', () => {
     await useCase.execute(INPUT);
 
     expect(tx.$executeRaw).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.stringContaining('pg_advisory_xact_lock')]),
+      expect.arrayContaining([
+        expect.stringContaining('pg_advisory_xact_lock'),
+      ]),
       // O valor interpolado na tagged template: a chave (tenant:telefone)
       // que identifica a fila de serialização.
       expect.stringContaining(`${TENANT.id}:11999991234`),

@@ -115,7 +115,9 @@ export const AgendaTabs = () => {
           value={RISK_HREF}
         />
       ) : (
-        <Tooltip title={`Disponível a partir do plano Intermediário — o ${planName} não inclui.`}>
+        <Tooltip
+          title={`Disponível a partir do plano Intermediário — o ${planName} não inclui.`}
+        >
           <LockedTab>
             <Tab {...lockedProps("Risco de falta")} value={RISK_HREF} />
           </LockedTab>
@@ -129,7 +131,9 @@ export const AgendaTabs = () => {
           value={WAITLIST_HREF}
         />
       ) : (
-        <Tooltip title={`Disponível a partir do plano Intermediário — o ${planName} não inclui.`}>
+        <Tooltip
+          title={`Disponível a partir do plano Intermediário — o ${planName} não inclui.`}
+        >
           <LockedTab>
             <Tab {...lockedProps("Lista de espera")} value={WAITLIST_HREF} />
           </LockedTab>

@@ -52,6 +52,7 @@ variáveis prontas para colar em [`DEPLOY.md`](../DEPLOY.md).
 
 O que precisou existir antes (tudo verificado rodando `NODE_ENV=production`
 localmente, não só compilando):
+
 - **`start:prod` estava quebrado** — apontava para `dist/main`, mas o build
   gera `dist/src/main`. Nunca falhou porque o projeto só rodou em dev; teria
   falhado no primeiro deploy
@@ -118,28 +119,29 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 
 ## Onde estamos hoje
 
-| Módulo | Status |
-| --- | --- |
-| `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF). **Sessão morta agora sempre termina no login** (18 e 20/08/2026) — ver notas abaixo da tabela |
-| `tenants` | 🟢 CRUD + branding público por subdomínio |
-| `users` | 🟢 Gestão de equipe (ADMIN) |
-| `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
-| `scheduling` | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)** |
-| `messaging` | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada **priorizando pedido de cancelamento** (18/08/2026), reenvio manual, templates editáveis por clínica e provider selecionável. Cancelar/remarcar pelo **paciente** ainda não é self-service — ver nota abaixo da tabela. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
-| `prediction` | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção |
-| `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF |
-| `waitlist` | 🟢 **Ciclo fechado ponta a ponta** (18/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento, oferta por WhatsApp, **e agora "Agendar" fecha a `WaitlistEntry` sozinha quando o novo agendamento é criado** |
+| Módulo            | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`            | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF). **Sessão morta agora sempre termina no login** (18 e 20/08/2026) — ver notas abaixo da tabela                                                                                                                                                                                                                                                                                                                               |
+| `tenants`         | 🟢 CRUD + branding público por subdomínio                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `users`           | 🟢 Gestão de equipe (ADMIN)                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `patients`        | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia**                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `scheduling`      | 🟢 Profissionais, procedimentos, agenda com conflito de horário, ciclo de status, grade semanal por profissional e bloqueio de agenda, **quadro visual com todos os profissionais (05/08/2026)**                                                                                                                                                                                                                                                                                         |
+| `messaging`       | 🟢 Lembretes **escalonados por risco** (D-72h/D-48h/D-24h), confirmação pelo link **e por resposta** ("sim" no WhatsApp), caixa de entrada **priorizando pedido de cancelamento** (18/08/2026), reenvio manual, templates editáveis por clínica e provider selecionável. Cancelar/remarcar pelo **paciente** ainda não é self-service — ver nota abaixo da tabela. ⚠️ A Meta foi **adiada por custo**: o provider é `evolution`, com risco de banimento assumido — ver [Riscos](#riscos) |
+| `prediction`      | 🟡 **Regra + ação + tela + medição** (10/08/2026) — risco por fatores explicados, escalonamento de lembretes por faixa, aba "Risco de falta" e `GET /no-show/accuracy` comparando previsto × real. A medição existe e é honesta, mas **ainda não há amostra** para ela concluir nada (7 casos no banco de dev). Modelo estatístico segue dependendo de volume de produção                                                                                                                |
+| `medical-records` | 🟢 Anamnese + evolução append-only e **fotos antes/depois por atendimento** (13/08/2026), com entrega autenticada e URL assinada que expira. Restrito a ADMIN/PROFESSIONAL + plano com `hasMedicalRecords`. Falta anexo de exame em PDF                                                                                                                                                                                                                                                  |
+| `waitlist`        | 🟢 **Ciclo fechado ponta a ponta** (18/08/2026) — fila por ordem de chegada, tela na Agenda, sugestão automática ao cancelar um agendamento, oferta por WhatsApp, **e agora "Agendar" fecha a `WaitlistEntry` sozinha quando o novo agendamento é criado**                                                                                                                                                                                                                               |
 
 > 🐞 **Sessão perdida travava a tela em vez de mandar para o login
-> (18/08/2026)** — reportado pelo dono do produto: *"quando perde a sessão e
-> os cookies, não redireciona e não faz nada"*, com um Runtime Error
+> (18/08/2026)** — reportado pelo dono do produto: _"quando perde a sessão e
+> os cookies, não redireciona e não faz nada"_, com um Runtime Error
 > apontando para o `layout.tsx` do painel.
+>
 > - **Causa**: `withAuth` limpava os cookies com `cookies().delete()` ao ver
 >   o refresh falhar, mas o `layout.tsx` chama `getTenantAction()` durante o
 >   **render de um Server Component**, onde o Next proíbe mutar cookie
 >   (`Cookies can only be modified in a Server Action or Route Handler`).
->   A exceção não é um erro comum: sobe até a borda e vira *"An unexpected
->   response was received from the server"*, derrubando a página inteira em
+>   A exceção não é um erro comum: sobe até a borda e vira _"An unexpected
+>   response was received from the server"_, derrubando a página inteira em
 >   vez de apenas não gravar o cookie. `tryRefresh` tinha o mesmo problema
 >   com `cookies().set()`
 > - **Correção**: as duas mutações passaram por `mutateCookiesIfAllowed`,
@@ -154,8 +156,8 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 > - **Dois achados no caminho**, ao reproduzir com o backend parado: (1) a
 >   pessoa com sessão inválida via a casca do painel montada com "Minha
 >   conta" no lugar do nome da clínica — agora o layout redireciona ao ver
->   `SESSION_EXPIRED_MESSAGE`; (2) a tela exibia *"Request failed due to a
->   network error: GET http://localhost:3333/tenants/me"*, vazando o
+>   `SESSION_EXPIRED_MESSAGE`; (2) a tela exibia _"Request failed due to a
+>   network error: GET http://localhost:3333/tenants/me"_, vazando o
 >   endereço interno da API — `beforeError` em `config/api.ts` passou a
 >   trocar erro de rede por texto em português (a URL segue no log do
 >   servidor, onde serve para depurar)
@@ -168,10 +170,11 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   login, sem erro e sem expor a API) e o comentário deles diz isso
 >
 > 🐞 **E o erro técnico em Server Action com sessão morta — a causa raiz
-> do *"An unexpected response was received from the server."* (20/08/2026)**
+> do _"An unexpected response was received from the server."_ (20/08/2026)**
 > — reportado pelo dono do produto com o print de Configurações →
-> Assinatura: *"fica com essa mensagem na tela em vez de chamar
-> automaticamente o logout"*.
+> Assinatura: _"fica com essa mensagem na tela em vez de chamar
+> automaticamente o logout"_.
+>
 > - **Sintoma**: a mensagem acima num `ErrorServer` da aba Assinatura, e o
 >   auto-logout do `QueryProvider` nunca disparava. A nota de 18/08 corrigiu
 >   a camada do `layout.tsx` (cookie deletado durante o render), mas o caso
@@ -204,9 +207,10 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 > contando desativado, trial pulando a franquia de 30) **já estavam
 > corrigidos** — validados e com a suíte verde. Este pacote fecha os demais
 > que valem antes do deploy:
+>
 > - 🐞 **Reassinatura bloqueada após cancelar** — `customer.subscription.deleted`
 >   só marcava `CANCELED` e deixava `planId`/`stripeSubscriptionId` presos no
->   banco; o *"Este já é o plano contratado."* do checkout impedia a clínica
+>   banco; o _"Este já é o plano contratado."_ do checkout impedia a clínica
 >   de reassinar o próprio plano. Correção: o webhook agora limpa os dois
 >   campos ao cancelar, e o `create-checkout-session` só considera "plano já
 >   contratado"/troca na mesma assinatura quando há assinatura **viva**
@@ -231,15 +235,16 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   verdade exige timezone por tenant, que ainda não existe
 >
 > �📋 **Recepção enxerga e resolve mais rápido (18/08/2026)** — dois pontos
-> levantados pelo dono do produto: *"se ele mandar mensagem para cancelar, a
-> recepção recebe essa informação?"* e *"quando a recepção cancela, as vagas
-> se encaixam automaticamente?"*. As duas respostas eram "sim, mas de forma
+> levantados pelo dono do produto: _"se ele mandar mensagem para cancelar, a
+> recepção recebe essa informação?"_ e _"quando a recepção cancela, as vagas
+> se encaixam automaticamente?"_. As duas respostas eram "sim, mas de forma
 > passiva/manual demais" — corrigido nos dois:
+>
 > - **Alerta de cancelamento deixou de ser passivo.** Antes, um "quer
 >   cancelar" só aparecia se alguém abrisse `/painel/mensagens` → aba
 >   Recebidas por conta própria — sem badge, e-mail ou som, e a lista
 >   ordenada só por data misturava com todo o resto. Agora: `GET
->   /inbound-messages` devolve `unreadCancelTotal` (contagem separada de
+/inbound-messages` devolve `unreadCancelTotal` (contagem separada de
 >   `unreadTotal`), somado ao badge de "Mensagens" na sidebar (mesmo badge
 >   das falhas de envio — os dois são "aja em Mensagens agora", dois
 >   números concorrendo no mesmo ícone confundiria mais que ajudaria); e a
@@ -274,8 +279,8 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   mostrando "Esperando" — `useCreateAppointment` invalidava só
 >   `APPOINTMENTS_QUERY_KEY`, nunca `WAITLIST_QUERY_KEY`
 > - **"Reagendar" sumiu do menu em atendimento terminal** (18/08/2026) — o
->   dono do produto perguntou *"por que aparece esse REAGENDAR em
->   concluído?"*. Funcionalmente estava certo (o item vinha `disabled`, e o
+>   dono do produto perguntou _"por que aparece esse REAGENDAR em
+>   concluído?"_. Funcionalmente estava certo (o item vinha `disabled`, e o
 >   backend recusaria: `RescheduleAppointmentUseCase` só aceita
 >   `SCHEDULED`/`CONFIRMED`), mas um menu com um único item cinza lê como
 >   sistema quebrado. Agora `COMPLETED`/`CANCELLED`/`NO_SHOW` não abrem menu
@@ -288,12 +293,12 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   precisar ligar). Decisões em aberto antes de implementar: janela mínima
 >   de antecedência, se remarcar fica liberado ou só cancelar, e se um
 >   cancelamento tardio conta como sinal de risco para a predição de falta
-| `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial. Limite de profissionais é **teto duro em todo lugar** (17/08/2026) — ver a entrada de `professionals` na Fase 3. ⚠️ Preços seguem **hipótese não validada** com cliente real |
-| `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa. **Custo das faltas em reais** (13/08/2026) no topo do painel, também liberado em todos os planos |
-| `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
-| `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
+>   | `billing` | 🟢 Checkout Stripe, webhook, 4 planos com limites e features por faixa, franquia de mensagens com contador, expiração automática do trial. Limite de profissionais é **teto duro em todo lugar** (17/08/2026) — ver a entrada de `professionals` na Fase 3. ⚠️ Preços seguem **hipótese não validada** com cliente real |
+>   | `dashboard` | 🟢 Resumo do dia (agenda, a confirmar, mensagens que falharam) **liberado em todos os planos** desde 13/08/2026; gráficos e faturamento seguem em `hasDashboard`. A trava passou a ser por rota: travar o resumo fazia a clínica no Solo abrir o sistema e ver uma tela de erro como primeira coisa. **Custo das faltas em reais** (13/08/2026) no topo do painel, também liberado em todos os planos |
+>   | `onboarding` | 🟢 `GET /tenants/me/onboarding` + checklist no painel (12/08/2026) — diz à clínica nova o que falta para a agenda funcionar |
+>   | `mail` | 🟢 Quatro e-mails transacionais (13/08/2026): boas-vindas, assinatura confirmada, trial acabando (cron D-3) e falha de cobrança. Mailtrap Sandbox em dev; sem SMTP configurado o envio vira log e nada quebra |
 
-Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação por link e por resposta) funcionando em dev. **A tríade agenda + comunicação + predição está completa em primeira versão** — a predição saiu do zero e já *age*: escalona lembretes por risco e alimenta a lista de espera.
+Temos base sólida de cadastro e agenda, e a comunicação (WhatsApp + confirmação por link e por resposta) funcionando em dev. **A tríade agenda + comunicação + predição está completa em primeira versão** — a predição saiu do zero e já _age_: escalona lembretes por risco e alimenta a lista de espera.
 
 O que falta não é construir a predição, é **provar que ela acerta**: ninguém mediu ainda se os pesos da regra correspondem ao comportamento real do paciente. Ver [Predição](#predição--o-que-existe-de-verdade-hoje).
 
@@ -307,7 +312,7 @@ Esse episódio não é anedota: é o resumo do mercado.
 
 **O que ele revela:**
 
-1. **A automação de WhatsApp das clínicas é frágil.** "Caiu" quase sempre significa API não oficial (tipo Evolution API) — uma camada que roda sobre o WhatsApp Web, barata e fácil de subir, mas que a Meta não autoriza. Em 2026 a detecção passou a olhar a *impressão digital da conexão*, não só o volume: contas de baixo volume também estão sendo restringidas, e o banimento é permanente, sem aviso e sem recurso.
+1. **A automação de WhatsApp das clínicas é frágil.** "Caiu" quase sempre significa API não oficial (tipo Evolution API) — uma camada que roda sobre o WhatsApp Web, barata e fácil de subir, mas que a Meta não autoriza. Em 2026 a detecção passou a olhar a _impressão digital da conexão_, não só o volume: contas de baixo volume também estão sendo restringidas, e o banimento é permanente, sem aviso e sem recurso.
 2. **O custo dói.** Clínica pequena não sustenta plano caro de disparo. Quando aperta, corta a automação — justamente a função que evita a falta que custa mais caro que a mensalidade.
 3. **Quando a automação falha, o trabalho volta pra recepção.** Ligar paciente por paciente é exatamente as "3h/semana" que os concorrentes prometem economizar. A promessa é feita, mas quebra na prática.
 
@@ -326,30 +331,30 @@ Isso reforça o item de fallback e o modelo de franquia nas prioridades abaixo.
 
 Preços de entrada anunciados publicamente (consulta em 30/07/2026):
 
-| Sistema | A partir de | Foco | Observação |
-| --- | --- | --- | --- |
-| [Iter Clinic](https://www.iterclinic.com/) | R$ 39/mês (planos R$ 69–309) | Estética | Fotos antes/depois, confirmação WhatsApp, pacotes/sessões |
-| [Estetia CRM](https://estetiacrm.com.br/) | R$ 39/mês (base) | Estética/dermato | R$ 166 solo · R$ 362 médio · R$ 660 com TISS |
-| Clínica Ágil Estética | R$ 89/mês | Estética | Interface datada, limitada para multi-especialidade |
-| Clínica nas Nuvens | R$ 99/mês | Genérico | Financeiro limitado, poucas integrações |
-| GestãoDS | R$ 120/mês | Médico | Prontuário sólido, pouco específico para estética |
-| [Clinicorp](https://www.clinicorp.com/) | R$ 159,90 (Standard) · R$ 369,90 (Premium) | Odontologia | IA cobrada à parte; forte em rede/franquia |
-| iClinic | R$ 289/mês | Médico | Consolidado, curva de aprendizado longa |
-| Amplimed | R$ 399/mês | Convênios | Forte em TISS, custo alto para estética pura |
+| Sistema                                    | A partir de                                | Foco             | Observação                                                |
+| ------------------------------------------ | ------------------------------------------ | ---------------- | --------------------------------------------------------- |
+| [Iter Clinic](https://www.iterclinic.com/) | R$ 39/mês (planos R$ 69–309)               | Estética         | Fotos antes/depois, confirmação WhatsApp, pacotes/sessões |
+| [Estetia CRM](https://estetiacrm.com.br/)  | R$ 39/mês (base)                           | Estética/dermato | R$ 166 solo · R$ 362 médio · R$ 660 com TISS              |
+| Clínica Ágil Estética                      | R$ 89/mês                                  | Estética         | Interface datada, limitada para multi-especialidade       |
+| Clínica nas Nuvens                         | R$ 99/mês                                  | Genérico         | Financeiro limitado, poucas integrações                   |
+| GestãoDS                                   | R$ 120/mês                                 | Médico           | Prontuário sólido, pouco específico para estética         |
+| [Clinicorp](https://www.clinicorp.com/)    | R$ 159,90 (Standard) · R$ 369,90 (Premium) | Odontologia      | IA cobrada à parte; forte em rede/franquia                |
+| iClinic                                    | R$ 289/mês                                 | Médico           | Consolidado, curva de aprendizado longa                   |
+| Amplimed                                   | R$ 399/mês                                 | Convênios        | Forte em TISS, custo alto para estética pura              |
 
 **Camada mais barata, encontrada só no recheque de 13/08/2026** — não estava
 no mapeamento original e muda a leitura da faixa de entrada:
 
-| Sistema | A partir de | Observação |
-| --- | --- | --- |
-| Bellagenda | R$ 23,90 | Agendamento, lembrete WhatsApp, sinal via Pix |
-| SPAgenda | R$ 29 (R$ 24,17 no anual) | Agendamento puro |
-| Agendiva | R$ 39,90 (Solo/Pro/Studio até R$ 99,90) | Ficha por procedimento, lembrete 24h, comissão, vitrine pública |
-| Elenya | R$ 49,90 | Confirmação WhatsApp 24h, fluxo de caixa básico |
-| Gestek | R$ 69,90/**ano** | Agenda multiprofissional, fichas customizáveis |
-| Avec | sob consulta | **Agendamento e resposta por IA no WhatsApp** + split de pagamento |
-| Belle Software | sob consulta | Recursos de IA, assinatura eletrônica (+R$ 45), app do cliente (+R$ 150) |
-| Booksy | R$ 99,99 | Marketplace global, forte em barbearia |
+| Sistema        | A partir de                             | Observação                                                               |
+| -------------- | --------------------------------------- | ------------------------------------------------------------------------ |
+| Bellagenda     | R$ 23,90                                | Agendamento, lembrete WhatsApp, sinal via Pix                            |
+| SPAgenda       | R$ 29 (R$ 24,17 no anual)               | Agendamento puro                                                         |
+| Agendiva       | R$ 39,90 (Solo/Pro/Studio até R$ 99,90) | Ficha por procedimento, lembrete 24h, comissão, vitrine pública          |
+| Elenya         | R$ 49,90                                | Confirmação WhatsApp 24h, fluxo de caixa básico                          |
+| Gestek         | R$ 69,90/**ano**                        | Agenda multiprofissional, fichas customizáveis                           |
+| Avec           | sob consulta                            | **Agendamento e resposta por IA no WhatsApp** + split de pagamento       |
+| Belle Software | sob consulta                            | Recursos de IA, assinatura eletrônica (+R$ 45), app do cliente (+R$ 150) |
+| Booksy         | R$ 99,99                                | Marketplace global, forte em barbearia                                   |
 
 **Leitura do mercado:**
 
@@ -370,11 +375,11 @@ no mapeamento original e muda a leitura da faixa de entrada:
   R$ 49,90 (2 prof) +R$ 39,90; Studio R$ 99,90 (5 prof) +R$ 19,90 e
   +R$ 79,90 por clínica extra. Comparação no mesmo cenário:
 
-  | Profissionais | Agendiva | Crivo (antes) | Crivo (14/08) |
-  | --- | --- | --- | --- |
-  | 1 | R$ 39,90 | R$ 79,00 | **R$ 49,00** |
-  | 2 | R$ 69,80 | R$ 149,00 | **R$ 89,00** |
-  | 5 | R$ 99,90 (Studio) | R$ 289,00 | **R$ 179,00** |
+  | Profissionais | Agendiva          | Crivo (antes) | Crivo (14/08) |
+  | ------------- | ----------------- | ------------- | ------------- |
+  | 1             | R$ 39,90          | R$ 79,00      | **R$ 49,00**  |
+  | 2             | R$ 69,80          | R$ 149,00     | **R$ 89,00**  |
+  | 5             | R$ 99,90 (Studio) | R$ 289,00     | **R$ 179,00** |
 
   São **~2x na entrada**, e a distância cresce. O problema não é só o valor:
   é a **forma**. No modelo deles, contratar mais um profissional custa
@@ -382,11 +387,13 @@ no mapeamento original e muda a leitura da faixa de entrada:
   uma vez** — um degrau que aparece exatamente no momento em que a clínica
   está crescendo e comparando.
   → **Resolvido em 14/08/2026** — ver [Revisão de preço](#revisão-de-preço-14082026).
+
   > ⚠️ **Nota de método**: o site anunciava "preço por profissional ativo" e
   > eu removi isso em 13/08 classificando como "afirmação falsa". Era falso
   > sobre o que cobramos, mas apagou a evidência de um problema comercial em
   > vez de resolvê-lo. O texto errado estava descrevendo **o modelo que o
   > mercado usa e nós não**.
+
 - **Franquia de mensagens já é praticada na faixa de entrada** — há plano de
   R$ 57 com 20 notificações/mês e R$ 99,86 com 50. Isso **valida a decisão de
   cota** do Crivo (Solo 500, Básico 1.500): não é invenção nossa, é como o
@@ -407,27 +414,27 @@ Escolhido como referência por ser o mais próximo do nosso posicionamento (est�
 
 ### O que eles têm e nós não
 
-| Funcionalidade | Deles | Nosso status | Prioridade |
-| --- | --- | --- | --- |
-| Lembrete de consulta por WhatsApp | ✅ Meta API oficial | ⚠️ funcionando em dev (Evolution); falta credencial Meta | 🔴 Crítica |
-| Confirmação de consulta pelo paciente | ✅ | ✅ página pública `/c/:token` + botão (04/08/2026) | — |
-| Prontuário eletrônico / anamnese | ✅ Ficha digital | ✅ anamnese + evolução (04/08/2026); sem anexos | — |
-| Fotos clínicas antes/depois | ✅ | ✅ entrega autenticada + URL assinada (13/08/2026) | — |
-| Agendamento online pelo paciente | ✅ 24h, sem app | ✅ backend (10/08) + página `/agendar/:subdomain` (12/08/2026) | — |
-| Lista de espera / preenchimento de lacunas | ✅ | ✅ com sugestão automática ao cancelar e oferta por WhatsApp (10/08/2026) | — |
-| Recall pós-procedimento | ✅ automático | ❌ (base do "reativação inteligente", Fase 2) | 🟠 Alta |
-| Dashboard financeiro / fluxo de caixa | ✅ tempo real | ❌ (há faturamento por procedimento, não fluxo de caixa) | 🟠 Alta |
-| Métricas de ocupação de agenda | ✅ | ❌ — exige modelar capacidade instalada | 🟡 Média |
-| Multi-unidade (rede/franquia) | ✅ (Clinicorp) | ❌ — hoje 1 tenant = 1 clínica, sem hierarquia | 🟡 Média |
-| **Agente de IA no WhatsApp** (agenda/confirma/cobra sozinho) | ✅ Clinicorp (3 agentes, plano Premium) **e agora também na faixa de entrada**: Avec e Belle Software | ❌ — ver ["A IA mudou de patamar"](#a-ia-mudou-de-patamar-13082026) | 🔴 **Reavaliar após 1º cliente** |
-| Chat de IA na landing (qualificar visitante) | ⚠️ raro no setor | ❌ **por decisão** (12/08/2026) | — |
-| Comissão por profissional | ✅ | ❌ | 🟡 Média |
-| Pacotes e sessões múltiplas | ✅ | ❌ | 🟡 Média |
-| Programa de fidelidade / pontos | ✅ | ❌ | 🟡 Média |
-| Campanhas segmentadas | ✅ | ❌ | 🟡 Média |
-| Módulo TISS/TUSS (convênios) | ✅ | ❌ | 🟢 Baixa |
-| Apps iOS/Android | ✅ | ❌ | 🟢 Baixa |
-| Conformidade LGPD declarada | ✅ certificado | ⚠️ parcial | 🟠 Alta |
+| Funcionalidade                                               | Deles                                                                                                 | Nosso status                                                              | Prioridade                       |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------- |
+| Lembrete de consulta por WhatsApp                            | ✅ Meta API oficial                                                                                   | ⚠️ funcionando em dev (Evolution); falta credencial Meta                  | 🔴 Crítica                       |
+| Confirmação de consulta pelo paciente                        | ✅                                                                                                    | ✅ página pública `/c/:token` + botão (04/08/2026)                        | —                                |
+| Prontuário eletrônico / anamnese                             | ✅ Ficha digital                                                                                      | ✅ anamnese + evolução (04/08/2026); sem anexos                           | —                                |
+| Fotos clínicas antes/depois                                  | ✅                                                                                                    | ✅ entrega autenticada + URL assinada (13/08/2026)                        | —                                |
+| Agendamento online pelo paciente                             | ✅ 24h, sem app                                                                                       | ✅ backend (10/08) + página `/agendar/:subdomain` (12/08/2026)            | —                                |
+| Lista de espera / preenchimento de lacunas                   | ✅                                                                                                    | ✅ com sugestão automática ao cancelar e oferta por WhatsApp (10/08/2026) | —                                |
+| Recall pós-procedimento                                      | ✅ automático                                                                                         | ❌ (base do "reativação inteligente", Fase 2)                             | 🟠 Alta                          |
+| Dashboard financeiro / fluxo de caixa                        | ✅ tempo real                                                                                         | ❌ (há faturamento por procedimento, não fluxo de caixa)                  | 🟠 Alta                          |
+| Métricas de ocupação de agenda                               | ✅                                                                                                    | ❌ — exige modelar capacidade instalada                                   | 🟡 Média                         |
+| Multi-unidade (rede/franquia)                                | ✅ (Clinicorp)                                                                                        | ❌ — hoje 1 tenant = 1 clínica, sem hierarquia                            | 🟡 Média                         |
+| **Agente de IA no WhatsApp** (agenda/confirma/cobra sozinho) | ✅ Clinicorp (3 agentes, plano Premium) **e agora também na faixa de entrada**: Avec e Belle Software | ❌ — ver ["A IA mudou de patamar"](#a-ia-mudou-de-patamar-13082026)       | 🔴 **Reavaliar após 1º cliente** |
+| Chat de IA na landing (qualificar visitante)                 | ⚠️ raro no setor                                                                                      | ❌ **por decisão** (12/08/2026)                                           | —                                |
+| Comissão por profissional                                    | ✅                                                                                                    | ❌                                                                        | 🟡 Média                         |
+| Pacotes e sessões múltiplas                                  | ✅                                                                                                    | ❌                                                                        | 🟡 Média                         |
+| Programa de fidelidade / pontos                              | ✅                                                                                                    | ❌                                                                        | 🟡 Média                         |
+| Campanhas segmentadas                                        | ✅                                                                                                    | ❌                                                                        | 🟡 Média                         |
+| Módulo TISS/TUSS (convênios)                                 | ✅                                                                                                    | ❌                                                                        | 🟢 Baixa                         |
+| Apps iOS/Android                                             | ✅                                                                                                    | ❌                                                                        | 🟢 Baixa                         |
+| Conformidade LGPD declarada                                  | ✅ certificado                                                                                        | ⚠️ parcial                                                                | 🟠 Alta                          |
 
 ### O que temos e eles não expõem
 
@@ -445,7 +452,7 @@ Conclusões que mudam o plano:
 1. **WhatsApp não é diferencial, é bilhete de entrada.** Qualquer concorrente sério já tem. Sem lembrete automático, o produto não é comparável — independente de quão boa seja a predição.
 2. **Prontuário é obrigatório para odontologia/dermato.** É requisito legal e operacional, não recurso "nice to have". Uma clínica não troca de sistema se perder o prontuário.
 3. **Nosso diferencial real não é "prever no-show", é o que fazemos com a previsão.** Eles reduzem falta com lembrete e lista de espera — regras simples. O espaço para nos diferenciarmos é a ação automática e personalizada por risco, não o número em si.
-4. **Confiabilidade de entrega é o diferencial que ninguém anuncia.** Todos prometem lembrete; ninguém promete que ele *chega*. Ver [A dor que valida o produto](#a-dor-que-valida-o-produto).
+4. **Confiabilidade de entrega é o diferencial que ninguém anuncia.** Todos prometem lembrete; ninguém promete que ele _chega_. Ver [A dor que valida o produto](#a-dor-que-valida-o-produto).
 5. **O mercado virou "agente de IA que executa"** — e não só no topo. Em
    30/07 a IA era "rara no setor"; em 13/08 já está na Clinicorp Premium
    **e** na faixa de entrada (Avec, Belle Software). A frase que este
@@ -478,7 +485,7 @@ em duas semanas.** Reconferido em 13/08/2026:
 
 1. **A decisão de 12/08 (não fazer chat de IA) continua certa para o que foi
    decidido** — chat na landing e "IA que conversa sobre o painel" seguem sem
-   função. O que apareceu é **outra coisa**: agente que *executa* (marca,
+   função. O que apareceu é **outra coisa**: agente que _executa_ (marca,
    remarca, cobra), não que conversa.
 2. **Não é ameaça no nosso preço, ainda.** Quem paga R$ 49–89 não está
    comparando com o Premium da Clinicorp. Vira ameaça quando (a) o preço do
@@ -493,7 +500,7 @@ em duas semanas.** Reconferido em 13/08/2026:
 4. **O risco de fazer errado é assimétrico.** Um agente que confirma consulta
    que não existe, ou marca em cima de outro paciente, destrói a confiança que
    o produto inteiro vende ("a agenda que não deixa de avisar"). Nossa regra
-   de ouro atual — *IA redige, nunca decide fato* — foi escrita exatamente
+   de ouro atual — _IA redige, nunca decide fato_ — foi escrita exatamente
    para isso.
 
 **Encaminhamento:** não entra agora. Fica registrado como **o próximo
@@ -505,12 +512,12 @@ vez de copiar os três de uma vez. Ver [Riscos](#riscos).
 
 **Tabela nova, criada no Stripe (modo teste):**
 
-| Plano | Preço | Profissionais | +profissional | Mensagens/mês | Diferenciais |
-| --- | --- | --- | --- | --- | --- |
-| Solo | R$ 49 | 1 | — | 500 | — |
-| Essencial | R$ 89 | 2 | R$ 35 | 1.000 | — |
-| Profissional | R$ 179 | 4 | R$ 30 | 2.000 | risco, espera, painel, IA |
-| Clínica | R$ 299 | 8 | R$ 25 | 4.100 | risco, espera, painel, IA |
+| Plano        | Preço  | Profissionais | +profissional | Mensagens/mês | Diferenciais              |
+| ------------ | ------ | ------------- | ------------- | ------------- | ------------------------- |
+| Solo         | R$ 49  | 1             | —             | 500           | —                         |
+| Essencial    | R$ 89  | 2             | R$ 35         | 1.000         | —                         |
+| Profissional | R$ 179 | 4             | R$ 30         | 2.000         | risco, espera, painel, IA |
+| Clínica      | R$ 299 | 8             | R$ 25         | 4.100         | risco, espera, painel, IA |
 
 Prontuário, fotos antes/depois, agenda, lembretes e agendamento online estão
 em **todos** os planos.
@@ -531,10 +538,10 @@ redonda):
   administrar e custo inicial menor, ao preço de menos controle. Guia com as
   variáveis prontas para colar em [`DEPLOY.md`](../DEPLOY.md).
 
-  | Cenário | Composição | US$/mês | R$/mês |
-  | --- | --- | --- | --- |
-  | Hoje (dev) | Railway $10 + Supabase Free + Vercel Hobby | 10 | ~54 |
-  | **Railway+Supabase+Vercel (escolhido)** | Railway $10 + Supabase Pro $25 + Vercel Pro $20 | **55** | **~297** |
+  | Cenário                                 | Composição                                      | US$/mês | R$/mês   |
+  | --------------------------------------- | ----------------------------------------------- | ------- | -------- |
+  | Hoje (dev)                              | Railway $10 + Supabase Free + Vercel Hobby      | 10      | ~54      |
+  | **Railway+Supabase+Vercel (escolhido)** | Railway $10 + Supabase Pro $25 + Vercel Pro $20 | **55**  | **~297** |
 
   ⚠️ **O Vercel Hobby proíbe uso comercial** — no momento em que houver
   cliente pagando, o front precisa ir para Pro ($20/mês), e o Supabase Free
@@ -546,12 +553,12 @@ redonda):
 
 **Ponto de equilíbrio** (Railway+Supabase+Vercel, R$ 297/mês, uso típico):
 
-| Plano | Preço | Custo de mensagem | Sobra por cliente | Clientes para pagar a infra |
-| --- | --- | --- | --- | --- |
-| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **12** |
-| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **7** |
-| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **4** |
-| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **3** |
+| Plano        | Preço  | Custo de mensagem | Sobra por cliente | Clientes para pagar a infra |
+| ------------ | ------ | ----------------- | ----------------- | --------------------------- |
+| Solo         | R$ 49  | R$ 22,50          | R$ 26,50          | **12**                      |
+| Essencial    | R$ 89  | R$ 45,00          | R$ 44,00          | **7**                       |
+| Profissional | R$ 179 | R$ 90,00          | R$ 89,00          | **4**                       |
+| Clínica      | R$ 299 | R$ 180,00         | R$ 119,00         | **3**                       |
 
 **12 clínicas no plano de entrada cobrem toda a infraestrutura.** Ela é
 custo fixo: do 13º cliente em diante, os ~R$ 26 de sobra viram margem
@@ -595,14 +602,14 @@ limpa.
 **Não usam tiers.** É **base R$ 39/mês + módulos avulsos**, e o cliente monta a
 configuração:
 
-| Módulo | Preço | Módulo | Preço |
-| --- | --- | --- | --- |
-| Plataforma Base (2 usuários, 1 profissional, 1 sala) | R$ 39 | WhatsApp Evolution | R$ 79 |
-| Prontuário Eletrônico | R$ 29 | WhatsApp Cloud API (Meta oficial) | R$ 149 |
-| Procedimentos & Tratamentos | R$ 19 | Marketing Clínico | R$ 49 |
-| Fotos Before/After | R$ 19 | Financeiro & Fluxo de Caixa | R$ 39 |
-| Pacotes de Sessões | R$ 15 | Analytics Avançado | R$ 39 |
-| Recall Automático | R$ 25 | IA (Lite/Pro/Scale) | R$ 49 / 129 / 299 |
+| Módulo                                               | Preço | Módulo                            | Preço             |
+| ---------------------------------------------------- | ----- | --------------------------------- | ----------------- |
+| Plataforma Base (2 usuários, 1 profissional, 1 sala) | R$ 39 | WhatsApp Evolution                | R$ 79             |
+| Prontuário Eletrônico                                | R$ 29 | WhatsApp Cloud API (Meta oficial) | R$ 149            |
+| Procedimentos & Tratamentos                          | R$ 19 | Marketing Clínico                 | R$ 49             |
+| Fotos Before/After                                   | R$ 19 | Financeiro & Fluxo de Caixa       | R$ 39             |
+| Pacotes de Sessões                                   | R$ 15 | Analytics Avançado                | R$ 39             |
+| Recall Automático                                    | R$ 25 | IA (Lite/Pro/Scale)               | R$ 49 / 129 / 299 |
 
 Capacidade extra: **+R$ 19/usuário**, **+R$ 15/profissional**, +R$ 9/sala.
 
@@ -635,20 +642,20 @@ duração declarada**.
 Concorrente de R$ 39,90–99,90, focado em estética. Feature a feature não é
 melhor — **mas vende melhor**, e isso importa mais do que parece:
 
-1. **Vende dinheiro, não recurso.** A manchete deles é *"recupere até
-   R$ 1.500/mês que sua clínica perde com faltas"*. A nossa é *"o motor que
-   evita buracos na sua agenda"* — bonita, mas o dono da clínica precisa
+1. **Vende dinheiro, não recurso.** A manchete deles é _"recupere até
+   R$ 1.500/mês que sua clínica perde com faltas"_. A nossa é _"o motor que
+   evita buracos na sua agenda"_ — bonita, mas o dono da clínica precisa
    traduzir sozinho para reais. **Nós temos o dado para fazer essa conta e
    não fazemos**: `Appointment.priceInCents` × `NO_SHOW` do período é
    exatamente "quanto a falta te custou".
    → **Fechado em 13/08/2026**, nas duas pontas: `GET /dashboard/no-show-cost`
-   + card no topo do painel (para quem já é cliente) e **calculadora na home**
-   (para quem ainda não é). A calculadora não copia o "recupere até R$ 1.500":
-   o visitante informa faltas/semana e ticket médio, e a conta é dele — não
-   afirmamos quanto disso o Crivo evita, o que manteria a mesma régua da
-   medição de acurácia (que se recusa a concluir com amostra pequena).
-2. **Falam a dor em português de gente**: *"perdeu o caderninho da agenda de
-   novo"*. Nós falamos "predição de risco de no-show" — que é o **como**, não
+   - card no topo do painel (para quem já é cliente) e **calculadora na home**
+     (para quem ainda não é). A calculadora não copia o "recupere até R$ 1.500":
+     o visitante informa faltas/semana e ticket médio, e a conta é dele — não
+     afirmamos quanto disso o Crivo evita, o que manteria a mesma régua da
+     medição de acurácia (que se recusa a concluir com amostra pequena).
+2. **Falam a dor em português de gente**: _"perdeu o caderninho da agenda de
+   novo"_. Nós falamos "predição de risco de no-show" — que é o **como**, não
    o **quê**.
    → **Corrigido em 13/08/2026**: "no-show", "tríade integrada" e
    "multi-tenant white-label" saíram do site inteiro (home, planos e rodapé).
@@ -694,7 +701,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] Lembrete automático D-1 (`REMINDER_HOURS_BEFORE`)
    - [x] Link de confirmação: paciente responde e o status vira `CONFIRMED` sozinho, sem login
    - [x] **Página pública de confirmação** (04/08/2026) — `crivo-fe` `/c/:token` com os dados do agendamento e botão "Confirmar presença". Antes o link ia direto para a API e o paciente via JSON cru
-   - [x] **`GET /c/:token` não confirma mais sozinho** (04/08/2026) — o WhatsApp faz *pré-fetch* de todo link para montar a prévia, e isso confirmava a presença antes de o paciente abrir. Agora o `GET` só lê; só o `POST /c/:token/confirm` muda o status
+   - [x] **`GET /c/:token` não confirma mais sozinho** (04/08/2026) — o WhatsApp faz _pré-fetch_ de todo link para montar a prévia, e isso confirmava a presença antes de o paciente abrir. Agora o `GET` só lê; só o `POST /c/:token/confirm` muda o status
    - [x] **Bull Board em `/admin/queues`** (04/08/2026) — painel da fila (waiting/active/completed/failed/delayed), com retry e remoção manual de job. Protegido por Basic Auth e desligado por padrão (ver README → Bull Board)
    - [x] **Hora da falha visível** (04/08/2026) — `failedAt` exposto na API, coluna "Falhou em" na tabela e "falhou há X min" no card do Painel
    - [x] **Fallback visível:** esgotou as tentativas → `GET /messages/failed` lista quem precisa de ligação
@@ -703,9 +710,9 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
    - [x] **Mensagens com IA (DeepSeek), opcional por clínica** (30/07/2026) — reescreve o lembrete com tom natural, mantendo nome/data/hora/link validados literalmente; qualquer falha ou omissão cai no template fixo. Ver [README → Mensagens com IA](./README.md#mensagens-com-ia-opcional-por-clínica)
    - [x] **Aviso imediato ao marcar a consulta** (04/08/2026) — quem agenda com dias de antecedência recebe na hora um "sua consulta foi marcada" já com o link de confirmação, e o lembrete D-1 continua. Só dispara quando o D-1 ainda está longe, para não mandar duas mensagens seguidas
    - [x] **Status ao vivo no painel** (04/08/2026) — Agenda e Mensagens se reconsultam a cada 20s (`LIVE_REFETCH_INTERVAL_MS`), já que o paciente confirma pelo WhatsApp, fora do sistema
-   - [x] 🐞 **Reagendar refaz o lembrete** (04/08/2026) — antes `RescheduleAppointmentUseCase` mudava `startsAt` sem tocar na fila, e o lembrete antigo saía no D-1 da data original **com a data velha no texto**. Agora `reschedule()` cancela o que está pendente e reagenda com os dados atuais. São duas camadas de propósito: a remoção da fila (por `jobId` fixo) é *best-effort*, e o guard de `CANCELLED` no `MessageProcessor` é o que de fato impede o envio errado se o job já tiver saído da fila
+   - [x] 🐞 **Reagendar refaz o lembrete** (04/08/2026) — antes `RescheduleAppointmentUseCase` mudava `startsAt` sem tocar na fila, e o lembrete antigo saía no D-1 da data original **com a data velha no texto**. Agora `reschedule()` cancela o que está pendente e reagenda com os dados atuais. São duas camadas de propósito: a remoção da fila (por `jobId` fixo) é _best-effort_, e o guard de `CANCELLED` no `MessageProcessor` é o que de fato impede o envio errado se o job já tiver saído da fila
    - [x] **Provider escolhido por clínica** (10/08/2026) — `Tenant.messagingProvider` (`FAKE`/`EVOLUTION`/`META`), com seletor em Configurações. Antes `MESSAGING_PROVIDER` valia para o processo inteiro, o que impedia uma clínica migrar para a Meta enquanto outra segue na Evolution — e é exatamente essa a transição em curso. Decisões:
-     - **Credenciais continuam em variáveis de ambiente** — a clínica escolhe o *caminho*, não guarda segredo no banco. Token da Meta dá acesso ao WhatsApp da clínica; guardá-lo exigiria criptografia em repouso e mascaramento na API, que é projeto próprio
+     - **Credenciais continuam em variáveis de ambiente** — a clínica escolhe o _caminho_, não guarda segredo no banco. Token da Meta dá acesso ao WhatsApp da clínica; guardá-lo exigiria criptografia em repouso e mascaramento na API, que é projeto próprio
      - **Nulo = padrão do servidor** — clínicas existentes não mudam de comportamento, e a opção "Padrão do sistema" continua alcançável para voltar atrás
      - **Resolvido por mensagem, não injetado no boot** — `MessageProviderResolver` consulta o tenant a cada envio, então trocar o provider pela tela vale **sem reiniciar**. Verificado ao vivo: `fake` → troca para `evolution` pela API → o envio seguinte já saiu pela Evolution
      - **A tela explica a consequência** — "o WhatsApp não autoriza esse tipo de conexão, o número pode ser bloqueado em definitivo" no não oficial, e "nada é enviado de verdade" no simulado. Quem marcasse "simulado" sem entender acharia que avisou o paciente
@@ -719,7 +726,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Falha na leitura cai no padrão**: personalização não pode derrubar envio
      - 15 testes do renderizador + verificação ponta a ponta: agendamento real gerou lembrete com o texto personalizado e aviso de marcação com o padrão (só o lembrete fora personalizado)
    - [x] **Templates editáveis — tela** (10/08/2026) — aba "Mensagens automáticas" em Configurações, com editor, marcadores clicáveis e pré-visualização com dados de exemplo. Detalhes:
-     - **A prévia mostra o que o paciente recebe *agora*** — com a personalização desligada, exibe o texto padrão, não o rascunho no editor. Mostrar o rascunho como se fosse o envio real era o erro que essa distinção evita
+     - **A prévia mostra o que o paciente recebe _agora_** — com a personalização desligada, exibe o texto padrão, não o rascunho no editor. Mostrar o rascunho como se fosse o envio real era o erro que essa distinção evita
      - **Marcadores entram por clique**, não digitação: `{{paciente}}` escrito à mão é a principal fonte de erro, e marcador inválido é recusado no salvamento
      - **Substituição duplicada no front** (só para a prévia) — pedir a prévia ao servidor a cada tecla seria uma requisição por caractere. Validado que casa com o backend nos casos de borda (espaço nas chaves, maiúsculas, marcador desconhecido, chave simples)
      - **Abas em Configurações**: os textos são longos e têm prévia; empilhados abaixo do formulário esconderiam o botão de salvar dos dados da clínica
@@ -740,7 +747,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **`CANCEL` não cancela sozinho** — só sinaliza para a recepção. Cancelar libera horário e aciona política de remarcação; é decisão da clínica, não de um casamento de texto
      - **Só confirma agendamento futuro, `SCHEDULED`/`CONFIRMED`, que já recebeu lembrete** — sem a última regra, um "ok" solto (resposta a outra conversa) confirmaria a próxima consulta da agenda
      - **Interpreta depois de gravar** — o `create` da `inbound_messages` é o que barra a reentrega do webhook (índice único); interpretar antes faria o mesmo evento repetido confirmar de novo e mandar um segundo recibo
-     - **`intent` e `appointmentId` gravados** na mensagem recebida: é o registro de *por que* um agendamento foi confirmado sozinho. Confirmação automática já nasce lida; o resto fica na caixa de entrada
+     - **`intent` e `appointmentId` gravados** na mensagem recebida: é o registro de _por que_ um agendamento foi confirmado sozinho. Confirmação automática já nasce lida; o resto fica na caixa de entrada
      - 38 testes do interpretador + verificação ao vivo: ambígua → não confirma; "Sim! 👍" → `CONFIRMED` com recibo; segundo "sim" → sem segundo recibo; "preciso remarcar" → sinaliza sem cancelar; número desconhecido → não confirma nada
    - [x] **Recibo de confirmação com os dados da consulta** (13/08/2026) — era uma linha só ("Presença confirmada! ✅ Te esperamos na X") e destoava dos outros templates, que são estruturados. O motivo de mudar não é estética: **é a última mensagem que o paciente recebe antes da consulta**, e a que ele procura na conversa para lembrar do horário — sem os dados, precisava rolar até o lembrete antigo. Agora repete data, hora, procedimento e profissional no mesmo formato do lembrete. `confirm-by-reply` passou a carregar `patient.name`, `professional` e `procedure` na query (só tinha telefone e clínica), para o recibo ser idêntico nos dois caminhos de confirmação. Parâmetro opcional: sem ele, cai no texto curto de antes
    - [x] **Caixa de entrada** (10/08/2026) — aba "Recebidas" em Mensagens, com `GET /inbound-messages`, `PATCH :id/read` e `PATCH read-all`. O webhook já gravava tudo, mas ninguém lia: um "posso levar minha filha?" ficava no banco sem chegar a um humano. Decisões:
@@ -901,7 +908,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - `pricePerExtraProfessionalInCents` e `stripeExtraProfessionalPriceId` continuam no schema e chegam ao frontend via `GET /plans`, mas hoje **nenhum componente do site os lê** — ficam de fato dormentes, prontos para o fluxo explícito de "comprar profissional extra" cogitado no item acima, se algum dia for desenhado
      - `planos.spec.ts`: os testes que passaram a esperar "Essencial + adicional = R$ 124" e "anuncia o preço do adicional no card certo" foram revertidos de volta para o formato anterior ("estourar o teto pula pro próximo plano cheio", "nenhum card anuncia preço de adicional"). 13/13 em `planos.spec.ts`, suíte rodada ao vivo contra o app real (não só specs)
      - **Dado real não corrigido de propósito** — mesma decisão dos dois itens acima: nada de automático em cima da clínica que excedeu enquanto o bug existiu, o alerta de excedente já orienta a agir pelo painel
-   - [x] **Trial com teto e a transição trial → plano pago** (17/08/2026) — 🐞 o buraco que sobrou dos três itens acima, levantado pelo dono do produto: *"se ele cadastrar 10 profissionais no plano grátis, quando ele for para o Solo temos regras corretas?"*. Não tínhamos. O limite só era checado **no cadastro**, então quem já estava acima dele nunca era barrado — o trial liberava profissionais ilimitados e, ao assinar o Solo (1 profissional), a clínica seguia operando com 10 ativos. Nada no backend enxergava esse estado, e a cobrança não batia com a equipe que de fato usava o produto
+   - [x] **Trial com teto e a transição trial → plano pago** (17/08/2026) — 🐞 o buraco que sobrou dos três itens acima, levantado pelo dono do produto: _"se ele cadastrar 10 profissionais no plano grátis, quando ele for para o Solo temos regras corretas?"_. Não tínhamos. O limite só era checado **no cadastro**, então quem já estava acima dele nunca era barrado — o trial liberava profissionais ilimitados e, ao assinar o Solo (1 profissional), a clínica seguia operando com 10 ativos. Nada no backend enxergava esse estado, e a cobrança não batia com a equipe que de fato usava o produto
      - **Trial deixou de ser ilimitado**: teto igual ao do **maior plano ativo** (8, hoje), lido do banco em `resolveTrialProfessionalLimit` — quando o catálogo mudar, o trial acompanha sozinho. Continua mostrando o produto inteiro, mas ninguém mais chega na assinatura com um buraco impossível de fechar bem. Verificado ao vivo: 8 cadastros passam, o 9º recusa com 403
      - **`GET /professionals/over-limit`** (novo) — reporta `overLimit`/`activeCount`/`maxProfessionals`/`excess`. É o backend enxergando um estado que antes só existia de fato, sem ninguém saber
      - **`POST /professionals/over-limit/resolve`** (novo) — a clínica escolhe **quem fica**, não quem sai: lista de "quem sai" chega defasada se alguém mexeu na equipe em outra aba, e ela sairia daqui ainda acima do teto achando que resolveu. Recusa manter mais que o teto (400), id de outra clínica (400) e desativar quem tem agenda futura (409, mesma regra da remoção — consulta órfã é pior que o excedente)
@@ -912,15 +919,15 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Webhook parou de cobrar adicional pelo excedente** e passou a **avisar por e-mail** (`professionalsOverLimitMail`): cobrar ali recriaria pela porta do webhook o mesmo bug revertido horas antes. O texto diz que **ninguém foi desativado nem apagado** antes de pedir a ação — a primeira pergunta de quem recebe isso logo após pagar é "perdi alguém?"
      - **Painel**: o alerta de excedente deixou de só descrever o problema ("desative N profissionais") e passou a **oferecer a ação** — botão "Escolher quem fica" abrindo o diálogo, que lista a equipe inteira (sem paginação nem filtro de busca, senão a clínica escolheria entre um subconjunto sem perceber) e trava o botão até a seleção bater o teto
      - 20 testes novos (`resolve-over-limit`, `get-over-limit-status`, `update-professional` e os ajustados em `create-professional`/`handle-stripe-webhook`); 265/265 na suíte. Verificado ao vivo ponta a ponta com tenant descartável: 8 profissionais no trial → Solo → alerta → diálogo → 7 desativados → alerta some, e os dados de teste removidos depois
-   - [x] **O limite passou a valer na hora de agendar** (17/08/2026) — 🐞 reportado pelo dono do produto olhando o tenant real: *"lá no agendamento aparecem todos os profissionais mesmo vindo do plano grátis para o Solo"*. O g3developer estava com **4 profissionais ativos no plano Solo (1 incluído)** e agendando normalmente com os 4. O item acima só tinha entregue **detecção** (alerta + e-mail + tela de escolha); enquanto a clínica não escolhesse, nada mudava na operação — o plano continuava não valendo nada na prática, que é o mesmo buraco de sempre visto de outro ângulo
+   - [x] **O limite passou a valer na hora de agendar** (17/08/2026) — 🐞 reportado pelo dono do produto olhando o tenant real: _"lá no agendamento aparecem todos os profissionais mesmo vindo do plano grátis para o Solo"_. O g3developer estava com **4 profissionais ativos no plano Solo (1 incluído)** e agendando normalmente com os 4. O item acima só tinha entregue **detecção** (alerta + e-mail + tela de escolha); enquanto a clínica não escolhesse, nada mudava na operação — o plano continuava não valendo nada na prática, que é o mesmo buraco de sempre visto de outro ângulo
      - **`CreateAppointmentUseCase` recusa (403) enquanto houver excedente** (`isOverProfessionalLimit`), e como a página pública **delega a ele**, painel e `/agendar` ficam cobertos pelo mesmo ponto — verificado ao vivo nos dois. Só agendamento **novo**: a agenda já marcada continua de pé, porque cancelar consulta de paciente por causa de plano é punir quem não tem nada com isso
      - **Bloquear em vez de esconder o excedente do dropdown** foi decisão do dono do produto, coerente com as anteriores: esconder faria o sistema escolher quem atende sem dizer. A mensagem do 403 carrega a saída ("Escolher quem fica" ou upgrade), senão a recepção só vê "bloqueado" e liga para o suporte
-     - **`GET /professionals?onlyActive=true`** (novo filtro) — a listagem só filtrava `deletedAt`, então **desativado vinha junto**. A tela de Profissionais *precisa* mostrá-lo (é onde se reativa depois do upgrade), então o filtro é opt-in de quem monta agenda. O frontend fazia `.filter(p => p.isActive)` **depois** de `perPage: 100`: com mais de 100 cadastros, isso descartaria ativos da página seguinte que nunca chegou. `@Transform` no DTO porque query string é texto — sem ele, `onlyActive=false` (string não-vazia) viraria `true` e o filtro faria o oposto do pedido
+     - **`GET /professionals?onlyActive=true`** (novo filtro) — a listagem só filtrava `deletedAt`, então **desativado vinha junto**. A tela de Profissionais _precisa_ mostrá-lo (é onde se reativa depois do upgrade), então o filtro é opt-in de quem monta agenda. O frontend fazia `.filter(p => p.isActive)` **depois** de `perPage: 100`: com mais de 100 cadastros, isso descartaria ativos da página seguinte que nunca chegou. `@Transform` no DTO porque query string é texto — sem ele, `onlyActive=false` (string não-vazia) viraria `true` e o filtro faria o oposto do pedido
      - Formulário de agendamento avisa e desabilita o "Agendar" quando há excedente — deixar o botão ativo só levaria a recepção a preencher tudo para tomar erro no fim
      - 4 testes novos (`create-appointment.use-case.spec.ts`, que não existia); 269/269 na suíte
      - **Tenant real g3developer corrigido** (com autorização explícita do dono do produto — nada em produção): movido de Solo para Profissional (teto 4), o que regulariza os 4 ativos **sem desativar ninguém**
    - [x] **Mensagem interna vazando para o paciente + causa raiz do excedente** (17/08/2026) — 🐞 dois problemas reportados pelo dono do produto no mesmo print da página `/agendar`
-     - **O vazamento (grave).** O bloqueio do item acima usava **uma mensagem só**, e a página pública a mostrava ao paciente: *"Abra Profissionais → Escolher quem fica, ou faça upgrade em Configurações → Assinatura"*. O paciente não tem painel, não assina nada e não pode resolver — é expor pendência comercial da clínica a um terceiro, e ainda mandá-lo a uma tela onde não consegue entrar. Agora são duas: `OVER_LIMIT_BOOKING_MESSAGE` (painel, diz como resolver) e `OVER_LIMIT_PUBLIC_BOOKING_MESSAGE` (paciente: "agenda online indisponível, entre em contato com a clínica"), escolhidas por `origin === ONLINE`
+     - **O vazamento (grave).** O bloqueio do item acima usava **uma mensagem só**, e a página pública a mostrava ao paciente: _"Abra Profissionais → Escolher quem fica, ou faça upgrade em Configurações → Assinatura"_. O paciente não tem painel, não assina nada e não pode resolver — é expor pendência comercial da clínica a um terceiro, e ainda mandá-lo a uma tela onde não consegue entrar. Agora são duas: `OVER_LIMIT_BOOKING_MESSAGE` (painel, diz como resolver) e `OVER_LIMIT_PUBLIC_BOOKING_MESSAGE` (paciente: "agenda online indisponível, entre em contato com a clínica"), escolhidas por `origin === ONLINE`
      - **E o paciente preenchia tudo para falhar no fim**: escolhia horário, digitava nome e WhatsApp, e só descobria no "Confirmar agendamento". `GET booking-options` passou a devolver `bookingBlocked` (booleano **sem motivo** — o paciente não deve saber que é plano) e a página mostra "Agenda online indisponível" com o telefone da clínica, em vez do formulário. O subtítulo "Escolha o horário que funciona para você" também sai, senão contradiz o card logo abaixo
      - **Causa raiz atacada: o plano escolhido no site agora vale como teto durante o trial.** `POST /auth/register` aceita `planKey` (`/cadastro?plano=ESSENCIAL`, vindo do card de preço) e grava `Tenant.planId` **sem cobrar nada** — `subscriptionStatus` segue `TRIALING`, sem Stripe, e os 14 dias continuam contando. Assim a clínica bate no limite **no dia 1 do teste** ("o plano Solo permite até 1"), quando trocar de plano ainda é decisão barata, em vez de montar a equipe inteira e descobrir o problema depois de pagar. Verificado ao vivo: cadastro com `planKey: SOLO` → 1º profissional 201, 2º **403 durante o trial**, e nenhuma assinatura criada no Stripe. `planKey` desconhecida é **ignorada**, nunca recusa o cadastro — perder conta nova por causa de URL torta seria o pior desfecho de um fluxo de aquisição
      - **A alternativa "zerar tudo na virada" foi descartada** (cogitada pelo dono do produto, discutida e recusada por ele): apagar no momento do pagamento entrega um sistema vazio a quem acabou de comprar, faz desaparecer agendamento futuro de paciente real que já recebeu confirmação por WhatsApp, e destrói prontuário/anamnese/foto clínica — dado de saúde que a clínica pode ser obrigada a guardar (LGPD). Travar o teto desde o começo do teste resolve a mesma coisa sem apagar nada
@@ -936,26 +943,26 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **`PlanFeatureGuard` + `@RequiresPlanFeature(...)`** — feature toda-ou-nada, aplicada no controller inteiro. Tenant em trial (sem `planId`) sempre passa
      - **Limite de profissionais dentro do `CreateProfessionalUseCase`** (não um guard) — é um contador, não um booleano; a regra de negócio (contar `deletedAt: null`, ignorar quem foi removido) vive na camada de aplicação, não espalhada num guard genérico
      - `hasAiMessages` do `Plan` existe no schema mas **não trava nada ainda** — débito consciente: `Tenant.aiMessagesEnabled` já é um toggle livre em Configurações, e cruzar os dois exige decidir qual vence, o que não foi feito ainda
-   - [x] **Diferenciais reais por plano** (11/08/2026) — **Intermediário e Avançado eram idênticos no banco**: mesmos limites, mesmas features, R$110/mês de diferença por nada. Nenhum ajuste de UI resolvia — as colunas mostravam o mesmo porque *eram* o mesmo. Três flags novas em `Plan` (`hasWaitlist`, `hasDashboard`, `hasMedicalRecords`) passaram a vender módulos que o backend **já entregava e nenhum plano cobrava**:
+   - [x] **Diferenciais reais por plano** (11/08/2026) — **Intermediário e Avançado eram idênticos no banco**: mesmos limites, mesmas features, R$110/mês de diferença por nada. Nenhum ajuste de UI resolvia — as colunas mostravam o mesmo porque _eram_ o mesmo. Três flags novas em `Plan` (`hasWaitlist`, `hasDashboard`, `hasMedicalRecords`) passaram a vender módulos que o backend **já entregava e nenhum plano cobrava**:
 
-     | | Básico | Intermediário | Avançado |
-     | --- | --- | --- | --- |
-     | Profissionais | 2 | ilimitados | ilimitados |
-     | Predição de no-show | ❌ | ✅ | ✅ |
-     | Lista de espera | ❌ | ✅ | ✅ |
-     | Painel com gráficos | ❌ | ✅ | ✅ |
-     | Mensagens com IA | ❌ | ✅ | ✅ |
-     | Prontuário | ❌ | ❌ | ✅ |
-
+     |                     | Básico | Intermediário | Avançado   |
+     | ------------------- | ------ | ------------- | ---------- |
+     | Profissionais       | 2      | ilimitados    | ilimitados |
+     | Predição de no-show | ❌     | ✅            | ✅         |
+     | Lista de espera     | ❌     | ✅            | ✅         |
+     | Painel com gráficos | ❌     | ✅            | ✅         |
+     | Mensagens com IA    | ❌     | ✅            | ✅         |
+     | Prontuário          | ❌     | ❌            | ✅         |
      - **Prontuário como diferencial do topo** porque é exatamente o que o concorrente cobra à parte (R$ 29/mês avulso) — ver "Modelo de preço deles"
      - **Agendamento online fica em todos os planos**, de propósito: é a feature que traz paciente novo sem trabalho da recepção, e travá-la no Básico reduziria o valor de entrada justo onde já estamos caros vs. concorrência. Além disso é rota pública (`/public/:subdomain`), então travá-la exigiria resolver o plano pelo subdomínio, não pelo token
      - `RequiresPlanFeature` deixou de ter uma união escrita à mão e passou a **derivar o tipo do próprio `Plan`** (`{[K in keyof Plan]: Plan[K] extends boolean ? K : never}`) — flag nova no schema já fica disponível sem ninguém lembrar de atualizar lista
      - Testado ao vivo nos **quatro** planos (12/08/2026): Solo e Básico recusam 403 em `waitlist`, `dashboard/summary`, `prediction` e `anamnesis`; Intermediário libera os três primeiros e recusa prontuário; Avançado libera tudo. Limite de profissionais respeitado em cada faixa (Solo recusa o 2º, Básico o 3º), com o nome do plano na mensagem
+
    - [x] 🐞 **`prisma:seed:clean` quebrado** (12/08/2026) — `clean()` apagava `procedure` antes de `waitlist_entries`, que a referencia (`waitlist_entries_procedure_id_fkey`). Faltavam três tabelas criadas depois que a ordem de exclusão foi escrita: `waitlistEntry`, `inboundMessage` e `messageTemplate`. Recriar o banco do zero era impossível desde que a lista de espera entrou
    - [x] **Tela "Assinatura" em `/painel/configuracoes`** (`crivo-fe`) — mostra plano atual, alerta por status (`TRIALING`/`PAST_DUE`/`CANCELED`), grid dos 3 planos com o de origem destacado (`isCurrent`) e botão que chama `POST /billing/checkout` e redireciona pro Stripe. Restrito a ADMIN nas duas camadas (backend `@Roles` + frontend desabilita o botão e mostra aviso)
    - [x] **Site institucional lendo `GET /plans` de verdade** — `/planos` e a home pararam de usar `_data/pricing-plans.ts` (removido) e passaram a buscar os planos reais via `usePlans()`, com um mapeador (`plan-to-pricing-card.ts`) que nunca hardcoda preço. Como consequência, os nomes dos planos no site mudaram de Essencial/Clínica/Rede para Básico/Intermediário/Avançado — os antigos prometiam cobrança por assento (+R$49/profissional) e multi-unidade, nenhum dos dois existe no backend; decisão explícita do dono do produto de alinhar o marketing ao que existe, em vez de manter a promessa e re-seedar nomes. Página `(website)` ganhou `PublicQueryProvider` (React Query sem a lógica de logout automático do provider do painel — não faz sentido numa página sem sessão)
    - [x] Testado ao vivo, ponta a ponta: checkout completado com cartão de teste (`4242...`) via Playwright → webhook grava `subscriptionStatus: ACTIVE` + `planId` + `stripeSubscriptionId` → cancelamento via API → webhook grava `CANCELED` → `GET /patients` passa a responder 403 com mensagem clara. Tela de assinatura testada como ADMIN (checkout redireciona pro Stripe de verdade) e como STAFF (botão desabilitado, aviso visível)
-   - [x] **Expiração automática do trial** (12/08/2026) — `ExpireTrialsCron`, primeiro cron do projeto (`ScheduleModule` nunca tinha sido registrado). Roda 3h da manhã porque o efeito é bloquear acesso: fazê-lo no expediente tiraria a agenda da recepção no meio de um atendimento. O `SubscriptionGuard` já marcava `EXPIRED` em request-time, mas só para quem *tenta usar* — clínica que parou de entrar ficava com o status errado no banco por tempo indeterminado, distorcendo qualquer contagem de trials vencidos. Idempotente e filtrado por `TRIALING`, o que protege quem paga em dia. 3 testes
+   - [x] **Expiração automática do trial** (12/08/2026) — `ExpireTrialsCron`, primeiro cron do projeto (`ScheduleModule` nunca tinha sido registrado). Roda 3h da manhã porque o efeito é bloquear acesso: fazê-lo no expediente tiraria a agenda da recepção no meio de um atendimento. O `SubscriptionGuard` já marcava `EXPIRED` em request-time, mas só para quem _tenta usar_ — clínica que parou de entrar ficava com o status errado no banco por tempo indeterminado, distorcendo qualquer contagem de trials vencidos. Idempotente e filtrado por `TRIALING`, o que protege quem paga em dia. 3 testes
    - [x] **Cota de mensagens no trial** (12/08/2026) — 30 mensagens. Medi o custo real antes de escolher o número: com o volume do seed (~19 msgs/15 dias numa agenda de 30 consultas) e utility a ~R$0,04–0,08, um trial de uso pesado custaria R$5–10. Trinta mensagens dão para percorrer o produto inteiro (marcar, receber aviso, lembrete e confirmar) mantendo o custo por trial abaixo de R$3. **O custo unitário nunca foi o problema — é o volume de contas que não convertem.**
    - [x] **WhatsApp obrigatório no cadastro** (12/08/2026) — o formulário não pedia telefone nem e-mail da clínica, então clínica criada pelo cadastro nascia sem nenhum contato próprio (só o e-mail do usuário admin). Agora `phone` é obrigatório em `RegisterDto` (`^\d{10,11}$`) e no schema Zod do frontend
    - [x] 🔁 **Upgrade voltou a passar pelo checkout do Stripe** (13/08/2026) — a correção anterior (trocar o preço da assinatura via `subscriptions.update`) resolvia a duplicidade, mas tirava a tela de pagamento **e** silenciava o e-mail de confirmação: o `planId` era gravado antes do webhook chegar, então `planChanged` dava `false` e `checkout.session.completed` não disparava nada. Agora:
@@ -1036,7 +1043,7 @@ devolve faixa + os motivos. Não há tabela: o cálculo é sob demanda sobre
 `Appointment`.
 
 **O que ainda não existe é o diferencial**: agir por faixa. Hoje a regra
-*informa* o risco; ninguém dispara nada a partir dele. Um concorrente que
+_informa_ o risco; ninguém dispara nada a partir dele. Um concorrente que
 mostra "risco alto" numa tela e não faz nada com isso está no mesmo lugar
 que nós.
 
@@ -1045,13 +1052,13 @@ abaixo.
 
 ### O que já está sendo coletado
 
-| Sinal | Onde | Por que importa |
-| --- | --- | --- |
-| `CANCELLED` ≠ `NO_SHOW` | `Appointment.status` | **Cancelar é aviso; faltar é o problema.** Só a segunda categoria é o alvo da predição — separá-las desde o schema é o que torna o dado treinável depois |
-| `confirmedAt` | `Appointment` | O paciente respondeu ao lembrete? Não responder é candidato natural a preditor |
-| Histórico por paciente | `Appointment.patientId` | Quem já faltou tende a faltar de novo — é o sinal mais forte na literatura |
-| Horário e dia | `startsAt` | Primeiro horário da manhã e véspera de feriado têm perfil de falta diferente |
-| Procedimento e preço | `procedureId`, `priceInCents` | Ticket alto e procedimento eletivo têm risco diferente de retorno de rotina |
+| Sinal                   | Onde                          | Por que importa                                                                                                                                          |
+| ----------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CANCELLED` ≠ `NO_SHOW` | `Appointment.status`          | **Cancelar é aviso; faltar é o problema.** Só a segunda categoria é o alvo da predição — separá-las desde o schema é o que torna o dado treinável depois |
+| `confirmedAt`           | `Appointment`                 | O paciente respondeu ao lembrete? Não responder é candidato natural a preditor                                                                           |
+| Histórico por paciente  | `Appointment.patientId`       | Quem já faltou tende a faltar de novo — é o sinal mais forte na literatura                                                                               |
+| Horário e dia           | `startsAt`                    | Primeiro horário da manhã e véspera de feriado têm perfil de falta diferente                                                                             |
+| Procedimento e preço    | `procedureId`, `priceInCents` | Ticket alto e procedimento eletivo têm risco diferente de retorno de rotina                                                                              |
 
 ### Volume real (10/08/2026, banco de desenvolvimento)
 
@@ -1101,14 +1108,14 @@ O site institucional (`crivo-fe`, grupo de rotas `(website)`) hoje é
 estático: apresenta o produto, lista planos como texto e tem formulário de
 contato. Duas lacunas mapeadas:
 
-| Item | Situação | Observação |
-| --- | --- | --- |
-| **Textos do site desalinhados do produto** | ✅ corrigido em 10/08/2026 — o site prometia reativação de pacientes e painel de ocupação, que não existem, e omitia lista de espera e agendamento online, que existem. Auditar o site contra o backend precisa virar hábito a cada feature nova |
-| **Cadastro self-service (`/cadastro`)** | ✅ entregue em 11/08/2026 — o formulário de contato ("falamos em até 1 dia útil") virou CTA para uma página de cadastro real. Usa `POST /auth/register`, que já existia mas não devolvia token; o frontend contorna chamando login em seguida com as mesmas credenciais, sem mudar o backend. Todo CTA "Comece grátis" do site (inclusive o antigo "Rede — Falar com vendas") aponta para lá — decisão explícita de manter **inteiramente automático**, sem etapa manual de vendas |
-| **Trial real (14 dias, sem cartão)** | ✅ entregue em 11/08/2026 — deixou de ser só copy. `Tenant.subscriptionStatus`/`trialEndsAt` gravados na hora do cadastro; `TrialGuard` bloqueia (403) todo controller autenticado do painel quando vence, exceto `GET /tenants/me` (de propósito — é de lá que o painel lê a data para avisar a clínica). Sem cron: o guard checa `trialEndsAt` em request-time e marca `EXPIRED` no banco de forma preguiçosa, no primeiro request depois do vencimento. Frontend mostra banner nos últimos 3 dias e mensagem clara quando bloqueado (`crivo-fe/src/app/(dashboard)/_components/trial-banner.tsx`) |
+| Item                                           | Situação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Observação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Textos do site desalinhados do produto**     | ✅ corrigido em 10/08/2026 — o site prometia reativação de pacientes e painel de ocupação, que não existem, e omitia lista de espera e agendamento online, que existem. Auditar o site contra o backend precisa virar hábito a cada feature nova                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Cadastro self-service (`/cadastro`)**        | ✅ entregue em 11/08/2026 — o formulário de contato ("falamos em até 1 dia útil") virou CTA para uma página de cadastro real. Usa `POST /auth/register`, que já existia mas não devolvia token; o frontend contorna chamando login em seguida com as mesmas credenciais, sem mudar o backend. Todo CTA "Comece grátis" do site (inclusive o antigo "Rede — Falar com vendas") aponta para lá — decisão explícita de manter **inteiramente automático**, sem etapa manual de vendas                                                                                                                                                                                        |
+| **Trial real (14 dias, sem cartão)**           | ✅ entregue em 11/08/2026 — deixou de ser só copy. `Tenant.subscriptionStatus`/`trialEndsAt` gravados na hora do cadastro; `TrialGuard` bloqueia (403) todo controller autenticado do painel quando vence, exceto `GET /tenants/me` (de propósito — é de lá que o painel lê a data para avisar a clínica). Sem cron: o guard checa `trialEndsAt` em request-time e marca `EXPIRED` no banco de forma preguiçosa, no primeiro request depois do vencimento. Frontend mostra banner nos últimos 3 dias e mensagem clara quando bloqueado (`crivo-fe/src/app/(dashboard)/_components/trial-banner.tsx`)                                                                      |
 | **`/planos` com 4 colunas (Teste + 3 planos)** | ✅ entregue em 11/08/2026 — a grade abre com um card de **Teste grátis** (14 dias, sem cartão) seguido de Essencial (R$ 149), Clínica (R$ 289 + R$ 49/profissional extra) e Rede (sob consulta), no mesmo padrão visual do Snap Financial. Os valores seguem sendo **hipótese não validada** (ver abaixo) e o rodapé da grade diz isso; nenhum CTA leva a checkout — todos vão para `/cadastro`, que inicia o trial. A página chegou a ser reduzida a um card único de trial no mesmo dia, revertido a pedido do dono do produto. Features inexistentes ("Reativação inteligente", "Painel de métricas de ocupação") **não** voltaram: a auditoria de 10/08 segue valendo |
-| **Chat com IA (DeepSeek)** | ❌ **Descartado em 12/08/2026** | Atendimento/qualificação do visitante na landing. Recusado: conversa com visitante anônimo é custo variável sem dono, e uma IA que fala de preço/horário para quem ainda não é cliente erra caro. O `DeepSeekTextGenerator` continua onde tem função verificável (reescrever lembrete, com validação literal dos dados) |
-| **Planos pagos com Stripe** | 🟢 **checkout, limites, tela de assinatura e site conectado — 11/08/2026** | Ver detalhe completo em "Prioridades revisadas → Fase 3 → `billing`". O site (`/planos` e a home) lê `GET /plans` de verdade — nomes migraram de Essencial/Clínica/Rede para Básico/Intermediário/Avançado, batendo com o Stripe Dashboard. **Antes de anunciar preço em produção**: os R$149/289/399 seguem sendo placeholder — migraram de "hipótese no README" para "produto real no Stripe Dashboard", mas não foram validados com cliente nenhum. **Débito**: `hasAiMessages` do `Plan` não trava nada ainda — cruzar com `Tenant.aiMessagesEnabled` (toggle livre hoje) fica pendente |
+| **Chat com IA (DeepSeek)**                     | ❌ **Descartado em 12/08/2026**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Atendimento/qualificação do visitante na landing. Recusado: conversa com visitante anônimo é custo variável sem dono, e uma IA que fala de preço/horário para quem ainda não é cliente erra caro. O `DeepSeekTextGenerator` continua onde tem função verificável (reescrever lembrete, com validação literal dos dados)                                                                                                                                                                                                                                                                     |
+| **Planos pagos com Stripe**                    | 🟢 **checkout, limites, tela de assinatura e site conectado — 11/08/2026**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Ver detalhe completo em "Prioridades revisadas → Fase 3 → `billing`". O site (`/planos` e a home) lê `GET /plans` de verdade — nomes migraram de Essencial/Clínica/Rede para Básico/Intermediário/Avançado, batendo com o Stripe Dashboard. **Antes de anunciar preço em produção**: os R$149/289/399 seguem sendo placeholder — migraram de "hipótese no README" para "produto real no Stripe Dashboard", mas não foram validados com cliente nenhum. **Débito**: `hasAiMessages` do `Plan` não trava nada ainda — cruzar com `Tenant.aiMessagesEnabled` (toggle livre hoje) fica pendente |
 
 > ⚠️ Ligar o Stripe congela publicamente uma tabela de preços que este mesmo
 > documento classifica como não validada e acima da entrada do mercado.
@@ -1120,18 +1127,18 @@ contato. Duas lacunas mapeadas:
 
 Com o panorama completo, a hipótese do README (R$ 149 / R$ 289 + R$ 49 por profissional) fica **acima da porta de entrada de todo o mercado**:
 
-| | Mercado | Nossa hipótese |
-| --- | --- | --- |
-| Entrada | R$ 39–120/mês | — (não temos) |
-| Solo | R$ 89–166/mês | R$ 149/mês (até 2 profissionais) |
-| Médio | R$ 289–370/mês | R$ 289/mês + R$ 49/profissional |
-| Avançado | R$ 399–660/mês | Sob consulta |
+|          | Mercado        | Nossa hipótese                   |
+| -------- | -------------- | -------------------------------- |
+| Entrada  | R$ 39–120/mês  | — (não temos)                    |
+| Solo     | R$ 89–166/mês  | R$ 149/mês (até 2 profissionais) |
+| Médio    | R$ 289–370/mês | R$ 289/mês + R$ 49/profissional  |
+| Avançado | R$ 399–660/mês | Sob consulta                     |
 
 Quatro observações:
 
 - **Não temos porta de entrada.** A faixa R$ 39–120 é onde o autônomo entra e depois cresce. Começar em R$ 149 nos tira da primeira comparação que o cliente faz.
 - **Cobrança por assento nos torna caros justamente no cliente bom.** Com 5 profissionais: R$ 289 + 3×49 = **R$ 436**, contra R$ 362 (Estetia) e R$ 369,90 (Clinicorp Premium).
-- **Trial sem cartão é padrão de mercado.** Não ter plano gratuito segue certo, mas *trial* ≠ *free* — sem ele perdemos a comparação direta.
+- **Trial sem cartão é padrão de mercado.** Não ter plano gratuito segue certo, mas _trial_ ≠ _free_ — sem ele perdemos a comparação direta.
 - **O custo do WhatsApp oficial precisa estar no preço.** A Meta cobra por conversa; a história da recepcionista mostra o que acontece quando esse custo estoura no colo da clínica. Franquia + excedente transparente, decidido antes de lançar.
 
 **Decisões de cobrança — `billing` já implementado (11–12/08/2026):**
@@ -1147,24 +1154,24 @@ Quatro observações:
 
 ## Riscos
 
-| Risco | Mitigação |
-| --- | --- |
-| Concorrente já tem produto no ar e nós não | Focar Fase 1 e não dispersar em features de Fase 3 |
-| Predição sem dado suficiente para treinar | Começar com regra determinística. **Hoje há só 4 `NO_SHOW` no banco de dev** (06/08/2026) — não treina nada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje) |
-| Dado de teste poluindo o histórico de predição | Todo o histórico atual vem do `seed.ts`, não de comportamento de paciente — e some a cada `SEED_TYPE=clean`. Só serve para desenvolver a regra; treinar exige volume real de produção |
-| Expor preço no Stripe antes de validar | O checkout congela publicamente uma tabela que este documento classifica como hipótese acima do mercado. Validar preço **antes** de ligar o pagamento |
-| Multi-unidade quebrar o isolamento por tenant | `TenantContextGuard` assume um tenant por token. Hierarquia (`Organization` → `Tenant`) precisa ser desenhada antes, não adaptada depois — é onde vazamento entre clínicas apareceria |
-| Custo de WhatsApp (Meta cobra por conversa) | Modelar franquia + excedente antes de lançar, não depois |
-| Migração de clínica que já usa concorrente | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar |
-| Mercado fragmentado, entrada a partir de R$ 39 | Não competir por preço; vender confiabilidade de entrega |
-| ~~Instância do WhatsApp única para o servidor inteiro~~ | ✅ **Resolvido em 13/08/2026.** Era um bloqueio de multi-tenant: `EVOLUTION_INSTANCE` é variável de ambiente, então **todas as clínicas enviariam pelo mesmo número** — o paciente da Clínica A receberia mensagem do número da Clínica B. Hoje não aparece porque só há uma clínica real. Resolver exige: campo `evolutionInstance` por `Tenant`, o `MessageProviderResolver` passando a instância ao provider (hoje ele resolve só *qual* provider), e uma tela para a clínica parear o próprio número por QR code. **Vale a mesma decisão para a Meta**: lá é um `phone_number_id` por clínica, mesma modelagem. Agora `Tenant.evolutionInstance` guarda o número de cada clínica, o `MessageProviderResolver` devolve **provider + remetente** juntos (são a mesma decisão), e o `PATCH /tenants/me` valida o formato — nome com barra viraria path traversal na URL da Evolution. `null` cai no padrão do servidor, aceitável enquanto há uma clínica. **Pareamento por QR code entregue em 14/08/2026** — e o campo digitável saiu do `PATCH /tenants/me`: além de ser uma pergunta que nenhum dono de clínica sabe responder, era texto livre que permitia digitar o nome da instância de **outra clínica** e passar a enviar pelo WhatsApp dela. O nome agora é derivado do `tenantId` e nunca sai do backend |
-| **Evolution API em produção** (decidido em 05/08/2026 por custo) | ⚠️ **Risco aceito, não mitigado.** Banimento é permanente e sem recurso — perderíamos o número junto com a agenda do cliente. Mitigações possíveis enquanto durar: número dedicado (nunca o pessoal do dono), volume baixo, opt-in real do paciente, e a lista de falhas já existente para a recepção ligar. Migrar para a Meta assim que houver caixa é o plano, e o código já é plugável (`MESSAGING_PROVIDER`), então a troca é de env var, não de refactor |
-| Meta mudar preço ou política de conversa | Repassar como excedente transparente, nunca absorver em silêncio |
-| Custo do DeepSeek por mensagem (feature de IA opcional) | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano |
-| IA alucinar ou distorcer um dado da mensagem | **Mitigado por design:** prompt restringe a redigir, nunca a decidir fato; validação pós-geração confere nome/data/hora/link literalmente antes de aceitar o texto — se algo faltar, cai no template fixo |
-| **Webhook do Stripe apontando para rota inexistente** (dev) | ⚠️ **Diagnosticado em 13/08/2026.** O `stripe listen` estava com `--forward-to localhost:3333/stripe/webhook`, mas a rota é **`/billing/webhook`** — todo pagamento de teste ia para um 404. O sintoma engana: o checkout completa, o Stripe cobra de verdade, e o banco fica em `TRIALING` como se nada tivesse acontecido. O `.env.example` já documenta o comando certo. Em produção não se aplica (a URL é cadastrada no dashboard) |
-| **Link de confirmação apontando para túnel morto** (dev) | ⚠️ **Mitigado por script** (13/08/2026). O `/c/:token` que vai no WhatsApp é montado com `PUBLIC_APP_URL`, e em dev isso é um túnel efêmero cuja URL muda a cada restart — 9 mensagens chegaram a sair com um subdomínio morto (`DNS_PROBE_FINISHED_NXDOMAIN`). `./tunnel.sh` sobe o ngrok, grava a URL nova no `.env` e restaura ao sair. **Precisa reiniciar o processo do backend** — verificado que `--watch` NÃO basta: o `ConfigService` lê o `.env` uma vez no boot do processo, e o watch recarrega os módulos mantendo o mesmo processo Node. Em produção o problema não existe: a URL é fixa. **Cloudflare não é opção nesta rede** (porta 7844 bloqueada em TCP e UDP) |
-| **IA no WhatsApp virando padrão de mercado** (Clinicorp, Avec, Belle — 2026) | 🔴 **Risco subiu de nível em 13/08/2026.** O sinal que este documento mandava monitorar ("IA chegar na faixa de entrada") **já aconteceu**: não é mais só a Clinicorp Premium (R$ 369,90) — Avec e Belle Software, ambos de perfil salão/estética pequena, já anunciam agendamento e resposta por IA. Segue **não mitigado**, e a resposta continua sendo não copiar: um agente que marca em cima de outro paciente destrói a confiabilidade que o produto vende. Mas o argumento "ninguém tem IA nessa faixa" morreu. Reavaliar escopo estreito (só agendamento, com confirmação humana) **assim que houver cliente pagante** |
+| Risco                                                                        | Mitigação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Concorrente já tem produto no ar e nós não                                   | Focar Fase 1 e não dispersar em features de Fase 3                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Predição sem dado suficiente para treinar                                    | Começar com regra determinística. **Hoje há só 4 `NO_SHOW` no banco de dev** (06/08/2026) — não treina nada. Ver [Predição](#predição--o-que-existe-de-verdade-hoje)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Dado de teste poluindo o histórico de predição                               | Todo o histórico atual vem do `seed.ts`, não de comportamento de paciente — e some a cada `SEED_TYPE=clean`. Só serve para desenvolver a regra; treinar exige volume real de produção                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Expor preço no Stripe antes de validar                                       | O checkout congela publicamente uma tabela que este documento classifica como hipótese acima do mercado. Validar preço **antes** de ligar o pagamento                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Multi-unidade quebrar o isolamento por tenant                                | `TenantContextGuard` assume um tenant por token. Hierarquia (`Organization` → `Tenant`) precisa ser desenhada antes, não adaptada depois — é onde vazamento entre clínicas apareceria                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Custo de WhatsApp (Meta cobra por conversa)                                  | Modelar franquia + excedente antes de lançar, não depois                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Migração de clínica que já usa concorrente                                   | Importador de pacientes via CSV — 🟢 entregue, com prévia antes de gravar                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Mercado fragmentado, entrada a partir de R$ 39                               | Não competir por preço; vender confiabilidade de entrega                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ~~Instância do WhatsApp única para o servidor inteiro~~                      | ✅ **Resolvido em 13/08/2026.** Era um bloqueio de multi-tenant: `EVOLUTION_INSTANCE` é variável de ambiente, então **todas as clínicas enviariam pelo mesmo número** — o paciente da Clínica A receberia mensagem do número da Clínica B. Hoje não aparece porque só há uma clínica real. Resolver exige: campo `evolutionInstance` por `Tenant`, o `MessageProviderResolver` passando a instância ao provider (hoje ele resolve só _qual_ provider), e uma tela para a clínica parear o próprio número por QR code. **Vale a mesma decisão para a Meta**: lá é um `phone_number_id` por clínica, mesma modelagem. Agora `Tenant.evolutionInstance` guarda o número de cada clínica, o `MessageProviderResolver` devolve **provider + remetente** juntos (são a mesma decisão), e o `PATCH /tenants/me` valida o formato — nome com barra viraria path traversal na URL da Evolution. `null` cai no padrão do servidor, aceitável enquanto há uma clínica. **Pareamento por QR code entregue em 14/08/2026** — e o campo digitável saiu do `PATCH /tenants/me`: além de ser uma pergunta que nenhum dono de clínica sabe responder, era texto livre que permitia digitar o nome da instância de **outra clínica** e passar a enviar pelo WhatsApp dela. O nome agora é derivado do `tenantId` e nunca sai do backend |
+| **Evolution API em produção** (decidido em 05/08/2026 por custo)             | ⚠️ **Risco aceito, não mitigado.** Banimento é permanente e sem recurso — perderíamos o número junto com a agenda do cliente. Mitigações possíveis enquanto durar: número dedicado (nunca o pessoal do dono), volume baixo, opt-in real do paciente, e a lista de falhas já existente para a recepção ligar. Migrar para a Meta assim que houver caixa é o plano, e o código já é plugável (`MESSAGING_PROVIDER`), então a troca é de env var, não de refactor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Meta mudar preço ou política de conversa                                     | Repassar como excedente transparente, nunca absorver em silêncio                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Custo do DeepSeek por mensagem (feature de IA opcional)                      | Baixo por chamada, mas escala com volume — medir custo real por clínica antes de decidir se entra na franquia padrão ou é add-on pago do plano                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| IA alucinar ou distorcer um dado da mensagem                                 | **Mitigado por design:** prompt restringe a redigir, nunca a decidir fato; validação pós-geração confere nome/data/hora/link literalmente antes de aceitar o texto — se algo faltar, cai no template fixo                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Webhook do Stripe apontando para rota inexistente** (dev)                  | ⚠️ **Diagnosticado em 13/08/2026.** O `stripe listen` estava com `--forward-to localhost:3333/stripe/webhook`, mas a rota é **`/billing/webhook`** — todo pagamento de teste ia para um 404. O sintoma engana: o checkout completa, o Stripe cobra de verdade, e o banco fica em `TRIALING` como se nada tivesse acontecido. O `.env.example` já documenta o comando certo. Em produção não se aplica (a URL é cadastrada no dashboard)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Link de confirmação apontando para túnel morto** (dev)                     | ⚠️ **Mitigado por script** (13/08/2026). O `/c/:token` que vai no WhatsApp é montado com `PUBLIC_APP_URL`, e em dev isso é um túnel efêmero cuja URL muda a cada restart — 9 mensagens chegaram a sair com um subdomínio morto (`DNS_PROBE_FINISHED_NXDOMAIN`). `./tunnel.sh` sobe o ngrok, grava a URL nova no `.env` e restaura ao sair. **Precisa reiniciar o processo do backend** — verificado que `--watch` NÃO basta: o `ConfigService` lê o `.env` uma vez no boot do processo, e o watch recarrega os módulos mantendo o mesmo processo Node. Em produção o problema não existe: a URL é fixa. **Cloudflare não é opção nesta rede** (porta 7844 bloqueada em TCP e UDP)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **IA no WhatsApp virando padrão de mercado** (Clinicorp, Avec, Belle — 2026) | 🔴 **Risco subiu de nível em 13/08/2026.** O sinal que este documento mandava monitorar ("IA chegar na faixa de entrada") **já aconteceu**: não é mais só a Clinicorp Premium (R$ 369,90) — Avec e Belle Software, ambos de perfil salão/estética pequena, já anunciam agendamento e resposta por IA. Segue **não mitigado**, e a resposta continua sendo não copiar: um agente que marca em cima de outro paciente destrói a confiabilidade que o produto vende. Mas o argumento "ninguém tem IA nessa faixa" morreu. Reavaliar escopo estreito (só agendamento, com confirmação humana) **assim que houver cliente pagante**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ---
 
