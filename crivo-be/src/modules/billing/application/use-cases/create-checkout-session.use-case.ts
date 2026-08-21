@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SubscriptionStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { StripeService } from '../../infrastructure/stripe/stripe.service';
@@ -19,6 +20,21 @@ export type CreateCheckoutSessionInput = {
  */
 export type CheckoutOrChangeResult =
   { kind: 'checkout'; url: string } | { kind: 'changed'; message: string };
+
+/**
+ * Assinatura "viva" é a que está cobrando (ou devendo): só nela o plano
+ * corrente é o que o cliente paga hoje e vale a troca na mesma assinatura.
+ *
+ * `CANCELED`/`EXPIRED` não contam — sem assinatura ativa, escolher um plano
+ * precisa abrir checkout novo (reassinatura). `TRIALING` também não:
+ * `planId` escolhido no cadastro é só teto de trial, nunca pagamento.
+ */
+function isLiveSubscription(status: SubscriptionStatus): boolean {
+  return (
+    status === SubscriptionStatus.ACTIVE ||
+    status === SubscriptionStatus.PAST_DUE
+  );
+}
 
 /**
  * Abre o checkout de assinatura para um plano específico.
@@ -54,22 +70,37 @@ export class CreateCheckoutSessionUseCase {
       );
     }
 
-    if (tenant.planId === plan.id) {
+    if (
+      tenant.planId === plan.id &&
+      isLiveSubscription(tenant.subscriptionStatus)
+    ) {
       throw new BadRequestException('Este já é o plano contratado.');
     }
 
     /**
-     * **Downgrade** não passa pelo checkout: o cliente já pagou o mês do
-     * plano maior, e cobrar de novo para descer de plano seria absurdo. A
-     * assinatura existente é atualizada e a troca vale no fim do ciclo.
+     * Com assinatura existente, a troca é feita na MESMA assinatura — nunca
+     * se abre checkout novo, que criaria uma segunda assinatura ativa e
+     * cobraria as duas (aconteceu: três simultâneas, R$ 727/mês).
      *
-     * **Upgrade e primeira assinatura** vão para o checkout do Stripe: é onde
-     * o cliente vê o que está sendo cobrado e confirma o pagamento. A
-     * assinatura anterior é cancelada pelo webhook, quando a nova confirma —
-     * ver `handleCheckoutCompleted`. Sem isso ficariam duas ativas e o
-     * cliente pagaria as duas (aconteceu: três simultâneas, R$ 727/mês).
+     * Upgrade e downgrade diferem só no momento da cobrança:
+     * - **Upgrade** (immediate): cobra a **diferença proporcional** na hora
+     *   (`proration_behavior: always_invoice`) e o plano novo vale já. Antes
+     *   o upgrade ia para o checkout, que cria assinatura NOVA cobrando o
+     *   mês cheio do plano novo E cancela a antiga sem crédito — o cliente
+     *   pagava o mês inteiro do novo + perdia o resto do já pago (bug de
+     *   20/08/2026).
+     * - **Downgrade** (immediate: false): `proration_behavior: none` — o
+     *   cliente já pagou o mês do plano maior e mantém o acesso até o fim do
+     *   ciclo; quem grava o plano novo é o webhook `customer.subscription.updated`.
+     *
+     * Só a **primeira assinatura** passa pelo checkout (é onde o cliente vê
+     * o valor e confirma o pagamento).
      */
-    if (tenant.stripeSubscriptionId && tenant.planId) {
+    if (
+      tenant.stripeSubscriptionId &&
+      tenant.planId &&
+      isLiveSubscription(tenant.subscriptionStatus)
+    ) {
       const current = await this.prisma.plan.findUnique({
         where: { id: tenant.planId },
         select: { name: true, priceInCents: true, stripePriceId: true },
@@ -77,19 +108,27 @@ export class CreateCheckoutSessionUseCase {
 
       const isDowngrade = !!current && plan.priceInCents < current.priceInCents;
 
-      if (isDowngrade) {
-        if (!current.stripePriceId) {
-          throw new BadRequestException(
-            'O plano atual não tem preço configurado no Stripe.',
-          );
-        }
+      if (current && current.stripePriceId) {
+        return isDowngrade
+          ? this.scheduleDowngrade(
+              tenant.stripeSubscriptionId,
+              plan.name,
+              current.stripePriceId,
+              plan.stripePriceId,
+              current.name,
+            )
+          : this.applyUpgrade(
+              tenant.stripeSubscriptionId,
+              plan.name,
+              current.stripePriceId,
+              plan.stripePriceId,
+            );
+      }
 
-        return this.scheduleDowngrade(
-          tenant.stripeSubscriptionId,
-          plan.name,
-          current.stripePriceId,
-          plan.stripePriceId,
-          current.name,
+      // Plano atual sem preço no Stripe: mantém o comportamento antigo.
+      if (isDowngrade) {
+        throw new BadRequestException(
+          'O plano atual não tem preço configurado no Stripe.',
         );
       }
     }
@@ -163,6 +202,37 @@ export class CreateCheckoutSessionUseCase {
       message:
         `Mudança para ${targetPlanName} agendada. Você continua com os ` +
         `recursos do plano ${currentPlanName} até o fim do período já pago.`,
+    };
+  }
+
+  /**
+   * Upgrade: cobra a diferença proporcional na hora e o plano vale já.
+   *
+   * `immediate: true` → `proration_behavior: 'always_invoice'`: o Stripe
+   * gera uma fatura da diferença e cobra no cartão em arquivo. O `planId`
+   * no banco NÃO muda aqui — quem grava é o webhook
+   * `customer.subscription.updated`, que também dispara o e-mail de
+   * confirmação com os dados do plano novo (mesmo padrão do downgrade,
+   * só que imediato).
+   */
+  private async applyUpgrade(
+    subscriptionId: string,
+    targetPlanName: string,
+    currentPriceId: string,
+    targetPriceId: string,
+  ): Promise<CheckoutOrChangeResult> {
+    await this.stripe.updateSubscriptionPrice({
+      subscriptionId,
+      currentPriceId,
+      priceId: targetPriceId,
+      immediate: true,
+    });
+
+    return {
+      kind: 'changed',
+      message:
+        `Upgrade para ${targetPlanName} confirmado. A diferença ` +
+        `proporcional foi cobrada no seu cartão e o plano novo já vale.`,
     };
   }
 }

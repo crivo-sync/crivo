@@ -1,3 +1,4 @@
+import { BackToTop } from "@/components/ui/back-to-top";
 import { Footer } from "@/components/ui/footer";
 import { Header } from "@/components/ui/header";
 import { PublicQueryProvider } from "@/components/providers/public-query-provider";
@@ -23,6 +24,7 @@ export default function WebsiteLayout({
           {children}
         </main>
         <Footer />
+        <BackToTop />
       </div>
     </PublicQueryProvider>
   );

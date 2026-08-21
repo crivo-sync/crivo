@@ -117,18 +117,34 @@ export class BookOnlineUseCase {
       throw new BadRequestException('Telefone inválido.');
     }
 
-    const existing = await this.prisma.patient.findFirst({
-      where: { tenantId, phone, deletedAt: null },
-      select: { id: true },
+    // Find-or-create **serializado** por (tenant, telefone): duas requisições
+    // simultâneas do mesmo telefone na página pública passavam as duas no
+    // `findFirst` e as duas criavam — paciente duplicado, histórico de faltas
+    // dividido entre dois registros (bug de 21/08/2026).
+    //
+    // `pg_advisory_xact_lock` faz a segunda transação esperar a primeira
+    // terminar, e então ACHA o paciente que já foi criado. É a proteção certa
+    // porque telefone NÃO é identidade rígida no Crivo — o import de pacientes
+    // aceita duas pessoas com o mesmo número quando uma tem CPF —, então uma
+    // `@@unique([tenantId, phone])` quebraria esse caso legítimo.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}:${phone}`}))
+      `;
+
+      const existing = await tx.patient.findFirst({
+        where: { tenantId, phone, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (existing) return existing.id;
+
+      const created = await tx.patient.create({
+        data: { tenantId, name: input.patientName.trim(), phone },
+        select: { id: true },
+      });
+
+      return created.id;
     });
-
-    if (existing) return existing.id;
-
-    const created = await this.prisma.patient.create({
-      data: { tenantId, name: input.patientName.trim(), phone },
-      select: { id: true },
-    });
-
-    return created.id;
   }
 }

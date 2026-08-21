@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { login } from "./support/auth";
+
 /**
  * O painel não pode aparecer para quem não tem sessão legítima.
  *
@@ -102,6 +104,53 @@ test.describe("Acesso ao painel", () => {
 
     await expect(page).toHaveURL(/\/login/);
     expect(erros).toEqual([]);
+  });
+
+  /**
+   * Sessão morre **com o painel aberto** e uma Server Action é chamada em
+   * seguida — é o caminho que travava com *"An unexpected response was
+   * received from the server."* (o sintoma de Configurações → Assinatura).
+   *
+   * O middleware barra a sessão morta em navegações HTML/RSC (testes
+   * acima), mas uma Server Action POSTa para a URL da página atual com o
+   * header `next-action`; responder 302 nesse POST quebra o router do
+   * Next.js, que não interpreta o redirect e joga o erro genérico em
+   * inglês — o auto-logout do `QueryProvider` nunca disparava. Agora o
+   * `middleware.ts` deixa a própria action tratar a sessão morta
+   * (`SESSION_EXPIRED_MESSAGE` → logout). Este teste garante o contrato
+   * visível: sessão morta no meio do uso termina no login, sem erro
+   * técnico na tela.
+   */
+  test("sessão morta no meio do uso desloga via Server Action, sem erro técnico", async ({
+    page,
+    context,
+  }) => {
+    const erros: string[] = [];
+    page.on("pageerror", (error) => erros.push(error.message));
+
+    await login(page, "admin");
+    await page.goto("/painel/configuracoes");
+
+    // Aba "Dados da clínica" (padrão) monta o TenantSettings e popula o
+    // cache do `useTenant`; espera o formulário aparecer para o fetch
+    // terminar antes de matar a sessão.
+    await expect(page.getByText("Salvar alterações")).toBeVisible();
+
+    // Simula a sessão morrer com o painel aberto: apaga os cookies enquanto
+    // a página está montada. As queries já carregadas ficam em cache; a
+    // próxima Server Action sai sem cookie de sessão.
+    await context.clearCookies();
+
+    // A aba Assinatura monta o `SubscriptionSettings`, que busca o uso de
+    // mensagens via Server Action (`getMessageUsageAction`) — o caminho que
+    // antes travava com o erro genérico em vez de deslogar.
+    await page.getByRole("tab", { name: "Assinatura", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/login/, { timeout: 20_000 });
+    expect(erros).toEqual([]);
+    await expect(page.locator("body")).not.toContainText(
+      "An unexpected response was received from the server.",
+    );
   });
 
   /**

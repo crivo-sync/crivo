@@ -361,4 +361,95 @@ describe('HandleStripeWebhookUseCase — downgrade agendado', () => {
       }),
     );
   });
+
+  /**
+   * Regressão de 20/08/2026: o plano era resolvido por `items.data[0]`. Com
+   * o item de profissional adicional na assinatura (2+ itens), a posição 0
+   * podia ser o adicional — cujo preço não bate com plano nenhum — e o
+   * `planId` do tenant nunca atualizava, mesmo com a cobrança já mudando.
+   */
+  it('resolve o plano pelo preço entre TODOS os itens, não pelo primeiro', async () => {
+    const { useCase, stripe, prisma } = makeUseCase({
+      assinaturaAtualNoBanco: 'sub_atual',
+      planIdAtual: 'plan-solo',
+      planDoPreco: {
+        id: 'plan-profissional',
+        name: 'Profissional',
+        maxProfessionals: 4,
+      },
+    });
+
+    (stripe.constructWebhookEvent as jest.Mock).mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_atual',
+          status: 'active',
+          // Profissional adicional na posição 0 — se o código lesse
+          // `items.data[0]`, `price_prof_extra` não bateria com plano
+          // nenhum e o `planId` não seria atualizado.
+          items: {
+            data: [
+              { price: { id: 'price_prof_extra' } },
+              { price: { id: 'price_profissional' } },
+            ],
+          },
+        },
+      },
+    } as unknown as Stripe.Event);
+
+    await useCase.execute({ rawBody: Buffer.from('{}'), signature: 'sig' });
+
+    // O `findFirst` recebe TODOS os preços da assinatura no filtro `in`,
+    // não só o primeiro item.
+    expect(prisma.plan.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          stripePriceId: { in: ['price_prof_extra', 'price_profissional'] },
+        },
+      }),
+    );
+    // E o tenant é atualizado para o plano resolvido (Profissional).
+    expect(prisma.tenant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ planId: 'plan-profissional' }),
+      }),
+    );
+  });
+});
+
+describe('HandleStripeWebhookUseCase — assinatura cancelada', () => {
+  /**
+   * Regressão de 21/08/2026: `customer.subscription.deleted` só marcava
+   * `CANCELED` e deixava `planId`/`stripeSubscriptionId` presos no banco.
+   * Consequência: o "Este já é o plano contratado." do checkout impedia a
+   * clínica de REASSINAR o próprio plano — ela ficava sem assinatura e sem
+   * jeito de voltar por conta própria.
+   */
+  it('limpa plano e assinatura para permitir reassinatura', async () => {
+    const { useCase, stripe, prisma } = makeUseCase({
+      assinaturaAtualNoBanco: 'sub_atual',
+      planIdAtual: 'plan-inter',
+    });
+
+    (stripe.constructWebhookEvent as jest.Mock).mockReturnValue({
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_atual' } },
+    } as unknown as Stripe.Event);
+
+    await useCase.execute({
+      rawBody: Buffer.from('{}'),
+      signature: 'sig',
+    });
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subscriptionStatus: 'CANCELED',
+          planId: null,
+          stripeSubscriptionId: null,
+        }),
+      }),
+    );
+  });
 });

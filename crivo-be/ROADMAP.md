@@ -2,7 +2,7 @@
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
-> Última atualização: 2026-08-17.
+> Última atualização: 2026-08-20.
 >
 > **O que era construível está construído.** `billing` completo (checkout,
 > webhook, 4 planos com limites e features por faixa — travados no backend
@@ -39,16 +39,16 @@ Onde estamos, o que a concorrência já entrega e o que falta construir.
 
 ---
 
-## Próximos passos (rev. 17/08/2026)
+## Próximos passos (rev. 20/08/2026)
 
 **O produto está construído. O que falta não é feature — é colocar no ar e
 descobrir se alguém paga.** Em ordem:
 
-**1. 🟡 Deploy — código pronto, falta publicar** (19/08/2026). A stack mudou
-de DigitalOcean para **Railway (API) + Supabase (banco) + Vercel (front)**:
-menos infra para administrar e custo inicial menor, ao preço de menos
-controle. Passo a passo com as variáveis prontas para colar em
-[`DEPLOY.md`](../DEPLOY.md).
+**1. 🟡 Deploy — código pronto, falta publicar** (20/08/2026). Stack
+**confirmada: Railway (API) + Supabase (banco) + Vercel (front)** — a
+decisão de 14/08 (DigitalOcean) foi revertida em 17/08, e este ROADMAP
+agora reflete a escolha final (ver Revisão de preço). Passo a passo com as
+variáveis prontas para colar em [`DEPLOY.md`](../DEPLOY.md).
 
 O que precisou existir antes (tudo verificado rodando `NODE_ENV=production`
 localmente, não só compilando):
@@ -120,7 +120,7 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 
 | Módulo | Status |
 | --- | --- |
-| `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF). **Sessão morta agora sempre termina no login** (18/08/2026) — ver nota abaixo da tabela |
+| `auth` | 🟢 Registro, login, refresh com rotação, RBAC (ADMIN/STAFF). **Sessão morta agora sempre termina no login** (18 e 20/08/2026) — ver notas abaixo da tabela |
 | `tenants` | 🟢 CRUD + branding público por subdomínio |
 | `users` | 🟢 Gestão de equipe (ADMIN) |
 | `patients` | 🟢 CRUD, busca, paginação, soft delete, **importação por CSV com prévia** |
@@ -167,7 +167,70 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   parado. Os testes cobrem o contrato visível (cookie morto termina no
 >   login, sem erro e sem expor a API) e o comentário deles diz isso
 >
-> 📋 **Recepção enxerga e resolve mais rápido (18/08/2026)** — dois pontos
+> 🐞 **E o erro técnico em Server Action com sessão morta — a causa raiz
+> do *"An unexpected response was received from the server."* (20/08/2026)**
+> — reportado pelo dono do produto com o print de Configurações →
+> Assinatura: *"fica com essa mensagem na tela em vez de chamar
+> automaticamente o logout"*.
+> - **Sintoma**: a mensagem acima num `ErrorServer` da aba Assinatura, e o
+>   auto-logout do `QueryProvider` nunca disparava. A nota de 18/08 corrigiu
+>   a camada do `layout.tsx` (cookie deletado durante o render), mas o caso
+>   **Server Action** continuava travando
+> - **Causa raiz**: a mensagem não vem do app — é o **router client do
+>   Next.js**. Server Actions POSTam para a URL da página atual
+>   (`/painel/configuracoes`) com o header `next-action`; o `middleware.ts`
+>   interceptava, via a sessão morta e respondia **302 → `/login`**. Para
+>   Server Actions o router exige resposta Flight (`text/x-component`) ou
+>   header `x-action-redirect` — um 302 do middleware não tem nenhum dos
+>   dois, então o client lançava o erro genérico. Como a mensagem era
+>   diferente de `SESSION_EXPIRED_MESSAGE`, o `QueryProvider` não
+>   reconhecia e nunca deslogava
+> - **Correção (crivo-fe)**: `middleware.ts` ganhou `isServerActionRequest`
+>   (POST + header `next-action`) e passa direto (`NextResponse.next()`)
+>   para Server Actions — a própria action trata a sessão morta
+>   (`getServerSession` + `withAuth` → `SESSION_EXPIRED_MESSAGE` → logout).
+>   O bloqueio do middleware segue valendo para navegações HTML/RSC
+> - **Defesa extra (crivo-fe)**: `QueryProvider.handleAuthError` passou a
+>   tratar também `UNEXPECTED_SERVER_RESPONSE_MESSAGE`
+>   (`src/lib/session-messages.ts`) como gatilho de auto-logout
+> - 1 teste E2E novo em `acesso-painel.spec.ts` ("sessão morta no meio do
+>   uso desloga via Server Action, sem erro técnico") — reproduz o print
+>   exato e **falha sem a correção** (verificado revertendo); com ela, o
+>   painel cai sozinho em `/login` sem erro técnico
+>
+> � **Caça a bugs pré-deploy — dinheiro, corrida e franquia (21/08/2026)**
+> — antes de publicar, revisão de pontos que os testes não cobriam. Os 4
+> **🔴** (reserva dupla no mesmo horário, upgrade no meio do ciclo, adicional
+> contando desativado, trial pulando a franquia de 30) **já estavam
+> corrigidos** — validados e com a suíte verde. Este pacote fecha os demais
+> que valem antes do deploy:
+> - 🐞 **Reassinatura bloqueada após cancelar** — `customer.subscription.deleted`
+>   só marcava `CANCELED` e deixava `planId`/`stripeSubscriptionId` presos no
+>   banco; o *"Este já é o plano contratado."* do checkout impedia a clínica
+>   de reassinar o próprio plano. Correção: o webhook agora limpa os dois
+>   campos ao cancelar, e o `create-checkout-session` só considera "plano já
+>   contratado"/troca na mesma assinatura quando há assinatura **viva**
+>   (`ACTIVE`/`PAST_DUE`) — `CANCELED`/`EXPIRED`/`TRIALING` abrem checkout novo
+> - 🐞 **Dois bookings simultâneos do mesmo telefone criavam paciente
+>   duplicado** (histórico de faltas dividido). `resolvePatient` do
+>   `book-online` passou a serializar o find-or-create por
+>   (tenant, telefone) com `pg_advisory_xact_lock` — a segunda requisição
+>   espera a primeira e reusa o cadastro. Escolhido em vez de
+>   `@@unique([tenantId, phone])` porque telefone **não** é identidade rígida
+>   no Crivo (o import aceita duas pessoas com o mesmo número quando uma tem
+>   CPF) — a constraint quebraria esse caso legítimo
+> - 🐞 **Mensagens na fila seguiam saindo após a conta fechar** — trial
+>   vencido (`EXPIRED`) ou assinatura cancelada (`CANCELED`) sem plano caíam
+>   no `limit == null → { allowed: true }`, e mensagens já agendadas
+>   continuavam sendo enviadas (custo real de WhatsApp). `check-message-quota`
+>   agora bloqueia os dois status (`limit: 0` como sentinela) e o
+>   `MessageProcessor` mostra a mensagem certa de "assinatura cancelada/
+>   teste terminou"
+> - **Fora do pacote (decisão de produto, não bug de código)**: a virada do
+>   mês da franquia no fuso do servidor (UTC no Railway) — corrigir de
+>   verdade exige timezone por tenant, que ainda não existe
+>
+> �📋 **Recepção enxerga e resolve mais rápido (18/08/2026)** — dois pontos
 > levantados pelo dono do produto: *"se ele mandar mensagem para cancelar, a
 > recepção recebe essa informação?"* e *"quando a recepção cancela, as vagas
 > se encaixam automaticamente?"*. As duas respostas eram "sim, mas de forma
@@ -462,36 +525,37 @@ redonda):
   profissional/mês × ~2,5 mensagens ≈ 375 por profissional, +35% de folga.
 - **Margem**: ~50% no uso típico; **positiva mesmo se a clínica consumir a
   franquia inteira** (o pior caso vai de 39% no Solo a 18% no Clínica).
-- **Infra** — **decidido em 14/08/2026: DigitalOcean.** Mais barato que a
-  combinação Railway+Supabase+Vercel e concentra tudo num fornecedor só.
+- **Infra** — ~~DigitalOcean~~ → **fechado em 17/08/2026 e confirmado em
+  20/08/2026: Railway (API) + Supabase (banco) + Vercel (front).** A
+  decisão de 14/08 (DigitalOcean) foi revertida: menos infra para
+  administrar e custo inicial menor, ao preço de menos controle. Guia com as
+  variáveis prontas para colar em [`DEPLOY.md`](../DEPLOY.md).
 
   | Cenário | Composição | US$/mês | R$/mês |
   | --- | --- | --- | --- |
   | Hoje (dev) | Railway $10 + Supabase Free + Vercel Hobby | 10 | ~54 |
-  | Railway+Supabase+Vercel | Railway $10 + Supabase Pro $25 + Vercel Pro $20 | 55 | ~297 |
-  | **DigitalOcean (escolhido)** | Droplet $24 + Managed Postgres $15 + Spaces $5 | **44** | **~238** |
+  | **Railway+Supabase+Vercel (escolhido)** | Railway $10 + Supabase Pro $25 + Vercel Pro $20 | **55** | **~297** |
 
   ⚠️ **O Vercel Hobby proíbe uso comercial** — no momento em que houver
-  cliente pagando, teria que ser Pro ($20/mês). O Supabase Free também pausa
-  projeto inativo e limita a dois projetos. Foi o que pesou na decisão: os
-  planos gratuitos não sobrevivem ao primeiro cliente pagante.
+  cliente pagando, o front precisa ir para Pro ($20/mês), e o Supabase Free
+  pausa projeto inativo e limita a dois projetos; a conta de produção é a
+  linha de R$ 297. Em troca de menos operação: Redis e Postgres ficam
+  gerenciados pela plataforma (backup/atualização não são mais
+  responsabilidade nossa) e o deploy do front volta a ser `git push` no
+  Vercel — a contrapartida de menos controle que pesou contra em 14/08.
 
-  **O que a escolha implica de trabalho** (não é só apontar DNS): Redis e
-  Postgres passam a ser responsabilidade nossa (backup, atualização,
-  monitoramento), e o deploy do front sai do "git push" do Vercel para um
-  processo próprio.
-
-**Ponto de equilíbrio** (DigitalOcean, R$ 238/mês, uso típico):
+**Ponto de equilíbrio** (Railway+Supabase+Vercel, R$ 297/mês, uso típico):
 
 | Plano | Preço | Custo de mensagem | Sobra por cliente | Clientes para pagar a infra |
 | --- | --- | --- | --- | --- |
-| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **9** |
-| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **6** |
-| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **3** |
-| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **2** |
+| Solo | R$ 49 | R$ 22,50 | R$ 26,50 | **12** |
+| Essencial | R$ 89 | R$ 45,00 | R$ 44,00 | **7** |
+| Profissional | R$ 179 | R$ 90,00 | R$ 89,00 | **4** |
+| Clínica | R$ 299 | R$ 180,00 | R$ 119,00 | **3** |
 
-**9 clínicas no plano de entrada cobrem toda a infraestrutura.** Ela é custo
-fixo: do 10º cliente em diante, os ~R$ 26 de sobra viram margem limpa.
+**12 clínicas no plano de entrada cobrem toda a infraestrutura.** Ela é
+custo fixo: do 13º cliente em diante, os ~R$ 26 de sobra viram margem
+limpa.
 
 **Decisões:**
 

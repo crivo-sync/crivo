@@ -255,14 +255,24 @@ export class HandleStripeWebhookUseCase {
     /**
      * O preço da assinatura é a fonte da verdade do plano.
      *
-     * Cobre os dois casos de troca: o upgrade (que o use case já gravou, e
-     * aqui só confirma) e o **downgrade agendado**, que só chega quando o
-     * ciclo pago vira — é este evento que efetiva a perda de recurso, no
-     * momento certo.
+     * Cobre os dois casos de troca: o upgrade (imediato, `always_invoice`) e
+     * o **downgrade agendado**, que só chega quando o ciclo pago vira — é
+     * este evento que efetiva a perda de recurso, no momento certo.
+     *
+     * O plano-base é o item cujo preço bate com `Plan.stripePriceId`. NÃO
+     * usar `items.data[0]`: com o item de profissional adicional na
+     * assinatura (2+ itens), a posição 0 pode ser o adicional e o plano
+     * nunca seria resolvido — a cobrança mudaria sem o `planId` acompanhar
+     * (divergência cobrança × banco). A ordem do Stripe não é garantida
+     * como "ordem de criação".
      */
-    const priceId = subscription.items.data[0]?.price?.id;
-    const planFromPrice = priceId
-      ? await this.prisma.plan.findFirst({ where: { stripePriceId: priceId } })
+    const priceIds = subscription.items.data
+      .map((item) => item.price?.id)
+      .filter((id): id is string => Boolean(id));
+    const planFromPrice = priceIds.length
+      ? await this.prisma.plan.findFirst({
+          where: { stripePriceId: { in: priceIds } },
+        })
       : null;
 
     const planChanged = planFromPrice && planFromPrice.id !== tenant.planId;
@@ -409,7 +419,17 @@ export class HandleStripeWebhookUseCase {
 
     await this.prisma.tenant.update({
       where: { id: tenant.id },
-      data: { subscriptionStatus: 'CANCELED' },
+      data: {
+        subscriptionStatus: 'CANCELED',
+        // Sem assinatura ativa, o tenant deixa de ter plano contratado e
+        // assinatura no Stripe. Sem limpar, o "Este já é o plano
+        // contratado." do checkout impedia a clínica de REASSINAR o próprio
+        // plano depois de cancelar/vencer — e a assinatura morta fazia o
+        // `updateSubscriptionPrice` mirar um id que não existe mais (bug de
+        // 21/08/2026).
+        planId: null,
+        stripeSubscriptionId: null,
+      },
     });
   }
 }

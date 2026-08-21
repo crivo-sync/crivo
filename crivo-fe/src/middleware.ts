@@ -70,6 +70,24 @@ function redirectToLogin(request: NextRequest): NextResponse {
 }
 
 /**
+ * Server Actions POSTam para a URL da página atual (ex.: `/painel/
+ * configuracoes`) com o header `next-action`. Um redirect do middleware
+ * nesse POST (302 → `/login`) chega ao client **sem**
+ * `content-type: text/x-component` nem `x-action-redirect` — o router do
+ * Next.js então lança *"An unexpected response was received from the
+ * server."* no lugar do auto-logout do `QueryProvider` (o sintoma de
+ * Configurações → Assinatura com sessão morta).
+ *
+ * O redirect é inútil aqui: a própria Server Action valida a sessão
+ * (`getServerSession` + `withAuth`) e devolve `SESSION_EXPIRED_MESSAGE`,
+ * que o client interpreta e desloga com navegação de página completa. O
+ * bloqueio do middleware continua valendo para navegações HTML/RSC — que é
+ * onde ele evita a casca do painel piscando antes das chamadas falharem.
+ */
+const isServerActionRequest = (request: NextRequest): boolean =>
+  request.method === "POST" && Boolean(request.headers.get("next-action"));
+
+/**
  * Porteiro do `/painel`: barra quem não tem sessão utilizável e renova o
  * access token ANTES da navegação chegar ao render.
  *
@@ -86,6 +104,12 @@ function redirectToLogin(request: NextRequest): NextResponse {
  */
 export async function middleware(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith("/painel")) {
+    return NextResponse.next();
+  }
+
+  // Server Action: deixa a própria action tratar a sessão morta (ver
+  // `isServerActionRequest`). Redirecionar aqui quebraria o router client.
+  if (isServerActionRequest(request)) {
     return NextResponse.next();
   }
 

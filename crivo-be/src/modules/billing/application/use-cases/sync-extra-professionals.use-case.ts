@@ -63,8 +63,12 @@ export class SyncExtraProfessionalsUseCase {
     // Sem teto, "profissional além do incluído" não existe como conceito.
     if (tenant.plan.maxProfessionals === null) return;
 
+    // Só profissional ATIVO ocupa vaga paga — desativado (`isActive: false`,
+    // via "escolher quem fica"/teto) não deve ser cobrado. A contagem de
+    // teto em `professional-limit.ts` filtra `isActive: true`; divergir aqui
+    // criava cobrança de adicional para gente que a clínica já desativou.
     const activeCount = await this.prisma.professional.count({
-      where: { tenantId, deletedAt: null },
+      where: { tenantId, deletedAt: null, isActive: true },
     });
 
     const extraQuantity = Math.max(

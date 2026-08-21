@@ -97,9 +97,15 @@ export class MessageProcessor extends WorkerHost {
     // aviso e a clínica sem saber.
     const quota = await this.checkQuota.execute(message.tenantId);
     if (!quota.allowed) {
-      const motivo = quota.isTrial
-        ? `Franquia do teste esgotada (${quota.used}/${quota.limit} mensagens). Escolha um plano em Configurações → Assinatura para continuar enviando.`
-        : `Franquia do plano esgotada (${quota.used}/${quota.limit} mensagens neste mês). Faça upgrade em Configurações → Assinatura.`;
+      // `limit: 0` é o sentinela de conta fechada (trial vencido ou
+      // assinatura cancelada) — a mensagem precisa dizer isso, não que a
+      // franquia do mês acabou.
+      const motivo =
+        quota.limit === 0
+          ? 'Sua assinatura foi cancelada ou o período de teste terminou. As mensagens não são mais enviadas.'
+          : quota.isTrial
+            ? `Franquia do teste esgotada (${quota.used}/${quota.limit} mensagens). Escolha um plano em Configurações → Assinatura para continuar enviando.`
+            : `Franquia do plano esgotada (${quota.used}/${quota.limit} mensagens neste mês). Faça upgrade em Configurações → Assinatura.`;
 
       await this.messageRepository.markFailed(message.id, motivo);
       await this.trace(job, `Bloqueada: ${motivo}`);

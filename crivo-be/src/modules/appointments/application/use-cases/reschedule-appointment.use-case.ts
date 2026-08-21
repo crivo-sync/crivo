@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AppointmentStatus } from '@prisma/client';
+import { Appointment, AppointmentStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { ScheduleAppointmentReminderUseCase } from 'src/modules/messaging/application/use-cases/schedule-appointment-reminder.use-case';
@@ -125,12 +125,27 @@ export class RescheduleAppointmentUseCase {
       );
     }
 
-    const updated = await this.appointmentRepository.update(appointment.id, {
-      startsAt: input.startsAt,
-      endsAt,
-      professionalId,
-      ...(input.notes !== undefined ? { notes: input.notes } : {}),
-    });
+    let updated: Appointment;
+    try {
+      updated = await this.appointmentRepository.update(appointment.id, {
+        startsAt: input.startsAt,
+        endsAt,
+        professionalId,
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      });
+    } catch (error) {
+      // Mesmo 409 da criação: o índice único barrou a corrida no novo
+      // horário — remarcar não pode furar a agenda em silêncio.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Este profissional já tem um agendamento neste horário.',
+        );
+      }
+      throw error;
+    }
 
     // Descarta o lembrete antigo (que carrega a data velha no texto) e
     // reagenda com os dados novos. Sem isso o paciente era avisado na

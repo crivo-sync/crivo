@@ -527,6 +527,12 @@ model Appointment {
   clinicalPhotos  ClinicalPhoto[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
+  // ⚠️ Existe também um índice ÚNICO PARCIAL manual (não declarado aqui,
+  // pois o Prisma não gera partial index): `appointments_blocking_slot_unique`
+  // em (tenant_id, professional_id, starts_at) WHERE status IN
+  // ('SCHEDULED','CONFIRMED','COMPLETED') — migration 20260820140000.
+  // Ele impede a reserva dupla do mesmo horário sob corrida. Por ser manual,
+  // o `migrate diff` vai acusá-lo como drift; é intencional.
   @@index([tenantId, professionalId, startsAt])
   @@index([tenantId, startsAt])
   @@index([patientId])

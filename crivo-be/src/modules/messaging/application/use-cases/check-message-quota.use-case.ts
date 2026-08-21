@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MessageStatus } from '@prisma/client';
+import { MessageStatus, SubscriptionStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 
@@ -48,7 +48,29 @@ export class CheckMessageQuotaUseCase {
       include: { plan: true },
     });
 
-    const isTrial = tenant.planId === null;
+    // Conta fechada não envia mais: trial vencido (`EXPIRED`) ou assinatura
+    // cancelada (`CANCELED`). Sem isto, mensagens que sobraram na fila
+    // seguiam saindo — e WhatsApp custa dinheiro real, mesmo sem assinatura
+    // ativa cobrando (bug de 21/08/2026). `limit: 0` é o sentinela "nunca
+    // pode" — nenhum plano ativo tem teto 0 — e o `MessageProcessor` usa
+    // para a mensagem específica.
+    if (
+      tenant.subscriptionStatus === SubscriptionStatus.CANCELED ||
+      tenant.subscriptionStatus === SubscriptionStatus.EXPIRED
+    ) {
+      const used = await this.prisma.message.count({
+        where: { tenantId, status: MessageStatus.SENT },
+      });
+
+      return { allowed: false, used, limit: 0, isTrial: false };
+    }
+
+    // Trial é por STATUS, não por `planId` ausente: desde 17/08 o cadastro
+    // pode já nascer com `planKey` (plano escolhido no site) e gravar
+    // `planId` mesmo em TRIALING — sem pagar nada. Tratar isso como pago
+    // faria o teste pular a franquia de 30 e usar a do plano (custo real de
+    // WhatsApp não pago).
+    const isTrial = tenant.subscriptionStatus === 'TRIALING';
     const limit = isTrial
       ? TRIAL_MESSAGE_QUOTA
       : tenant.plan?.maxMessagesPerMonth;
@@ -76,7 +98,8 @@ export class CheckMessageQuotaUseCase {
       include: { plan: true },
     });
 
-    const isTrial = tenant.planId === null;
+    // Mesma regra do `execute` acima: trial é por status. Ver comentário lá.
+    const isTrial = tenant.subscriptionStatus === 'TRIALING';
     const limit = isTrial
       ? TRIAL_MESSAGE_QUOTA
       : (tenant.plan?.maxMessagesPerMonth ?? null);

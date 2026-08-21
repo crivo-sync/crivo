@@ -8,6 +8,7 @@ const TENANT_ID = 'tenant-1';
 
 function makeUseCase(
   tenant: {
+    subscriptionStatus: string;
     planId: string | null;
     plan: { maxMessagesPerMonth: number | null } | null;
   },
@@ -24,7 +25,11 @@ function makeUseCase(
 describe('CheckMessageQuotaUseCase', () => {
   it('libera plano sem teto sem nem contar as mensagens', async () => {
     const { useCase, prisma } = makeUseCase(
-      { planId: 'plan-avancado', plan: { maxMessagesPerMonth: null } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-avancado',
+        plan: { maxMessagesPerMonth: null },
+      },
       999_999,
     );
 
@@ -37,7 +42,11 @@ describe('CheckMessageQuotaUseCase', () => {
 
   it('libera enquanto a clínica está abaixo do teto do plano', async () => {
     const { useCase } = makeUseCase(
-      { planId: 'plan-solo', plan: { maxMessagesPerMonth: 500 } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-solo',
+        plan: { maxMessagesPerMonth: 500 },
+      },
       499,
     );
 
@@ -48,7 +57,11 @@ describe('CheckMessageQuotaUseCase', () => {
 
   it('bloqueia ao atingir o teto — o limite é inclusivo', async () => {
     const { useCase } = makeUseCase(
-      { planId: 'plan-solo', plan: { maxMessagesPerMonth: 500 } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-solo',
+        plan: { maxMessagesPerMonth: 500 },
+      },
       500,
     );
 
@@ -61,7 +74,10 @@ describe('CheckMessageQuotaUseCase', () => {
   });
 
   it('usa a franquia do trial quando não há plano', async () => {
-    const { useCase } = makeUseCase({ planId: null, plan: null }, 30);
+    const { useCase } = makeUseCase(
+      { subscriptionStatus: 'TRIALING', planId: null, plan: null },
+      30,
+    );
 
     await expect(useCase.execute(TENANT_ID)).resolves.toEqual({
       allowed: false,
@@ -71,8 +87,65 @@ describe('CheckMessageQuotaUseCase', () => {
     });
   });
 
+  it('trial que escolheu plano no cadastro NÃO pula a franquia de 30', async () => {
+    // Regressão do bug de 17/08/2026: `/cadastro?plano=X` gravava `planId`
+    // mesmo em TRIALING. Antes, `isTrial = planId === null` tratava isso como
+    // pago e a franquia virava a do plano (ex.: 500 no Solo) — custo real de
+    // WhatsApp durante um teste que ainda não pagou nada. Trial é por STATUS.
+    const { useCase } = makeUseCase(
+      {
+        subscriptionStatus: 'TRIALING',
+        planId: 'plan-solo',
+        plan: { maxMessagesPerMonth: 500 },
+      },
+      30,
+    );
+
+    await expect(useCase.execute(TENANT_ID)).resolves.toEqual({
+      allowed: false,
+      used: 30,
+      limit: TRIAL_MESSAGE_QUOTA,
+      isTrial: true,
+    });
+  });
+
+  it('trial VENCIDO bloqueia o envio — mensagens na fila não saem', async () => {
+    // Regressão de 21/08/2026: `EXPIRED` sem plano caía no `limit == null`
+    // → `{ allowed: true }`, e mensagens que sobraram na fila seguiam saindo
+    // (custo real de WhatsApp para uma conta que já fechou). `limit: 0` é o
+    // sentinela de conta fechada.
+    const { useCase } = makeUseCase(
+      { subscriptionStatus: 'EXPIRED', planId: null, plan: null },
+      12,
+    );
+
+    await expect(useCase.execute(TENANT_ID)).resolves.toEqual({
+      allowed: false,
+      used: 12,
+      limit: 0,
+      isTrial: false,
+    });
+  });
+
+  it('assinatura CANCELADA bloqueia o envio do mesmo jeito', async () => {
+    const { useCase } = makeUseCase(
+      { subscriptionStatus: 'CANCELED', planId: null, plan: null },
+      5,
+    );
+
+    await expect(useCase.execute(TENANT_ID)).resolves.toEqual({
+      allowed: false,
+      used: 5,
+      limit: 0,
+      isTrial: false,
+    });
+  });
+
   it('trial abaixo da franquia continua enviando', async () => {
-    const { useCase } = makeUseCase({ planId: null, plan: null }, 29);
+    const { useCase } = makeUseCase(
+      { subscriptionStatus: 'TRIALING', planId: null, plan: null },
+      29,
+    );
 
     await expect(useCase.execute(TENANT_ID)).resolves.toEqual({
       allowed: true,
@@ -81,7 +154,11 @@ describe('CheckMessageQuotaUseCase', () => {
 
   it('conta só o que já saiu, no mês corrente', async () => {
     const { useCase, prisma } = makeUseCase(
-      { planId: 'plan-solo', plan: { maxMessagesPerMonth: 500 } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-solo',
+        plan: { maxMessagesPerMonth: 500 },
+      },
       10,
     );
 
@@ -98,7 +175,11 @@ describe('CheckMessageQuotaUseCase', () => {
 describe('CheckMessageQuotaUseCase.usage', () => {
   it('devolve o número usado mesmo dentro do limite — diferente de `execute`', async () => {
     const { useCase } = makeUseCase(
-      { planId: 'plan-solo', plan: { maxMessagesPerMonth: 500 } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-solo',
+        plan: { maxMessagesPerMonth: 500 },
+      },
       120,
     );
 
@@ -113,7 +194,11 @@ describe('CheckMessageQuotaUseCase.usage', () => {
 
   it('plano sem teto devolve limit null, não Infinity nem omitido', async () => {
     const { useCase } = makeUseCase(
-      { planId: 'plan-avancado', plan: { maxMessagesPerMonth: null } },
+      {
+        subscriptionStatus: 'ACTIVE',
+        planId: 'plan-avancado',
+        plan: { maxMessagesPerMonth: null },
+      },
       9999,
     );
 
@@ -125,7 +210,10 @@ describe('CheckMessageQuotaUseCase.usage', () => {
   });
 
   it('trial usa a franquia fixa, não o plano (que nem existe)', async () => {
-    const { useCase } = makeUseCase({ planId: null, plan: null }, 12);
+    const { useCase } = makeUseCase(
+      { subscriptionStatus: 'TRIALING', planId: null, plan: null },
+      12,
+    );
 
     await expect(useCase.usage(TENANT_ID)).resolves.toEqual({
       used: 12,

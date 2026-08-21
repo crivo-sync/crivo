@@ -9,7 +9,10 @@ import {
 } from "@tanstack/react-query";
 
 import { logoutAction } from "@/features/auth/actions/logout-action";
-import { SESSION_EXPIRED_MESSAGE } from "@/lib/session-messages";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  UNEXPECTED_SERVER_RESPONSE_MESSAGE,
+} from "@/lib/session-messages";
 
 type QueryProviderProps = {
   children: React.ReactNode;
@@ -40,7 +43,15 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
 
     const handleAuthError = (error: unknown) => {
       const message = error instanceof Error ? error.message : undefined;
-      if (message !== SESSION_EXPIRED_MESSAGE || handledState.handled) return;
+      // Rede de segurança: o router do Next também rejeita a Server Action
+      // com "An unexpected response was received from the server." quando o
+      // middleware responde um redirect em sessão morta (o middleware.ts já
+      // deixa a action tratar isso — ver `isServerActionRequest` — mas se
+      // um caso escapar, melhor deslogar do que travar com erro técnico).
+      const isSessionExpired =
+        message === SESSION_EXPIRED_MESSAGE ||
+        message === UNEXPECTED_SERVER_RESPONSE_MESSAGE;
+      if (!isSessionExpired || handledState.handled) return;
 
       handledState.handled = true;
       // Navegação de página completa em vez de `router.push` + `router.refresh`:
