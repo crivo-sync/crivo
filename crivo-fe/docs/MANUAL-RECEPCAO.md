@@ -1,4 +1,4 @@
-# Crivo — Manual da recepção
+# Crivo Sync — Manual da recepção
 
 Como operar a agenda no dia a dia. Escrito para quem atende o telefone e
 marca consulta, não para quem programa.

@@ -58,7 +58,8 @@ export class SmtpMailProvider implements MailProvider {
 
     await transporter.sendMail({
       from:
-        this.config.get<string>('MAIL_FROM') ?? 'Crivo <nao-responda@crivo.app>',
+        this.config.get<string>('MAIL_FROM') ??
+        'Crivo Sync <nao-responda@crivo.app>',
       to: input.to,
       subject: input.subject,
       text: input.text,

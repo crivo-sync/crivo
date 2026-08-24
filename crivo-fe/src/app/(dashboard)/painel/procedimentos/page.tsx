@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { ProcedureManagement } from "@/features/procedures/components/ProcedureManagement";
 
 export const metadata: Metadata = {
-  title: "Procedimentos — Crivo",
+  title: "Procedimentos — Crivo Sync",
 };
 
 const ProcedimentosPage = () => {

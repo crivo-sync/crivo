@@ -2,7 +2,7 @@
  * Liga as seções de prova social do site (logos de clientes e depoimentos).
  *
  * **Desligado até existir cliente real.** As duas seções estão prontas, mas
- * com placeholder: a de logos afirma "Clínicas que confiam no Crivo" sobre
+ * com placeholder: a de logos afirma "Clínicas que confiam no Crivo Sync" sobre
  * quatro caixas escritas "Logo cliente", e a de depoimentos repete três vezes
  * "Nome do cliente / Depoimento de cliente — a preencher".
  *

@@ -8,7 +8,7 @@ import { PricingFaq } from "./_components/pricing-faq";
 import { PricingCta } from "./_components/pricing-cta";
 
 export const metadata: Metadata = {
-  title: "Planos — Crivo",
+  title: "Planos — Crivo Sync",
   description:
     "A partir de R$ 49/mês. O plano acompanha o tamanho da sua equipe, não o número de agendamentos. 14 dias grátis, sem cartão.",
 };

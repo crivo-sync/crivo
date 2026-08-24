@@ -1,6 +1,6 @@
-# Crivo
+# Crivo Sync
 
-API backend do Crivo — plataforma whitelabel de gestão para clínicas de estética, odontologia e afins.
+API backend do Crivo Sync — plataforma whitelabel de gestão para clínicas de estética, odontologia e afins.
 
 ## O core do sistema
 

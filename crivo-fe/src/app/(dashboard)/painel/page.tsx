@@ -7,7 +7,7 @@ import { DashboardHome } from "@/features/dashboard/components/DashboardHome";
 import { OnboardingChecklist } from "@/features/tenant/components/OnboardingChecklist";
 
 export const metadata: Metadata = {
-  title: "Painel — Crivo",
+  title: "Painel — Crivo Sync",
 };
 
 const DashboardPage = () => {

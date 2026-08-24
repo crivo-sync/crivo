@@ -1,4 +1,4 @@
-# Subagentes — como usar no Crivo
+# Subagentes — como usar no Crivo Sync
 
 Guia prático de quando (e quando **não**) delegar trabalho a subagentes neste projeto.
 

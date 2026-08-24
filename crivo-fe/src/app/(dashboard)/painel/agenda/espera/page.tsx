@@ -7,7 +7,7 @@ import { AgendaTabs } from "@/features/appointments/components/AgendaTabs";
 import { WaitlistManagement } from "@/features/waitlist/components/WaitlistManagement";
 
 export const metadata: Metadata = {
-  title: "Lista de espera — Crivo",
+  title: "Lista de espera — Crivo Sync",
 };
 
 const EsperaPage = () => {

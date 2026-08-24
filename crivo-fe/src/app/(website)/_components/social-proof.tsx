@@ -8,7 +8,7 @@ export const SocialProof = () => {
       <div className="mx-auto max-w-7xl px-6 text-center">
         <ScrollReveal direction="up" delay={50} duration={600}>
           <p className="mb-8 text-[13px] font-semibold tracking-widest text-gray-500 uppercase">
-            Clínicas que confiam no Crivo
+            Clínicas que confiam no Crivo Sync
           </p>
         </ScrollReveal>
 

@@ -20,7 +20,7 @@ export const TrialBanner = ({ status, endsAt }: TrialBannerProps) => {
     return (
       <Alert severity="error" sx={{ mb: 3 }}>
         <AlertTitle>Seu período de teste acabou</AlertTitle>
-        Fale com o suporte para continuar usando o Crivo.
+        Fale com o suporte para continuar usando o Crivo Sync.
       </Alert>
     );
   }

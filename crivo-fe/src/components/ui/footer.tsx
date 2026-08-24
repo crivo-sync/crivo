@@ -69,7 +69,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 gap-12 py-16 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand column */}
           <div className="space-y-5 lg:col-span-2">
-            <Link href="/" aria-label="Crivo — início">
+            <Link href="/" aria-label="Crivo Sync — início">
               <Logo />
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-gray-500">
@@ -133,7 +133,7 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-black/5 py-6 md:flex-row">
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} Crivo. Todos os direitos reservados.
+            © {new Date().getFullYear()} Crivo Sync. Todos os direitos reservados.
           </p>
 
           <div className="flex items-center gap-6">

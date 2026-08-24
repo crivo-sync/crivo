@@ -10,7 +10,7 @@ import { LogoMark } from "@/components/ui/logo";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
 
 export const metadata: Metadata = {
-  title: "Criar conta — Crivo",
+  title: "Criar conta — Crivo Sync",
 };
 
 const RegisterPage = () => {
@@ -30,12 +30,12 @@ const RegisterPage = () => {
         <Box sx={{ display: "flex", justifyContent: "center", mb: 4 }}>
           <Link
             href="/"
-            aria-label="Crivo — início"
+            aria-label="Crivo Sync — início"
             style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
             <LogoMark />
             <Typography variant="h5" component="span" sx={{ color: "text.primary" }}>
-              Crivo
+              Crivo Sync
             </Typography>
           </Link>
         </Box>

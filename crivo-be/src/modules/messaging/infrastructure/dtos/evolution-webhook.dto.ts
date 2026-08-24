@@ -50,7 +50,7 @@ const MESSAGE_EVENT = 'MESSAGES_UPSERT';
  * - grupos (`@g.us`) — a clínica conversa 1:1, e um grupo não identifica
  *   paciente;
  * - mídia sem legenda (áudio, imagem), que chega sem texto algum. Fica
- *   registrado como limitação conhecida: hoje o Crivo só lê texto.
+ *   registrado como limitação conhecida: hoje o Crivo Sync só lê texto.
  */
 export function extractInboundMessage(
   payload: EvolutionWebhookDto,

@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { ProfessionalManagement } from "@/features/professionals/components/ProfessionalManagement";
 
 export const metadata: Metadata = {
-  title: "Profissionais — Crivo",
+  title: "Profissionais — Crivo Sync",
 };
 
 const ProfissionaisPage = () => {

@@ -54,7 +54,7 @@ export const Testimonials = () => {
             <h2 className="mt-6 text-4xl leading-[1.1] font-bold tracking-tight text-gray-900 md:text-5xl">
               O que dizem{" "}
               <span className="bg-linear-to-r from-indigo-600 via-indigo-500 to-indigo-400 bg-clip-text text-transparent">
-                sobre o Crivo
+                sobre o Crivo Sync
               </span>
             </h2>
           </ScrollReveal>

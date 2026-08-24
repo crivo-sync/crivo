@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { MessageManagement } from "@/features/messages/components/MessageManagement";
 
 export const metadata: Metadata = {
-  title: "Mensagens — Crivo",
+  title: "Mensagens — Crivo Sync",
 };
 
 const MensagensPage = () => {

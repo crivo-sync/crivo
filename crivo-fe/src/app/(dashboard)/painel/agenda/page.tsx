@@ -7,7 +7,7 @@ import { AppointmentManagement } from "@/features/appointments/components/Appoin
 import { AgendaTabs } from "@/features/appointments/components/AgendaTabs";
 
 export const metadata: Metadata = {
-  title: "Agenda — Crivo",
+  title: "Agenda — Crivo Sync",
 };
 
 const AgendaPage = () => {

@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { PatientManagement } from "@/features/patients/components/PatientManagement";
 
 export const metadata: Metadata = {
-  title: "Pacientes — Crivo",
+  title: "Pacientes — Crivo Sync",
 };
 
 const PacientesPage = () => {

@@ -40,7 +40,7 @@ export class RegisterDto {
   @ApiProperty({
     example: '11987654321',
     description:
-      'WhatsApp da clínica, só dígitos (DDD + número). É o contato que o Crivo usa para falar com a clínica.',
+      'WhatsApp da clínica, só dígitos (DDD + número). É o contato que o Crivo Sync usa para falar com a clínica.',
   })
   @IsString()
   @Matches(/^\d{10,11}$/, {

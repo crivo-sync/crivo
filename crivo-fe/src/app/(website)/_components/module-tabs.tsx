@@ -72,7 +72,7 @@ const MODULES: ModuleFeature[] = [
     badge: "Core · disponível",
     title: "Saiba para quem ligar antes da cadeira ficar vazia",
     description:
-      "O Crivo olha o histórico da sua clínica e mostra quais consultas de amanhã correm risco — com o motivo de cada uma, para a recepção poder discordar.",
+      "O Crivo Sync olha o histórico da sua clínica e mostra quais consultas de amanhã correm risco — com o motivo de cada uma, para a recepção poder discordar.",
     points: [
       "Usa as faltas e cancelamentos que já aconteceram na sua clínica",
       "Quem tende a faltar recebe mais lembrete; quem sempre vem não vira spam",

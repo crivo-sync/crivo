@@ -7,7 +7,7 @@ import { ScheduleBoard } from "@/features/appointments/components/ScheduleBoard"
 import { AgendaTabs } from "@/features/appointments/components/AgendaTabs";
 
 export const metadata: Metadata = {
-  title: "Quadro da agenda — Crivo",
+  title: "Quadro da agenda — Crivo Sync",
 };
 
 const AgendaCalendarioPage = () => {

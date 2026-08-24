@@ -143,7 +143,7 @@ export const DashboardShell = ({
         <Toolbar sx={{ justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             {/* A marca já vive no header da sidebar; aqui só o botão de abrir
-                quando ela está recolhida, para não duplicar "Crivo". */}
+                quando ela está recolhida, para não duplicar "Crivo Sync". */}
             <IconButton
               aria-label="Abrir menu"
               onClick={() => setOpen(true)}
@@ -179,7 +179,7 @@ export const DashboardShell = ({
             >
               <LogoMark />
               <Typography variant="h6" component="span">
-                Crivo
+                Crivo Sync
               </Typography>
             </Link>
           )}

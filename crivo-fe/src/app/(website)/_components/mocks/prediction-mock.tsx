@@ -114,7 +114,7 @@ export const PredictionMock = () => {
           </p>
           <p className="mt-0.5 text-[10px] leading-relaxed text-gray-600">
             Risco alto detectado para <span className="font-semibold text-gray-900">Carlos</span> — o
-            Crivo disparou um lembrete reforçado e sinalizou o horário como{" "}
+            Crivo Sync disparou um lembrete reforçado e sinalizou o horário como{" "}
             <span className="font-semibold text-amber-600">candidato a encaixe</span>.
           </p>
         </div>

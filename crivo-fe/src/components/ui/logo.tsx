@@ -50,7 +50,7 @@ export const Logo = ({ className, markClassName, wordmarkClassName }: LogoProps)
     <span className={cn("flex items-center gap-2.5", className)}>
       <LogoMark className={markClassName} />
       <span className={cn("text-xl font-bold tracking-tight text-gray-900", wordmarkClassName)}>
-        Crivo
+        Crivo Sync
       </span>
     </span>
   );

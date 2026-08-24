@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { SettingsTabs } from "@/features/tenant/components/SettingsTabs";
 
 export const metadata: Metadata = {
-  title: "Configurações — Crivo",
+  title: "Configurações — Crivo Sync",
 };
 
 const ConfiguracoesPage = () => {

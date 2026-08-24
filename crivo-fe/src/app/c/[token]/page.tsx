@@ -6,7 +6,7 @@ import { getConfirmation } from "@/features/confirmation/http/get-confirmation";
 import { ConfirmationCard } from "./_components/confirmation-card";
 
 export const metadata: Metadata = {
-  title: "Confirmar presença — Crivo",
+  title: "Confirmar presença — Crivo Sync",
 };
 
 type ConfirmationPageProps = {

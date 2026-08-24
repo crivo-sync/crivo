@@ -1,4 +1,4 @@
-# Padrão de desenvolvimento — Crivo BE
+# Padrão de desenvolvimento — Crivo Sync BE
 
 Guia para criar e manter módulos neste projeto.
 

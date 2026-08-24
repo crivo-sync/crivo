@@ -14,7 +14,7 @@ import { HandleStripeWebhookUseCase } from '../../application/use-cases/handle-s
 
 /**
  * Sem nenhum guard de propósito: o Stripe não tem como logar como usuário
- * do Crivo. A única credencial aqui é a assinatura HMAC, verificada dentro
+ * do Crivo Sync. A única credencial aqui é a assinatura HMAC, verificada dentro
  * do use-case a partir de `req.rawBody` (ver `main.ts` → `rawBody: true`).
  */
 @ApiExcludeController()

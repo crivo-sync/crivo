@@ -16,7 +16,7 @@ import { formatCentsToBRL } from "@/lib/currency";
  * diferencia.
  *
  * A saída é o visitante fazer a conta com os números dele: a multiplicação é
- * dele, a perda é dele, e nós não afirmamos nada sobre quanto disso o Crivo
+ * dele, a perda é dele, e nós não afirmamos nada sobre quanto disso o Crivo Sync
  * evita. É a mesma disciplina do card de custo das faltas no painel, aplicada
  * antes de a pessoa virar cliente.
  */
@@ -188,14 +188,14 @@ export const LossCalculator = () => {
         </ScrollReveal>
 
         {/*
-          Sem esta linha, o número acima insinua "o Crivo recupera tudo isso" —
+          Sem esta linha, o número acima insinua "o Crivo Sync recupera tudo isso" —
           promessa que nenhum produto cumpre e que nós não medimos.
         */}
         <ScrollReveal direction="up" delay={400} duration={700}>
           <p className="mx-auto mt-6 max-w-2xl text-center text-xs leading-relaxed text-gray-500">
             A conta usa os seus números e considera{" "}
             {WEEKS_PER_MONTH.toLocaleString("pt-BR")} semanas por mês. Nenhuma
-            ferramenta zera as faltas — o Crivo age sobre as
+            ferramenta zera as faltas — o Crivo Sync age sobre as
             que dá para evitar: lembra quem tende a faltar, avisa a recepção
             quando a mensagem não chega e oferece a vaga a quem está esperando.
           </p>

@@ -78,7 +78,7 @@ describe('GetNoShowCostUseCase', () => {
     const result = await useCase.execute(TENANT_ID);
 
     // Sem `confirmedAt` seria só "veio à consulta" — aconteceria com ou sem
-    // o Crivo, e creditar isso ao produto seria propaganda enganosa.
+    // o Crivo Sync, e creditar isso ao produto seria propaganda enganosa.
     expect(result.savedCount).toBe(1);
     expect(result.savedInCents).toBe(20000);
   });

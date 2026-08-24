@@ -1,6 +1,6 @@
 # Deploy — Railway (API) + Supabase (banco) + Vercel (front)
 
-Guia para publicar o Crivo pela primeira vez. As variáveis estão prontas
+Guia para publicar o Crivo Sync pela primeira vez. As variáveis estão prontas
 para colar; o que você precisa substituir aparece como `COLE_AQUI`.
 
 > **Ordem importa.** Banco → API → front. Cada etapa produz um valor que a

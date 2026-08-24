@@ -7,7 +7,7 @@ import { MuiProvider } from "@/components/providers/mui-provider";
  * visual do painel que a clínica conhece.
  *
  * Layout próprio porque a rota fica fora de `(website)` e `(dashboard)`: a
- * página é da clínica, sem header nem footer do Crivo.
+ * página é da clínica, sem header nem footer do Crivo Sync.
  */
 export default function AgendarLayout({
   children,

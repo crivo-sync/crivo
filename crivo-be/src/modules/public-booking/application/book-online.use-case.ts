@@ -124,7 +124,7 @@ export class BookOnlineUseCase {
     //
     // `pg_advisory_xact_lock` faz a segunda transação esperar a primeira
     // terminar, e então ACHA o paciente que já foi criado. É a proteção certa
-    // porque telefone NÃO é identidade rígida no Crivo — o import de pacientes
+    // porque telefone NÃO é identidade rígida no Crivo Sync — o import de pacientes
     // aceita duas pessoas com o mesmo número quando uma tem CPF —, então uma
     // `@@unique([tenantId, phone])` quebraria esse caso legítimo.
     return this.prisma.$transaction(async (tx) => {

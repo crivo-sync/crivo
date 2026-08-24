@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PatientDetail } from "@/features/patients/components/PatientDetail";
 
 export const metadata: Metadata = {
-  title: "Paciente — Crivo",
+  title: "Paciente — Crivo Sync",
 };
 
 type PatientPageProps = {

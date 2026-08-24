@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import { ProfilePage } from "@/features/profile/components/ProfilePage";
 
 export const metadata: Metadata = {
-  title: "Meu perfil — Crivo",
+  title: "Meu perfil — Crivo Sync",
 };
 
 const PerfilPage = () => {

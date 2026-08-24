@@ -57,12 +57,12 @@ export async function generateMetadata({
   const { subdomain } = await params;
   const result = await getBookingOptionsAction(subdomain);
 
-  if (!result.success) return { title: "Agendamento — Crivo" };
+  if (!result.success) return { title: "Agendamento — Crivo Sync" };
 
   return {
     title: `Agendar consulta — ${result.data.clinic.name}`,
     description: `Escolha o horário e marque sua consulta na ${result.data.clinic.name}.`,
-    // Página de cada clínica não deve ser indexada como conteúdo do Crivo.
+    // Página de cada clínica não deve ser indexada como conteúdo do Crivo Sync.
     robots: { index: false, follow: false },
   };
 }

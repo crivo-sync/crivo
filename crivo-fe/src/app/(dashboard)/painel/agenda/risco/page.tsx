@@ -7,7 +7,7 @@ import { AgendaTabs } from "@/features/appointments/components/AgendaTabs";
 import { NoShowRiskList } from "@/features/prediction/components/NoShowRiskList";
 
 export const metadata: Metadata = {
-  title: "Risco de falta — Crivo",
+  title: "Risco de falta — Crivo Sync",
 };
 
 const RiscoPage = () => {

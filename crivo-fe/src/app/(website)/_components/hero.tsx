@@ -80,7 +80,7 @@ export const Hero = () => {
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600">
             O paciente não aparece, o horário fica vazio e ninguém entra no
-            lugar. O Crivo lembra quem tende a faltar, avisa a recepção quando a
+            lugar. O Crivo Sync lembra quem tende a faltar, avisa a recepção quando a
             mensagem não chega e oferece a vaga a quem está esperando.
           </p>
 

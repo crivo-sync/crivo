@@ -8,7 +8,7 @@ import { LogoMark } from "@/components/ui/logo";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Entrar — Crivo",
+  title: "Entrar — Crivo Sync",
 };
 
 const LoginPage = () => {
@@ -28,12 +28,12 @@ const LoginPage = () => {
         <Box sx={{ display: "flex", justifyContent: "center", mb: 4 }}>
           <Link
             href="/"
-            aria-label="Crivo — início"
+            aria-label="Crivo Sync — início"
             style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
             <LogoMark />
             <Typography variant="h5" component="span" sx={{ color: "text.primary" }}>
-              Crivo
+              Crivo Sync
             </Typography>
           </Link>
         </Box>

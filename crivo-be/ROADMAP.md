@@ -1,4 +1,4 @@
-# Roadmap — Crivo
+# Roadmap — Crivo Sync
 
 Onde estamos, o que a concorrência já entrega e o que falta construir.
 
@@ -221,7 +221,7 @@ comum de duas salas. Ver [Fase 4](#fase-4--escala).
 >   (tenant, telefone) com `pg_advisory_xact_lock` — a segunda requisição
 >   espera a primeira e reusa o cadastro. Escolhido em vez de
 >   `@@unique([tenantId, phone])` porque telefone **não** é identidade rígida
->   no Crivo (o import aceita duas pessoas com o mesmo número quando uma tem
+>   no Crivo Sync (o import aceita duas pessoas com o mesmo número quando uma tem
 >   CPF) — a constraint quebraria esse caso legítimo
 > - 🐞 **Mensagens na fila seguiam saindo após a conta fechar** — trial
 >   vencido (`EXPIRED`) ou assinatura cancelada (`CANCELED`) sem plano caíam
@@ -316,7 +316,7 @@ Esse episódio não é anedota: é o resumo do mercado.
 2. **O custo dói.** Clínica pequena não sustenta plano caro de disparo. Quando aperta, corta a automação — justamente a função que evita a falta que custa mais caro que a mensalidade.
 3. **Quando a automação falha, o trabalho volta pra recepção.** Ligar paciente por paciente é exatamente as "3h/semana" que os concorrentes prometem economizar. A promessa é feita, mas quebra na prática.
 
-**O que isso significa para o Crivo:**
+**O que isso significa para o Crivo Sync:**
 
 - **Confiabilidade é feature, não detalhe de infraestrutura.** Um concorrente com feature list maior e WhatsApp instável perde para um com menos features e envio que não cai.
 - **A Meta Cloud API oficial segue sendo o destino**, mas ⚠️ **não é o presente**: em 05/08/2026 a adoção foi adiada por custo (a Meta cobra por conversa, e não há caixa para isso ainda). O provider de produção até lá é o `evolution` — exatamente a categoria de solução que o parágrafo acima descreve como frágil. É uma dívida assumida de olhos abertos, não um esquecimento: enquanto durar, o cenário "número banido, agenda parada" é um risco real do produto, e o argumento de venda "confiabilidade de entrega" não pode ser feito com honestidade.
@@ -396,7 +396,7 @@ no mapeamento original e muda a leitura da faixa de entrada:
 
 - **Franquia de mensagens já é praticada na faixa de entrada** — há plano de
   R$ 57 com 20 notificações/mês e R$ 99,86 com 50. Isso **valida a decisão de
-  cota** do Crivo (Solo 500, Básico 1.500): não é invenção nossa, é como o
+  cota** do Crivo Sync (Solo 500, Básico 1.500): não é invenção nossa, é como o
   mercado lida com o custo variável do WhatsApp. E mostra que nossas cotas são
   generosas em comparação.
 - **Ninguém vende confiabilidade de entrega.** Todos anunciam "lembrete por WhatsApp"; nenhum anuncia o que acontece quando ele falha. É aí que a história da recepcionista vira oportunidade.
@@ -481,7 +481,7 @@ em duas semanas.** Reconferido em 13/08/2026:
 - **A faixa de entrada NÃO seguiu.** Iter Clinic (R$ 39) e Clínica nas Nuvens
   (R$ 99) seguem vendendo prontuário + agenda + WhatsApp, sem agente autônomo.
 
-**O que isso muda para o Crivo:**
+**O que isso muda para o Crivo Sync:**
 
 1. **A decisão de 12/08 (não fazer chat de IA) continua certa para o que foi
    decidido** — chat na landing e "IA que conversa sobre o painel" seguem sem
@@ -652,7 +652,7 @@ melhor — **mas vende melhor**, e isso importa mais do que parece:
    - card no topo do painel (para quem já é cliente) e **calculadora na home**
      (para quem ainda não é). A calculadora não copia o "recupere até R$ 1.500":
      o visitante informa faltas/semana e ticket médio, e a conta é dele — não
-     afirmamos quanto disso o Crivo evita, o que manteria a mesma régua da
+     afirmamos quanto disso o Crivo Sync evita, o que manteria a mesma régua da
      medição de acurácia (que se recusa a concluir com amostra pequena).
 2. **Falam a dor em português de gente**: _"perdeu o caderninho da agenda de
    novo"_. Nós falamos "predição de risco de no-show" — que é o **como**, não
@@ -736,7 +736,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Autenticação por segredo no caminho** (`INBOUND_WEBHOOK_TOKEN`, comparado com `timingSafeEqual`) — o provider não faz login. Sem a env var configurada o endpoint recusa tudo, porque um webhook aberto aceita qualquer um injetando mensagem no nome de um paciente
      - **`tenantId` na URL** — a Evolution é uma instância por clínica e o payload não diz de quem é; derivar do telefone destino misturaria clínicas que usem o mesmo número
      - **Idempotente por `(tenantId, providerMessageId)`** — o WhatsApp reentrega o webhook quando não recebe 200 a tempo; sem o índice único a conversa duplicaria
-     - **Descarta de propósito**: `fromMe` (é o nosso próprio lembrete voltando), grupos (`@g.us`), e mídia sem legenda — hoje o Crivo só lê texto
+     - **Descarta de propósito**: `fromMe` (é o nosso próprio lembrete voltando), grupos (`@g.us`), e mídia sem legenda — hoje o Crivo Sync só lê texto
      - **Número desconhecido é gravado mesmo assim**, sem vínculo: perder o contato de quem ainda não é paciente seria perder justamente o lead. Telefone que bate com dois cadastros também fica sem vínculo — atribuir à pessoa errada é pior que não atribuir
      - Testado contra a API real: token inválido → 401, evento irrelevante → ignorado, paciente cadastrado → vinculado, reentrega do mesmo id → não duplica, número desconhecido → gravado sem vínculo. 11 testes unitários do parser do payload
    - [x] 🐞 **Dois bugs achados no teste de ponta a ponta** (10/08/2026) — simulando a jornada completa da recepção:
@@ -848,7 +848,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Estado hoje**: 7 atendimentos com desfecho no banco de dev — amostra insuficiente, e a medição diz isso. Validada com 140 casos sintéticos: HIGH 33,3% × LOW 0%, `separates: true`
    - [x] **Custo das faltas em reais** (13/08/2026) — `GET /dashboard/no-show-cost` + card no topo do painel. Nasceu da análise do Agendiva: o produto media no-show em contagem e percentual, que é linguagem de produto; dono de clínica pensa em dinheiro, e `Appointment.priceInCents` (preço congelado no ato) já permitia a conta. Decisões:
      - **Não afirma "R$ X recuperados pela lista de espera"**, que seria o número mais vendável e o que o concorrente anuncia. `WaitlistEntry` vira `OFFERED` e para por aí — não registra se a oferta virou agendamento. Fazer a conta assim mesmo seria inventar o principal número da tela
-     - **"Falta evitada" exige `COMPLETED` + `confirmedAt`** — sem a confirmação seria só "veio à consulta", que aconteceria com ou sem o Crivo. É o mais perto de "o produto salvou isso" que o dado sustenta
+     - **"Falta evitada" exige `COMPLETED` + `confirmedAt`** — sem a confirmação seria só "veio à consulta", que aconteceria com ou sem o Crivo Sync. É o mais perto de "o produto salvou isso" que o dado sustenta
      - **Taxa é `null`, não `0`, em mês sem desfecho** — 0% afirmaria "nenhum paciente falta aqui". E na tela ela só aparece com 5+ atendimentos concluídos: "100% de faltas" com um atendimento é ruído, não diagnóstico
      - **Fora do `hasDashboard`**, como o `summary`: esconder de quem está no Solo esconderia o próprio argumento de venda
      - Mês sem falta vira card verde ("Nenhuma falta este mês"), não um card de alerta zerado — que passaria a impressão oposta
@@ -881,7 +881,7 @@ Feature a feature, perdemos hoje para praticamente todos. A aposta não é ter m
      - **Resposta enxuta de propósito** — a página é aberta na internet; não devolve telefone/e-mail de profissional nem id interno de paciente
      - **Paciente é reusado pelo telefone** — evita duplicar a mesma pessoa a cada agendamento e preserva o histórico de faltas que alimenta a predição
      - Verificado ao vivo **sem token**: opções → 11 vagas → agendamento criado com `origin: ONLINE`, paciente cadastrado e **2 lembretes** disparados (a predição classificou como risco alto). Recusas corretas: clínica inexistente (404), profissional de outra clínica (404), horário ocupado (409), passado e telefone inválido (400)
-   - [x] **Página pública** (crivo-fe, 12/08/2026) — `/agendar/[subdomain]`, o paciente marca sozinho sem login. Cascata profissional → procedimento → dia → horário (a mesma do painel: sem os dois primeiros o backend não calcula horário livre). Chips mostram início → fim, e não só o começo. Clínica inexistente cai em 404 via `notFound()`, em vez de um formulário que nunca funcionaria. `robots: noindex` — página de clínica não deve ser indexada como conteúdo do Crivo. Verificado ao vivo: agendamento criado com `origin: ONLINE`, paciente cadastrado pelo telefone e **as duas mensagens** enfileiradas (aviso de marcação + lembrete); recusas corretas em horário ocupado (409) e data no passado (400). 5 testes E2E novos
+   - [x] **Página pública** (crivo-fe, 12/08/2026) — `/agendar/[subdomain]`, o paciente marca sozinho sem login. Cascata profissional → procedimento → dia → horário (a mesma do painel: sem os dois primeiros o backend não calcula horário livre). Chips mostram início → fim, e não só o começo. Clínica inexistente cai em 404 via `notFound()`, em vez de um formulário que nunca funcionaria. `robots: noindex` — página de clínica não deve ser indexada como conteúdo do Crivo Sync. Verificado ao vivo: agendamento criado com `origin: ONLINE`, paciente cadastrado pelo telefone e **as duas mensagens** enfileiradas (aviso de marcação + lembrete); recusas corretas em horário ocupado (409) e data no passado (400). 5 testes E2E novos
 
 ### Fase 3 — Monetização e retenção
 

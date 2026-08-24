@@ -106,7 +106,7 @@ export const Differentiators = () => {
 
           <ScrollReveal direction="up" delay={250} duration={850}>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-gray-600">
-              Odontologia e estética têm padrões de falta diferentes. O Crivo é
+              Odontologia e estética têm padrões de falta diferentes. O Crivo Sync é
               construído em cima disso — não é um CRM genérico adaptado.
             </p>
           </ScrollReveal>

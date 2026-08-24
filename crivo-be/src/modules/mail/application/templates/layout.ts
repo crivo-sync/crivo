@@ -63,14 +63,14 @@ function toHtml(content: MailContent): string {
   <body style="margin:0;padding:24px;background:#f5f6fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
     <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;">
       <tr><td>
-        <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:${BRAND};">Crivo</p>
+        <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:${BRAND};">Crivo Sync</p>
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111827;">${escapeHtml(content.heading)}</h1>
         ${paragraphs(content.intro)}
         ${table}
         ${cta}
         ${paragraphs(content.outro ?? [])}
         <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:12px;">
-          Este é um e-mail automático do Crivo. Não responda a esta mensagem.
+          Este é um e-mail automático do Crivo Sync. Não responda a esta mensagem.
         </p>
       </td></tr>
     </table>

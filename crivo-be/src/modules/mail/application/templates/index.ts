@@ -22,10 +22,10 @@ export function welcomeMail(input: {
   bookingUrl: string;
   trialDays: number;
 }): RenderedMail {
-  return build(`Bem-vindo ao Crivo, ${input.clinicName}`, {
+  return build(`Bem-vindo ao Crivo Sync, ${input.clinicName}`, {
     heading: 'Sua conta está pronta',
     intro: [
-      `A ${input.clinicName} já pode usar o Crivo. Você tem ${input.trialDays} dias de teste, sem cartão.`,
+      `A ${input.clinicName} já pode usar o Crivo Sync. Você tem ${input.trialDays} dias de teste, sem cartão.`,
       'Para a agenda funcionar, faltam dois cadastros rápidos: quem atende e quais procedimentos a clínica faz. Sem os dois, o link de agendamento ainda não aceita marcação.',
     ],
     rows: [{ label: 'Seu link de agendamento', value: input.bookingUrl }],
@@ -108,7 +108,7 @@ export function trialEndingMail(input: {
         ? 'acaba amanhã'
         : `acaba em ${input.daysLeft} dias`;
 
-  return build(`Seu teste do Crivo ${prazo}`, {
+  return build(`Seu teste do Crivo Sync ${prazo}`, {
     heading: `O teste ${prazo}`,
     intro: [
       `O período de teste da ${input.clinicName} está terminando.`,

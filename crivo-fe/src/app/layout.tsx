@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crivo",
-  description: "Crivo - O gerenciamento completo de sua clinica",
+  title: "Crivo Sync",
+  description: "Crivo Sync - O gerenciamento completo de sua clinica",
 };
 
 export default function RootLayout({

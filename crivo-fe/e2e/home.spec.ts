@@ -66,7 +66,7 @@ test.describe("Home — quanto as faltas custam", () => {
     const calculadora = page.locator("#calculadora");
     await calculadora.scrollIntoViewIfNeeded();
 
-    // Sem esta linha o total insinua "o Crivo recupera tudo isso" — promessa
+    // Sem esta linha o total insinua "o Crivo Sync recupera tudo isso" — promessa
     // que não medimos e que contradiz a régua do resto do produto.
     await expect(calculadora).toContainText("Nenhuma ferramenta zera as faltas");
   });

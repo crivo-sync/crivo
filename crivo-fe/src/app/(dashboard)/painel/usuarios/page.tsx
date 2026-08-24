@@ -8,7 +8,7 @@ import { UserManagement } from "@/features/users/components/UserManagement";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Usuários — Crivo",
+  title: "Usuários — Crivo Sync",
 };
 
 /**

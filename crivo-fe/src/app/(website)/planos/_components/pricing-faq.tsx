@@ -33,7 +33,7 @@ const FAQS = [
   {
     question: "O WhatsApp é oficial?",
     answer:
-      "Você escolhe: o Crivo suporta a API oficial da Meta (WhatsApp Cloud API) e também uma camada não oficial mais barata, com o aviso claro de que ela arrisca o número da clínica.",
+      "Você escolhe: o Crivo Sync suporta a API oficial da Meta (WhatsApp Cloud API) e também uma camada não oficial mais barata, com o aviso claro de que ela arrisca o número da clínica.",
   },
 ];
 

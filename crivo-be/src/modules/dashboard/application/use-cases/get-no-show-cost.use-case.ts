@@ -16,7 +16,7 @@ export type NoShowCost = {
   noShowRate: number | null;
   /**
    * Faltas evitadas: paciente de risco alto que **recebeu o lembrete extra
-   * e compareceu**. É o mais perto de "o Crivo salvou isso" que o dado
+   * e compareceu**. É o mais perto de "o Crivo Sync salvou isso" que o dado
    * permite afirmar sem inventar.
    */
   savedCount: number;
@@ -74,7 +74,7 @@ export class GetNoShowCostUseCase {
      *
      * A confirmação é o sinal de que a comunicação funcionou: o paciente foi
      * alcançado, respondeu, e apareceu. Sem `confirmedAt` seria só "veio à
-     * consulta", que aconteceria com ou sem o Crivo.
+     * consulta", que aconteceria com ou sem o Crivo Sync.
      */
     const saved = data.filter(
       (appointment) =>

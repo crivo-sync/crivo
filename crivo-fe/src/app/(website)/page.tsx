@@ -13,9 +13,9 @@ import { FinalCta } from "./_components/final-cta";
 import { SHOW_SOCIAL_PROOF } from "./_data/social-proof";
 
 export const metadata: Metadata = {
-  title: "Crivo — Pare de perder dinheiro com faltas na agenda",
+  title: "Crivo Sync — Pare de perder dinheiro com faltas na agenda",
   description:
-    "Calcule quanto as faltas custam na sua clínica. O Crivo lembra quem tende a faltar pelo WhatsApp, avisa a recepção quando a mensagem não chega e oferece a vaga a quem está esperando. 14 dias grátis, sem cartão.",
+    "Calcule quanto as faltas custam na sua clínica. O Crivo Sync lembra quem tende a faltar pelo WhatsApp, avisa a recepção quando a mensagem não chega e oferece a vaga a quem está esperando. 14 dias grátis, sem cartão.",
 };
 
 const HomePage = () => {

@@ -54,7 +54,7 @@ async function bootstrap() {
   });
 
   const swaggerBuilder = new DocumentBuilder()
-    .setTitle('Crivo API')
+    .setTitle('Crivo Sync API')
     .setDescription(
       [
         'Plataforma de gestão para clínicas de estética e odontologia.',
