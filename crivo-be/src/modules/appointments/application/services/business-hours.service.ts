@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import {
+  clinicWeekday,
+  clinicMinutesOfDay,
+  clinicDateKey,
+} from 'src/shared/clinic-time';
 
 const WEEKDAY_LABELS = [
   'domingo',
@@ -47,9 +52,10 @@ export class BusinessHoursService {
    * às 18:00 é rejeitado, porque terminaria 18:30 — validar só o início
    * deixaria passar exatamente o caso que motivou esta regra.
    *
-   * `startsAt`/`endsAt` chegam como `Date` do servidor, e a comparação usa
-   * hora local (`getHours`) de propósito: o expediente é do relógio de parede
-   * da clínica, não UTC.
+   * `startsAt`/`endsAt` chegam como instante UTC; a comparação usa o relógio
+   * de parede da clínica (`clinic-time.ts`, hoje fixo em America/Sao_Paulo),
+   * nunca o fuso do processo — o expediente é o horário que a recepção vê na
+   * tela, não o fuso do container onde o backend roda.
    */
   async assertWithinBusinessHours(
     tenantId: string,
@@ -60,7 +66,7 @@ export class BusinessHoursService {
 
     if (!tenant) return;
 
-    const weekday = startsAt.getDay();
+    const weekday = clinicWeekday(startsAt);
     if (!tenant.businessDays.includes(weekday)) {
       const openDays = tenant.businessDays
         .slice()
@@ -73,7 +79,7 @@ export class BusinessHoursService {
       );
     }
 
-    const startMinutes = startsAt.getHours() * 60 + startsAt.getMinutes();
+    const startMinutes = clinicMinutesOfDay(startsAt);
     if (startMinutes < tenant.businessHoursStart) {
       throw new BadRequestException(
         `A clínica abre às ${formatMinutes(tenant.businessHoursStart)}.`,
@@ -83,9 +89,8 @@ export class BusinessHoursService {
     // O fim é comparado no mesmo dia do início: um atendimento que atravessa a
     // meia-noite já estouraria o fechamento de qualquer expediente normal.
     const endMinutes =
-      endsAt.getHours() * 60 +
-      endsAt.getMinutes() +
-      (endsAt.getDate() !== startsAt.getDate() ? 24 * 60 : 0);
+      clinicMinutesOfDay(endsAt) +
+      (clinicDateKey(endsAt) !== clinicDateKey(startsAt) ? 24 * 60 : 0);
 
     if (endMinutes > tenant.businessHoursEnd) {
       throw new BadRequestException(

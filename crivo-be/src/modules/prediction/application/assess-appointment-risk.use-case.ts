@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { clinicMinutesOfDay } from 'src/shared/clinic-time';
 import { assessNoShowRisk, type RiskAssessment } from '../domain/no-show-risk';
 
 export type AppointmentRisk = RiskAssessment & {
@@ -155,7 +156,10 @@ export class AssessAppointmentRiskUseCase {
       // Sem histórico de comparecimento nem de falta, este é o primeiro
       // contato — o `groupBy` acima só conta atendimentos que terminaram.
       isFirstVisit: stats.noShows + stats.completed === 0,
-      hourOfDay: appointment.startsAt.getHours(),
+      // Hora do relógio de parede da clínica, não do fuso do processo Node
+      // (produção roda em container UTC) — senão o modelo aprenderia/
+      // classificaria pelo horário errado por até 3h.
+      hourOfDay: Math.floor(clinicMinutesOfDay(appointment.startsAt) / 60),
       daysUntilAppointment: Math.round(
         (appointment.startsAt.getTime() - appointment.createdAt.getTime()) /
           MS_PER_DAY,

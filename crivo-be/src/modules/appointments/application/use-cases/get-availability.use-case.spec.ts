@@ -1,4 +1,5 @@
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { fromClinicWallClock } from 'src/shared/clinic-time';
 import type { AppointmentRepository } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
 import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
@@ -17,10 +18,19 @@ describe('GetAvailabilityUseCase', () => {
   const PROFESSIONAL_ID = 'prof-1';
   const PROCEDURE_ID = 'proc-1';
 
-  // Datas de quarta-feira (getDay() === 3) — passada e futura, para não
-  // depender do relógio real na hora de rodar o teste.
-  const WEDNESDAY_PAST = new Date(2024, 7, 7); // 07/08/2024
-  const WEDNESDAY_FUTURE = new Date(2027, 7, 4); // 04/08/2027
+  // Datas de quarta-feira no fuso da clínica — passada e futura, para não
+  // depender do relógio real na hora de rodar o teste. Construídas via
+  // `fromClinicWallClock` (não `new Date(y, m, d)`, que lê o fuso do
+  // processo rodando o teste, não o da clínica) para o teste continuar
+  // correto rodando sob qualquer TZ de CI.
+  const WEDNESDAY_PAST = fromClinicWallClock(
+    { year: 2024, month: 8, day: 7 },
+    0,
+  ); // 07/08/2024
+  const WEDNESDAY_FUTURE = fromClinicWallClock(
+    { year: 2027, month: 8, day: 4 },
+    0,
+  ); // 04/08/2027
 
   const FULL_WEEKDAY: Window = {
     weekday: 3,
@@ -163,8 +173,8 @@ describe('GetAvailabilityUseCase', () => {
       {
         id: 'a1',
         status: 'CONFIRMED',
-        startsAt: new Date(2027, 7, 4, 8, 0),
-        endsAt: new Date(2027, 7, 4, 12, 0),
+        startsAt: fromClinicWallClock({ year: 2027, month: 8, day: 4 }, 8 * 60),
+        endsAt: fromClinicWallClock({ year: 2027, month: 8, day: 4 }, 12 * 60),
       },
     ];
     const useCase = buildUseCase({
@@ -188,8 +198,8 @@ describe('GetAvailabilityUseCase', () => {
       schedules: [MORNING_WEEKDAY],
       timeOff: [
         {
-          startsAt: new Date(2027, 7, 4, 0, 0),
-          endsAt: new Date(2027, 7, 5, 0, 0),
+          startsAt: fromClinicWallClock({ year: 2027, month: 8, day: 4 }, 0),
+          endsAt: fromClinicWallClock({ year: 2027, month: 8, day: 5 }, 0),
           reason: 'Férias',
         },
       ],

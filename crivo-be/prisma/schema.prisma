@@ -527,12 +527,21 @@ model Appointment {
   clinicalPhotos  ClinicalPhoto[]
 
   // Busca da agenda: sempre por tenant + profissional + janela de tempo.
-  // ⚠️ Existe também um índice ÚNICO PARCIAL manual (não declarado aqui,
-  // pois o Prisma não gera partial index): `appointments_blocking_slot_unique`
-  // em (tenant_id, professional_id, starts_at) WHERE status IN
-  // ('SCHEDULED','CONFIRMED','COMPLETED') — migration 20260820140000.
-  // Ele impede a reserva dupla do mesmo horário sob corrida. Por ser manual,
-  // o `migrate diff` vai acusá-lo como drift; é intencional.
+  // ⚠️ Existem também DUAS constraints manuais (não declaradas aqui, pois o
+  // Prisma não gera partial index nem exclusion constraint):
+  //   1. Índice ÚNICO PARCIAL `appointments_blocking_slot_unique` em
+  //      (tenant_id, professional_id, starts_at) WHERE status IN
+  //      ('SCHEDULED','CONFIRMED','COMPLETED') — migration 20260820140000.
+  //      Só barra o MESMO starts_at (duas pessoas clicando o mesmo slot).
+  //   2. EXCLUDE `appointments_no_overlap_per_professional` (gist, requer
+  //      btree_gist) sobre tenant_id, professional_id e
+  //      tsrange(starts_at, ends_at, '[)'), mesmo WHERE de status —
+  //      migration 20260824120000. Cobre sobreposição com starts_at
+  //      DIFERENTES (ex.: 10:00 e 10:30 de 60min), que o índice acima não
+  //      cobre. As duas seguem coexistindo: a primeira é redundante com a
+  //      segunda em teoria, mas é mais barata e mantida por já estar em
+  //      produção — remover exigiria nova migration própria.
+  // Por serem manuais, o `migrate diff` vai acusá-las como drift; intencional.
   @@index([tenantId, professionalId, startsAt])
   @@index([tenantId, startsAt])
   @@index([patientId])

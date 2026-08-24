@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { clinicMinutesOfDay } from 'src/shared/clinic-time';
 import { assessNoShowRisk, type RiskLevel } from '../domain/no-show-risk';
 
 export type LevelAccuracy = {
@@ -149,7 +150,10 @@ export class MeasureRuleAccuracyUseCase {
       hasConfirmed:
         !!target.confirmedAt && target.confirmedAt < target.startsAt,
       isFirstVisit: previous.length === 0,
-      hourOfDay: target.startsAt.getHours(),
+      // Mesma correção de fuso do `assess-appointment-risk.use-case.ts`: o
+      // backtest precisa reconstruir o mesmo `hourOfDay` que o modelo usaria
+      // ao vivo, calculado no relógio de parede da clínica.
+      hourOfDay: Math.floor(clinicMinutesOfDay(target.startsAt) / 60),
       daysUntilAppointment: Math.round(
         (target.startsAt.getTime() - target.createdAt.getTime()) / MS_PER_DAY,
       ),

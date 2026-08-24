@@ -7,6 +7,11 @@ import {
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import {
+  clinicWeekday,
+  clinicDateKey,
+  fromClinicWallClock,
+} from 'src/shared/clinic-time';
+import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository,
 } from '../../domain/repository/appointment.repository';
@@ -105,13 +110,21 @@ export class GetAvailabilityUseCase {
       );
     }
 
-    const dayStart = new Date(input.date);
-    dayStart.setHours(0, 0, 0, 0);
+    // `input.date` já chega como meia-noite do dia consultado no fuso da
+    // clínica (DTO usa `parseClinicDateKey`) — extrai o ano/mês/dia local
+    // dele para reconstruir os limites do dia sem depender do fuso do
+    // processo Node.
+    const dateKey = clinicDateKey(input.date);
+    const [dateYear, dateMonth, dateDay] = dateKey.split('-').map(Number);
+    const dayStart = fromClinicWallClock(
+      { year: dateYear, month: dateMonth, day: dateDay },
+      0,
+    );
 
     // Dia fechado: devolve lista vazia com o motivo, em vez de 400 — quem
     // chama está perguntando "o que tem livre?", e "nada, é domingo" é uma
     // resposta válida para renderizar na tela.
-    if (!config.businessDays.includes(dayStart.getDay())) {
+    if (!config.businessDays.includes(clinicWeekday(dayStart))) {
       return {
         date: dayStart,
         durationMinutes: procedure.durationMinutes,
@@ -120,8 +133,11 @@ export class GetAvailabilityUseCase {
       };
     }
 
-    const dayEnd = new Date(dayStart);
-    dayEnd.setHours(23, 59, 59, 999);
+    const dayEnd = fromClinicWallClock(
+      { year: dateYear, month: dateMonth, day: dateDay },
+      23 * 60 + 59,
+      { second: 59, ms: 999 },
+    );
 
     const [{ data: appointments }, availability] = await Promise.all([
       this.appointmentRepository.findMany({
@@ -162,8 +178,10 @@ export class GetAvailabilityUseCase {
       minutes + procedure.durationMinutes <= config.businessHoursEnd;
       minutes += SLOT_STEP_MINUTES
     ) {
-      const start = new Date(dayStart);
-      start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+      const start = fromClinicWallClock(
+        { year: dateYear, month: dateMonth, day: dateDay },
+        minutes,
+      );
       const end = new Date(
         start.getTime() + procedure.durationMinutes * 60_000,
       );
@@ -190,7 +208,7 @@ export class GetAvailabilityUseCase {
     // Quando não sobra nada, a recepção merece saber o motivo — "não tem
     // horário" sem explicação é lido como bug (e não é: é a grade da Dra.
     // Helena atendendo só de manhã, o dia já ter passado etc.).
-    const weekday = dayStart.getDay();
+    const weekday = clinicWeekday(dayStart);
     const dayWindows = availability.schedules.filter(
       (window) => window.weekday === weekday,
     );
@@ -220,12 +238,9 @@ export class GetAvailabilityUseCase {
         // este profissional (hoje à tarde com janela só de manhã, ou um dia
         // passado inteiro). Se ainda não passou, sobrava tempo e o vazio é
         // agenda cheia.
-        const lastStart = new Date(dayStart);
-        lastStart.setHours(
-          Math.floor(lastStartMinutes / 60),
-          lastStartMinutes % 60,
-          0,
-          0,
+        const lastStart = fromClinicWallClock(
+          { year: dateYear, month: dateMonth, day: dateDay },
+          lastStartMinutes,
         );
 
         noSlotsReason =

@@ -22,6 +22,7 @@ import {
 import { GetAvailabilityUseCase } from 'src/modules/appointments/application/use-cases/get-availability.use-case';
 import { isOverProfessionalLimit } from 'src/modules/professionals/application/professional-limit';
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import { parseClinicDateKey } from 'src/shared/clinic-time';
 import { BookOnlineUseCase } from '../../application/book-online.use-case';
 
 export class BookOnlineDto {
@@ -221,14 +222,16 @@ export class PublicBookingController {
  *
  * `new Date('2026-08-20')` é meia-noite UTC, que em Brasília cai no dia 19 às
  * 21h — a agenda inteira escorregaria um dia. Mesma armadilha já documentada
- * no DTO do painel.
+ * no DTO do painel — as duas usam `clinic-time.ts` para não depender do fuso
+ * do processo Node (dev bate por acidente com o fuso da clínica; produção,
+ * em container UTC, não).
  */
 function parseLocalDate(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
+  const parsed = parseClinicDateKey(value);
 
-  if (!year || !month || !day) {
+  if (!parsed) {
     throw new BadRequestException('Data inválida.');
   }
 
-  return new Date(year, month - 1, day);
+  return parsed;
 }

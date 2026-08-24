@@ -1,4 +1,4 @@
-import { Appointment, AppointmentOrigin, Prisma, WaitlistStatus } from '@prisma/client';
+import { Appointment, AppointmentOrigin, WaitlistStatus } from '@prisma/client';
 import {
   BadRequestException,
   ConflictException,
@@ -21,6 +21,7 @@ import {
 } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
 import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
+import { isSlotConflictError } from '../is-slot-conflict-error';
 
 export type CreateAppointmentInput = {
   tenantId: string;
@@ -208,11 +209,11 @@ export class CreateAppointmentUseCase {
       );
     }
 
-    // A checagem de conflito acima vive em memória — o índice único parcial
-    // `appointments_blocking_slot_unique` é a garantia de banco para a
-    // corrida de duas requisições simultâneas no mesmo horário (as duas
-    // passavam no `findOverlapping` e as duas gravavam). Quando o banco
-    // recusa (P2002), vira o mesmo 409 amigável.
+    // A checagem de conflito acima vive em memória — as constraints de banco
+    // (índice único parcial + EXCLUDE, ver comentário em `schema.prisma`)
+    // são a garantia real para a corrida de duas requisições simultâneas no
+    // mesmo horário (as duas passavam no `findOverlapping` e as duas
+    // gravavam). Quando o banco recusa, vira o mesmo 409 amigável.
     let appointment: Appointment;
     try {
       appointment = await this.appointmentRepository.create({
@@ -228,10 +229,7 @@ export class CreateAppointmentUseCase {
         origin: input.origin,
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (isSlotConflictError(error)) {
         throw new ConflictException(
           'Este profissional já tem um agendamento neste horário.',
         );

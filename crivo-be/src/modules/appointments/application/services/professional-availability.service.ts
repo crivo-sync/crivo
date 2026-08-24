@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
+import {
+  clinicWeekday,
+  clinicMinutesOfDay,
+  clinicDateKey,
+} from 'src/shared/clinic-time';
 
 const WEEKDAY_LABELS = [
   'domingo',
@@ -35,10 +40,6 @@ function formatMinutes(minutesFromMidnight: number): string {
   const hours = Math.floor(minutesFromMidnight / 60);
   const minutes = minutesFromMidnight % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function minutesOfDay(date: Date): number {
-  return date.getHours() * 60 + date.getMinutes();
 }
 
 /**
@@ -97,13 +98,13 @@ export class ProfessionalAvailabilityService {
   ): boolean {
     if (availability.schedules.length === 0) return true;
 
-    const weekday = startsAt.getDay();
-    const start = minutesOfDay(startsAt);
+    const weekday = clinicWeekday(startsAt);
+    const start = clinicMinutesOfDay(startsAt);
     // Atendimento que vira o dia não cabe em faixa nenhuma — tratar como
     // fim "24h+" faz a comparação abaixo rejeitá-lo naturalmente.
     const end =
-      minutesOfDay(endsAt) +
-      (endsAt.getDate() !== startsAt.getDate() ? 24 * 60 : 0);
+      clinicMinutesOfDay(endsAt) +
+      (clinicDateKey(endsAt) !== clinicDateKey(startsAt) ? 24 * 60 : 0);
 
     return availability.schedules.some(
       (window) =>
@@ -150,7 +151,7 @@ export class ProfessionalAvailabilityService {
     }
 
     if (!this.fitsSchedule(availability, startsAt, endsAt)) {
-      const weekday = startsAt.getDay();
+      const weekday = clinicWeekday(startsAt);
       const windows = availability.schedules
         .filter((window) => window.weekday === weekday)
         .map(

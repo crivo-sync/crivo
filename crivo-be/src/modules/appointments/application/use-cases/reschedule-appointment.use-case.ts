@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Appointment, AppointmentStatus, Prisma } from '@prisma/client';
+import { Appointment, AppointmentStatus } from '@prisma/client';
 
 import { PrismaService } from 'src/shared/infrastructure/prisma/prisma.service';
 import { ScheduleAppointmentReminderUseCase } from 'src/modules/messaging/application/use-cases/schedule-appointment-reminder.use-case';
@@ -15,6 +15,7 @@ import {
 } from '../../domain/repository/appointment.repository';
 import { BusinessHoursService } from '../services/business-hours.service';
 import { ProfessionalAvailabilityService } from '../services/professional-availability.service';
+import { isSlotConflictError } from '../is-slot-conflict-error';
 
 export type RescheduleAppointmentInput = {
   id: string;
@@ -134,12 +135,9 @@ export class RescheduleAppointmentUseCase {
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
       });
     } catch (error) {
-      // Mesmo 409 da criação: o índice único barrou a corrida no novo
-      // horário — remarcar não pode furar a agenda em silêncio.
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      // Mesmo 409 da criação: a constraint de banco barrou a corrida no
+      // novo horário — remarcar não pode furar a agenda em silêncio.
+      if (isSlotConflictError(error)) {
         throw new ConflictException(
           'Este profissional já tem um agendamento neste horário.',
         );
