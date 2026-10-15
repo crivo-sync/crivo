@@ -19,6 +19,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Crivo Sync",
   description: "Crivo Sync - O gerenciamento completo de sua clinica",
+  icons: {
+    icon: "/images/icon.jpeg",
+  },
 };
 
 export default function RootLayout({
@@ -29,8 +32,6 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      // Extensões de navegador (tradutores, etc.) injetam atributos no <html>
-      // antes da hidratação — isso é esperado e inofensivo, não um bug nosso.
       suppressHydrationWarning
       className={cn(
         "h-full",

@@ -36,7 +36,7 @@ export class StripeService implements OnModuleInit {
     );
 
     this.client = new StripeLib(secretKey, {
-      apiVersion: '2026-07-29.dahlia',
+      apiVersion: StripeLib.API_VERSION,
     });
   }
 

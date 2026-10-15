@@ -4,11 +4,6 @@ type LogoMarkProps = {
   className?: string;
 };
 
-/**
- * Monograma "C" com um furo — a abertura remete a "crivo" (filtro/peneira)
- * sem virar ícone literal. Testado em 32px (header) até favicon: o ponto
- * continua legível onde um corte diagonal completo confundia a forma.
- */
 export const LogoMark = ({ className }: LogoMarkProps) => {
   return (
     <svg
@@ -18,7 +13,14 @@ export const LogoMark = ({ className }: LogoMarkProps) => {
       aria-hidden
     >
       <defs>
-        <linearGradient id="crivo-mark-gradient" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="crivo-mark-gradient"
+          x1="4"
+          y1="4"
+          x2="28"
+          y2="28"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="#818cf8" />
           <stop offset="100%" stopColor="#4338ca" />
         </linearGradient>
@@ -45,11 +47,20 @@ type LogoProps = {
   wordmarkClassName?: string;
 };
 
-export const Logo = ({ className, markClassName, wordmarkClassName }: LogoProps) => {
+export const Logo = ({
+  className,
+  markClassName,
+  wordmarkClassName,
+}: LogoProps) => {
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
       <LogoMark className={markClassName} />
-      <span className={cn("text-xl font-bold tracking-tight text-gray-900", wordmarkClassName)}>
+      <span
+        className={cn(
+          "text-xl font-bold tracking-tight text-gray-900",
+          wordmarkClassName,
+        )}
+      >
         Crivo Sync
       </span>
     </span>

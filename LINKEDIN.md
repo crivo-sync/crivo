@@ -10,6 +10,8 @@
 
 ### ✂️ POST (feed)
 
+Projeto bem legal de estudos que acabou sendo um sistema completo de agendamento
+
 Toda clínica de estética e odontologia perde dinheiro com paciente que marca e não aparece. Isso não é opinião — é o número que toda recepção conhece de cor e nenhum sistema mostra.
 
 Resolvi construir o sistema que mostraria. Começou como um CRUD de agenda, mas quanto mais eu entendia o problema, mais claro ficava que a falta não é um evento aleatório — tem padrão, tem sinal, e dava pra agir antes dela acontecer.
@@ -18,6 +20,7 @@ Assim nasceu o **Crivo Sync**: uma plataforma whitelabel de gestão para clínic
 
 - 🌐 **Painel:** Next.js 16 + React 19 + MUI, multi-tenant por subdomínio
 - ⚙️ **Backend:** NestJS + Prisma + PostgreSQL, Clean Architecture (domínio isolado de framework)
+- 🎯 **Events:** Cron, RabbitMQ, Redis
 - 🤖 **IA:** DeepSeek reescreve o lembrete de WhatsApp com o tom da clínica — nunca decide um fato, só redige
 - 💳 **Billing:** Stripe com planos por porte de clínica, upgrade e adicional de profissional em tempo real
 
@@ -29,7 +32,7 @@ E os problemas de engenharia que mais me ensinaram:
 
 Links 👇
 
-[cole aqui o link do painel ou site institucional]
+[Crivo Sync](https://crivosync.g3developer.com.br/)
 
 #FullStack #NextJS #NestJS #TypeScript #PostgreSQL #IA #SaaS #Whitelabel #Prisma #Stripe
 
@@ -47,13 +50,13 @@ Assim nasceu o **Crivo Sync**: uma plataforma whitelabel completa de gestão par
 
 #### A stack de verdade
 
-| Camada | Tecnologias | Deploy |
-| --- | --- | --- |
-| **Painel (web)** | Next.js 16 · React 19 · MUI · React Hook Form + Zod · React Query | Vercel |
-| **API** | NestJS · Prisma 7 · PostgreSQL · class-validator · BullMQ + Redis | Railway |
-| **Banco** | PostgreSQL (Supabase) — pooler + conexão direta para migration | Supabase |
-| **IA & mensageria** | DeepSeek (reescrita de lembrete) · WhatsApp Cloud API / Evolution API | — |
-| **Billing** | Stripe — assinatura por porte de clínica, upgrade e profissional adicional | — |
+| Camada              | Tecnologias                                                                | Deploy   |
+| ------------------- | -------------------------------------------------------------------------- | -------- |
+| **Painel (web)**    | Next.js 16 · React 19 · MUI · React Hook Form + Zod · React Query          | Vercel   |
+| **API**             | NestJS · Prisma 7 · PostgreSQL · class-validator · BullMQ + Redis          | Railway  |
+| **Banco**           | PostgreSQL (Supabase) — pooler + conexão direta para migration             | Supabase |
+| **IA & mensageria** | DeepSeek (reescrita de lembrete) · WhatsApp Cloud API / Evolution API      | —        |
+| **Billing**         | Stripe — assinatura por porte de clínica, upgrade e profissional adicional | —        |
 
 #### Os números
 
@@ -144,13 +147,13 @@ That's how **Crivo Sync** was born: a full whitelabel management platform for ae
 
 #### The actual stack
 
-| Layer | Technologies | Deploy |
-| --- | --- | --- |
-| **Dashboard (web)** | Next.js 16 · React 19 · MUI · React Hook Form + Zod · React Query | Vercel |
-| **API** | NestJS · Prisma 7 · PostgreSQL · class-validator · BullMQ + Redis | Railway |
-| **Database** | PostgreSQL (Supabase) — pooled + direct connection for migrations | Supabase |
-| **AI & messaging** | DeepSeek (reminder rewriting) · WhatsApp Cloud API / Evolution API | — |
-| **Billing** | Stripe — plans by clinic size, upgrades and extra-professional pricing | — |
+| Layer               | Technologies                                                           | Deploy   |
+| ------------------- | ---------------------------------------------------------------------- | -------- |
+| **Dashboard (web)** | Next.js 16 · React 19 · MUI · React Hook Form + Zod · React Query      | Vercel   |
+| **API**             | NestJS · Prisma 7 · PostgreSQL · class-validator · BullMQ + Redis      | Railway  |
+| **Database**        | PostgreSQL (Supabase) — pooled + direct connection for migrations      | Supabase |
+| **AI & messaging**  | DeepSeek (reminder rewriting) · WhatsApp Cloud API / Evolution API     | —        |
+| **Billing**         | Stripe — plans by clinic size, upgrades and extra-professional pricing | —        |
 
 #### The numbers
 
@@ -208,14 +211,14 @@ Always open to making connections, swapping engineering war stories, and talking
 
 Grave a tela (celular ou navegador). **Sem narração** — o feed roda no mudo por padrão. Use os textos abaixo como **legendas sobrepostas na tela** (overlay), uma por cena. Fonte grande, alto contraste, posicionada no topo ou centro do vídeo.
 
-| Tempo | Cena (tela) | Texto na tela (overlay) |
-| --- | --- | --- |
-| **0-3s** | Abre direto na **Agenda** do painel (`(dashboard)/painel/agenda`). Sem splash, sem intro. | `Construí um sistema de gestão pra clínicas — sozinho.` |
-| **3-8s** | Paciente tenta marcar dois horários que se sobrepõem → sistema recusa com a mensagem de conflito. | `Duas pessoas, mesmo horário: só uma fica. Garantido no banco.` |
-| **8-14s** | Abre a tela de **Risco de falta** (`(dashboard)/painel/agenda/risco`), mostrando as consultas classificadas. | `A IA aponta quem tende a faltar antes de faltar.` |
-| **14-20s** | Página pública de agendamento (`/agendar/[subdomain]`) — clínica com a própria marca, cor e logo. | `Cada clínica com a própria cara. Whitelabel de verdade.` |
-| **20-25s** | Lembrete chegando no WhatsApp, com o texto reescrito no tom da clínica. | `Lembrete automático, no tom da clínica.` |
-| **25-30s** | Logo do Crivo Sync em tela cheia. | `Painel + Agendamento público · Agora em produção 🎉` |
+| Tempo      | Cena (tela)                                                                                                  | Texto na tela (overlay)                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **0-3s**   | Abre direto na **Agenda** do painel (`(dashboard)/painel/agenda`). Sem splash, sem intro.                    | `Construí um sistema de gestão pra clínicas — sozinho.`         |
+| **3-8s**   | Paciente tenta marcar dois horários que se sobrepõem → sistema recusa com a mensagem de conflito.            | `Duas pessoas, mesmo horário: só uma fica. Garantido no banco.` |
+| **8-14s**  | Abre a tela de **Risco de falta** (`(dashboard)/painel/agenda/risco`), mostrando as consultas classificadas. | `A IA aponta quem tende a faltar antes de faltar.`              |
+| **14-20s** | Página pública de agendamento (`/agendar/[subdomain]`) — clínica com a própria marca, cor e logo.            | `Cada clínica com a própria cara. Whitelabel de verdade.`       |
+| **20-25s** | Lembrete chegando no WhatsApp, com o texto reescrito no tom da clínica.                                      | `Lembrete automático, no tom da clínica.`                       |
+| **25-30s** | Logo do Crivo Sync em tela cheia.                                                                            | `Painel + Agendamento público · Agora em produção 🎉`           |
 
 **Regras de ouro do vídeo:**
 
@@ -226,10 +229,10 @@ Grave a tela (celular ou navegador). **Sem narração** — o feed roda no mudo 
 
 ## 🖼️ Screenshots — lista priorizada
 
-| # | Tela | Por que entra |
-| --- | --- | --- |
-| **1 ⭐** | **Agenda** do painel, com horários preenchidos | Capa. Primeira impressão — precisa parecer um sistema em uso real, não uma demo vazia. |
-| **2 ⭐** | **Risco de falta** por consulta | O grande diferencial do produto. É o que separa "agenda" de "agenda inteligente". |
-| **3 ⭐** | **Página pública de agendamento** com a marca de uma clínica fictícia | Mostra o whitelabel funcionando de ponta a ponta. |
-| **4 ⭐** | **Lembrete de WhatsApp** recebido no celular | Prova social do fluxo — sai do painel e chega no bolso do paciente. |
-| **5 ⭐** | **Tela de planos/billing** | Mostra que é um produto pronto para cobrar, não só um protótipo. |
+| #        | Tela                                                                  | Por que entra                                                                          |
+| -------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **1 ⭐** | **Agenda** do painel, com horários preenchidos                        | Capa. Primeira impressão — precisa parecer um sistema em uso real, não uma demo vazia. |
+| **2 ⭐** | **Risco de falta** por consulta                                       | O grande diferencial do produto. É o que separa "agenda" de "agenda inteligente".      |
+| **3 ⭐** | **Página pública de agendamento** com a marca de uma clínica fictícia | Mostra o whitelabel funcionando de ponta a ponta.                                      |
+| **4 ⭐** | **Lembrete de WhatsApp** recebido no celular                          | Prova social do fluxo — sai do painel e chega no bolso do paciente.                    |
+| **5 ⭐** | **Tela de planos/billing**                                            | Mostra que é um produto pronto para cobrar, não só um protótipo.                       |
