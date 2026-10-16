@@ -36,11 +36,11 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # dotenv environment variable files
+# Só `.env.example` é versionado. O resto guarda segredo de verdade — o
+# `.env.production`, por exemplo, tem a senha do Supabase e o JWT_SECRET.
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
 
 # temp directory
 .temp

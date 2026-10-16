@@ -1,0 +1,24 @@
+# Contexto de build = raiz do repositório (o app fica em crivo-be/).
+
+**/node_modules
+**/dist
+**/coverage
+**/.git
+**/.github
+**/.DS_Store
+**/*.log
+
+# Segredos fora da imagem, sempre. Em produção as variáveis chegam pelo vault
+# do Fly (fly secrets) — nunca embutidas no container, que fica no registry.
+**/.env
+**/.env.*
+
+# O front é publicado na Vercel; nada dele entra nesta imagem.
+crivo-fe
+
+# Ruído de ferramentas locais
+**/.idea
+**/.vscode
+**/.claude
+**/.agents
+**/.windsurf

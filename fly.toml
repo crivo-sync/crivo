@@ -1,0 +1,52 @@
+# Configuração do app `crivo` (API em crivo-be/).
+#
+# Rode da RAIZ do repositório: `fly deploy`. O contexto de build é a raiz, por
+# isso o Dockerfile referencia `crivo-be/...`.
+#
+# Segredos NÃO ficam aqui — vão pelo painel (fly.io/apps/crivo/secrets) ou por
+# `fly secrets set`. Este arquivo só tem o que não é sensível e pode ir no git.
+
+app = "crivo"
+
+# São Paulo: onde estão as clínicas e também o Supabase do projeto, então é a
+# região de menor latência para a API falar com o banco.
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  # Precisa bater com o internal_port abaixo (ver comentário no Dockerfile).
+  PORT = "8080"
+  # /docs lista todas as rotas da API — fica desligado em ambiente público.
+  SWAGGER_ENABLED = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # A API roda cron (@nestjs/schedule) e o worker do BullMQ no mesmo processo.
+  # Parar a máquina quando fica ociosa interromperia lembretes agendados e o
+  # processamento da fila, então o autostop fica desligado.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  # O deploy só é considerado bom se /health responder 200 — é ele que consulta
+  # o banco, então uma credencial errada do Supabase derruba o deploy aqui, e
+  # não na mão do primeiro cliente.
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
