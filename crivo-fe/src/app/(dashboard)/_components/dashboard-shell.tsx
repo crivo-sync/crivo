@@ -20,13 +20,13 @@ import {
   type Theme,
 } from "@mui/material/styles";
 
-import { LogoMark } from "@/components/ui/logo";
 import type { SubscriptionStatus } from "@/features/tenant/types";
 import type { NavItem } from "../_data/nav-items";
 import { SidebarNav } from "./sidebar-nav";
 import { TopBarUserMenu } from "./top-bar-user-menu";
 import { TrialBanner } from "./trial-banner";
 import { UserMenu } from "./user-menu";
+import { Logo } from "@/components/ui/logo";
 
 const drawerWidth = 260;
 
@@ -177,10 +177,7 @@ export const DashboardShell = ({
                 paddingLeft: 8,
               }}
             >
-              <LogoMark />
-              <Typography variant="h6" component="span">
-                Crivo Sync
-              </Typography>
+              <Logo />
             </Link>
           )}
           <IconButton

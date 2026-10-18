@@ -4,8 +4,8 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
 
-import { LogoMark } from "@/components/ui/logo";
 import { LoginForm } from "@/features/auth/components/LoginForm";
+import { Logo } from "@/components/ui/logo";
 
 export const metadata: Metadata = {
   title: "Entrar — Crivo Sync",
@@ -31,10 +31,7 @@ const LoginPage = () => {
             aria-label="Crivo Sync — início"
             style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
-            <LogoMark />
-            <Typography variant="h5" component="span" sx={{ color: "text.primary" }}>
-              Crivo Sync
-            </Typography>
+            <Logo />
           </Link>
         </Box>
 

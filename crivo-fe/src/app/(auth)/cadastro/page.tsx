@@ -6,8 +6,8 @@ import Card from "@mui/material/Card";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 
-import { LogoMark } from "@/components/ui/logo";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
+import { Logo } from "@/components/ui/logo";
 
 export const metadata: Metadata = {
   title: "Criar conta — Crivo Sync",
@@ -33,10 +33,7 @@ const RegisterPage = () => {
             aria-label="Crivo Sync — início"
             style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
-            <LogoMark />
-            <Typography variant="h5" component="span" sx={{ color: "text.primary" }}>
-              Crivo Sync
-            </Typography>
+            <Logo />
           </Link>
         </Box>
 

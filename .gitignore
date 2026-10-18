@@ -1,0 +1,3 @@
+# Segredos de deploy do Fly.io — nunca versionar.
+# (O .dockerignore também exclui `**/.env.*`, então não vão para a imagem.)
+.env.fly

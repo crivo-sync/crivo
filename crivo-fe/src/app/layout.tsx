@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: "Crivo Sync",
   description: "Crivo Sync - O gerenciamento completo de sua clinica",
   icons: {
-    icon: "/images/icon.jpeg",
+    icon: "/assets/images/crivo-sync-logo.png",
   },
 };
 
