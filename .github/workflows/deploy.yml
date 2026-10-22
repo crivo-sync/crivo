@@ -1,0 +1,159 @@
+# =============================================================================
+# Template de CI/CD (GitOps) para repositórios de aplicação.
+# Copie para <repo-do-app>/.github/workflows/deploy.yml e ajuste:
+#   - env.INFRA_PROJECT     pasta do projeto em projects/ no repo de infra
+#   - matrix.include        uma entrada por app (= pasta projects/<p>/apps/<app>)
+#   - env.APPS              os mesmos nomes de matrix.include[].app
+#
+# Fluxo de branches → ambientes:
+#   feature/*  ──PR──►  develop  ──PR──►  main
+#      │                   │                │
+#   PR: só build        push: build      push: build
+#   (validação)         + deploy em      + deploy em
+#                         develop           prod
+#
+# Deploy = commit no REPO DE INFRA trocando image.tag em
+#   projects/<INFRA_PROJECT>/apps/<app>/values-<env>.yaml
+# e o ArgoCD faz o rollout no namespace <projeto>-<env>.
+#
+# Secret necessário no repo do app (criado por scripts/github-bootstrap.sh
+# do repo de infra):
+#   INFRA_DEPLOY_KEY  chave SSH privada; a pública está no repo de infra como
+#                     deploy key com escrita.
+# =============================================================================
+name: build-and-deploy
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  INFRA_REPO: infra-devops-full/infra   # owner/repo da plataforma DevOps
+  INFRA_BRANCH: main                     # branch que o ArgoCD acompanha
+  INFRA_PROJECT: crivo                   # pasta em projects/ no repo de infra
+  # develop → ambiente develop; main → ambiente prod.
+  DEPLOY_ENV: ${{ github.ref_name == 'main' && 'prod' || 'develop' }}
+  # PR só valida (sem push); push publica a imagem.
+  PUBLISH: ${{ github.event_name != 'pull_request' }}
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          # app:        nome da pasta em projects/<p>/apps/ (vira o nome da imagem)
+          # context:    contexto do docker build
+          # dockerfile: caminho do Dockerfile
+          # build-args: opcional, uma linha KEY=valor por argumento
+          # API: Dockerfile da raiz do repo (o mesmo do Fly.io), contexto = raiz.
+          - app: crivo-be
+            context: .
+            dockerfile: ./Dockerfile
+            build-args: ""
+          # Front: a API é o Service interno do namespace (igual em todo env).
+          - app: crivo-fe
+            context: ./crivo-fe
+            dockerfile: ./crivo-fe/Dockerfile
+            build-args: |
+              NEXT_PUBLIC_API_URL=http://crivo-be:8080
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Nome e tags da imagem
+        id: img
+        run: |
+          echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}/${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          # Tag móvel por branch: main → latest, develop → develop.
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=develop" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Imagem multi-arch: amd64 (servidores/CI) + arm64 (k3d no Mac Apple Silicon).
+      # Em PR só amd64 — é validação, e o QEMU deixa o build bem mais lento.
+      - uses: docker/setup-qemu-action@v4
+        if: env.PUBLISH == 'true'
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        if: env.PUBLISH == 'true'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build-args }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: |
+            ${{ steps.img.outputs.name }}:${{ steps.img.outputs.tag }}
+            ${{ steps.img.outputs.name }}:${{ steps.img.outputs.channel }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Evita dois pushes simultâneos no repo de infra.
+    concurrency: infra-${{ github.repository }}
+    env:
+      APPS: crivo-be crivo-fe            # mesmos nomes de matrix.include[].app
+    steps:
+      - name: Confere o INFRA_DEPLOY_KEY
+        env:
+          INFRA_DEPLOY_KEY: ${{ secrets.INFRA_DEPLOY_KEY }}
+        run: |
+          if [ -z "$INFRA_DEPLOY_KEY" ]; then
+            echo "::error title=INFRA_DEPLOY_KEY ausente::Rode no repo de infra: ./scripts/github-bootstrap.sh ${INFRA_PROJECT}  — ele cria a deploy key em ${INFRA_REPO} e o secret INFRA_DEPLOY_KEY neste repo. A imagem já foi publicada; só a atualização da tag ficou pendente."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.INFRA_REPO }}
+          ref: ${{ env.INFRA_BRANCH }}
+          ssh-key: ${{ secrets.INFRA_DEPLOY_KEY }}
+
+      - name: Atualiza image.tag no repo de infra
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          for APP in $APPS; do
+            FILE="projects/${INFRA_PROJECT}/apps/${APP}/values-${DEPLOY_ENV}.yaml"
+            yq -i ".image.tag = \"${TAG}\"" "$FILE"
+            echo "→ $FILE: image.tag=${TAG}"
+          done
+
+      - name: Commit + push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add projects/
+          if git diff --cached --quiet; then echo "Nada a atualizar"; exit 0; fi
+          git commit -m "deploy(${INFRA_PROJECT}/${DEPLOY_ENV}): ${APPS} → sha-${GITHUB_SHA::7} [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase origin "$INFRA_BRANCH" && git push origin "HEAD:$INFRA_BRANCH" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
