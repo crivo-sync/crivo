@@ -396,7 +396,7 @@ describe('HandleStripeWebhookUseCase — downgrade agendado', () => {
           },
         },
       },
-    } as unknown as Stripe.Event);
+    });
 
     await useCase.execute({ rawBody: Buffer.from('{}'), signature: 'sig' });
 
@@ -435,7 +435,7 @@ describe('HandleStripeWebhookUseCase — assinatura cancelada', () => {
     (stripe.constructWebhookEvent as jest.Mock).mockReturnValue({
       type: 'customer.subscription.deleted',
       data: { object: { id: 'sub_atual' } },
-    } as unknown as Stripe.Event);
+    });
 
     await useCase.execute({
       rawBody: Buffer.from('{}'),

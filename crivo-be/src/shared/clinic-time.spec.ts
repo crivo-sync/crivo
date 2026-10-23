@@ -9,9 +9,7 @@ import {
 describe('clinic-time (fuso fixo America/Sao_Paulo, UTC-3)', () => {
   it('clinicMinutesOfDay converte instante UTC para minutos do dia local', () => {
     // 13:00 UTC == 10:00 em São Paulo == 600 minutos
-    expect(clinicMinutesOfDay(new Date('2026-08-24T13:00:00.000Z'))).toBe(
-      600,
-    );
+    expect(clinicMinutesOfDay(new Date('2026-08-24T13:00:00.000Z'))).toBe(600);
     // meia-noite local == 03:00 UTC
     expect(clinicMinutesOfDay(new Date('2026-08-24T03:00:00.000Z'))).toBe(0);
   });

@@ -89,8 +89,7 @@ export class GetNoShowCostUseCase {
       lostInCents: sum(noShows),
       noShowCount: noShows.length,
       finishedCount: finished.length,
-      noShowRate:
-        finished.length > 0 ? noShows.length / finished.length : null,
+      noShowRate: finished.length > 0 ? noShows.length / finished.length : null,
       savedCount: saved.length,
       savedInCents: sum(saved),
     };

@@ -14,8 +14,9 @@ function makeUseCase(
     tenant: { findMany: jest.fn().mockResolvedValue(tenants) },
   } as unknown as PrismaService;
 
-  const mail = { send: jest.fn().mockResolvedValue(undefined) } as unknown as
-    MailService;
+  const mail = {
+    send: jest.fn().mockResolvedValue(undefined),
+  } as unknown as MailService;
 
   const config = {
     get: jest.fn().mockReturnValue('https://app.crivo.test'),
@@ -75,9 +76,6 @@ describe('NotifyEndingTrialsUseCase', () => {
     // não pode impedir o aviso das outras.
     await expect(useCase.execute()).resolves.toBe(1);
     expect(mail.send).toHaveBeenCalledTimes(1);
-    expect(mail.send).toHaveBeenCalledWith(
-      'ok@teste.com',
-      expect.anything(),
-    );
+    expect(mail.send).toHaveBeenCalledWith('ok@teste.com', expect.anything());
   });
 });

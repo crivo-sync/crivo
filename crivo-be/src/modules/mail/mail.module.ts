@@ -11,7 +11,10 @@ import { SmtpMailProvider } from './infrastructure/providers/smtp-mail.provider'
  */
 @Global()
 @Module({
-  providers: [{ provide: MAIL_PROVIDER, useClass: SmtpMailProvider }, MailService],
+  providers: [
+    { provide: MAIL_PROVIDER, useClass: SmtpMailProvider },
+    MailService,
+  ],
   exports: [MailService],
 })
 export class MailModule {}
