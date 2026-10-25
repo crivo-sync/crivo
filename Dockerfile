@@ -9,7 +9,7 @@
 # ---------------------------------------------------------------------------
 # 1. Dependências + build
 # ---------------------------------------------------------------------------
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 
 # openssl: o Prisma escolhe o engine pela versão de OpenSSL da imagem; sem o
@@ -43,7 +43,7 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # 2. Runtime
 # ---------------------------------------------------------------------------
-FROM node:24-bookworm-slim AS runner
+FROM node:26-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
