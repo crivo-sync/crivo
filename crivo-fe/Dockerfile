@@ -12,7 +12,7 @@
 # ---------------------------------------------------------------------------
 # 1. Dependências + build
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 # O npm da imagem node:24 pode ser mais novo que o que gerou o lock e recusar
@@ -35,7 +35,7 @@ RUN npm run build \
 # ---------------------------------------------------------------------------
 # 2. Runtime
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
