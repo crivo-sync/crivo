@@ -1,18 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import {
-  MAIL_PROVIDER,
-  type MailProvider,
-} from '../domain/mail-provider';
+import { MAIL_PROVIDER, type MailProvider } from '../domain/mail-provider';
 import type { RenderedMail } from './templates';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
-  constructor(
-    @Inject(MAIL_PROVIDER) private readonly provider: MailProvider,
-  ) {}
+  constructor(@Inject(MAIL_PROVIDER) private readonly provider: MailProvider) {}
 
   /**
    * Envia sem nunca lançar.

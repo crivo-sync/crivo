@@ -21,9 +21,7 @@ export function isSlotConflictError(error: unknown): boolean {
   }
 
   const cause = (
-    error.meta?.driverAdapterError as
-      | { cause?: { code?: string } }
-      | undefined
+    error.meta?.driverAdapterError as { cause?: { code?: string } } | undefined
   )?.cause;
 
   return cause?.code === '23P01';

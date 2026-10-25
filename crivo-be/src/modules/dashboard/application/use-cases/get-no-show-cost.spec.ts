@@ -13,7 +13,9 @@ type Fake = {
 
 function makeUseCase(appointments: Fake[]) {
   const repository = {
-    findMany: jest.fn().mockResolvedValue({ data: appointments, total: appointments.length }),
+    findMany: jest
+      .fn()
+      .mockResolvedValue({ data: appointments, total: appointments.length }),
   } as unknown as AppointmentRepository;
 
   return new GetNoShowCostUseCase(repository);
@@ -33,7 +35,11 @@ const completed = (price: number, confirmed = false): Fake => ({
 
 describe('GetNoShowCostUseCase', () => {
   it('soma o preço das faltas — é a pergunta do dono da clínica', async () => {
-    const useCase = makeUseCase([noShow(15000), noShow(20000), completed(30000)]);
+    const useCase = makeUseCase([
+      noShow(15000),
+      noShow(20000),
+      completed(30000),
+    ]);
 
     const result = await useCase.execute(TENANT_ID);
 
@@ -48,7 +54,11 @@ describe('GetNoShowCostUseCase', () => {
       completed(10000),
       // `SCHEDULED` ainda não aconteceu: contá-lo como presença inflaria a
       // taxa a favor do produto.
-      { status: AppointmentStatus.SCHEDULED, priceInCents: 10000, confirmedAt: null },
+      {
+        status: AppointmentStatus.SCHEDULED,
+        priceInCents: 10000,
+        confirmedAt: null,
+      },
     ]);
 
     const result = await useCase.execute(TENANT_ID);
@@ -59,7 +69,11 @@ describe('GetNoShowCostUseCase', () => {
 
   it('mês sem desfecho devolve taxa null, não zero', async () => {
     const useCase = makeUseCase([
-      { status: AppointmentStatus.SCHEDULED, priceInCents: 10000, confirmedAt: null },
+      {
+        status: AppointmentStatus.SCHEDULED,
+        priceInCents: 10000,
+        confirmedAt: null,
+      },
     ]);
 
     // 0% diria "nenhum paciente falta aqui", o que é uma afirmação sobre a

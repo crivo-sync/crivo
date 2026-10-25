@@ -114,7 +114,10 @@ export class CloudinaryService {
    */
   signedUrl(
     publicId: string,
-    options: { expiresInSeconds?: number; transformation?: TransformationOptions } = {},
+    options: {
+      expiresInSeconds?: number;
+      transformation?: TransformationOptions;
+    } = {},
   ): string {
     const expiresIn = options.expiresInSeconds ?? 300;
 

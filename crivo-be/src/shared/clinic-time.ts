@@ -100,7 +100,15 @@ export function fromClinicWallClock(
   // basta porque o offset de um fuso não muda dentro da mesma janela de
   // poucas horas que separa o chute do instante real.
   const guess = new Date(
-    Date.UTC(dateKey.year, dateKey.month - 1, dateKey.day, hour, minute, second, ms),
+    Date.UTC(
+      dateKey.year,
+      dateKey.month - 1,
+      dateKey.day,
+      hour,
+      minute,
+      second,
+      ms,
+    ),
   );
   const offsetMinutes = clinicOffsetMinutes(guess);
 

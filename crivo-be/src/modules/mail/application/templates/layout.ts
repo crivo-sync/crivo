@@ -23,7 +23,10 @@ export type MailContent = {
  * Toda mensagem sai também em texto puro (`toPlainText`): cliente antigo
  * mostra isso, e filtro de spam desconfia de e-mail só-HTML.
  */
-export function renderMail(content: MailContent): { html: string; text: string } {
+export function renderMail(content: MailContent): {
+  html: string;
+  text: string;
+} {
   return { html: toHtml(content), text: toPlainText(content) };
 }
 
